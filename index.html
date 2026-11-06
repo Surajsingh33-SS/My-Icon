@@ -4,332 +4,412 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Icon Maker</title>
+    <title>Icon Maker — Professional SVG Icon Editor</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
-
+    <!-- =====================================
+         MAIN TOPBAR
+    ===================================== -->
     <header class="topbar">
 
-        <div class="logo">✦ Icon Maker</div>
+        <div class="topbar-brand">
+            <button class="logo-btn" id="logo-home-button" title="Go to Icon Gallery">
+                <span class="logo-icon">✦</span>
+                <span class="logo-text">Icon Maker</span>
+                <span class="logo-badge">PRO</span>
+            </button>
+            <div class="topbar-divider"></div>
+            <div class="topbar-project-info">
+                <span id="active-project-name" class="active-project-name" title="Current project">Untitled project</span>
+                <span id="save-status-indicator" class="save-pill" title="Project status">Saved</span>
+            </div>
+        </div>
 
         <nav class="menu">
-
             <div class="file-menu-wrapper">
-                <button id="file-menu-button">File</button>
+                <button id="file-menu-button" class="menu-btn" aria-haspopup="true" aria-expanded="false">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    File
+                    <span class="caret">▾</span>
+                </button>
 
                 <div class="file-dropdown" id="file-dropdown">
-                    <button id="new-project-button">＋ New Icon</button>
+                    <button id="new-project-button" class="dropdown-item">
+                        <span class="dropdown-icon">＋</span>
+                        <span>New Icon</span>
+                        <kbd class="dropdown-kbd">Ctrl+N</kbd>
+                    </button>
+
+                    <button id="export-project-json-btn" class="dropdown-item">
+                        <span class="dropdown-icon">↓</span>
+                        <span>Backup All Projects (.json)</span>
+                    </button>
+
+                    <button id="import-project-json-btn" class="dropdown-item">
+                        <span class="dropdown-icon">↑</span>
+                        <span>Restore Projects (.json)</span>
+                    </button>
+                    <input type="file" id="import-project-file-input" accept=".json,application/json" style="display: none;">
 
                     <div class="dropdown-divider"></div>
 
-                    <p class="dropdown-heading">Unfinished Icons</p>
+                    <div class="dropdown-heading-row">
+                        <p class="dropdown-heading">Unfinished Icons</p>
+                    </div>
 
-                    <div id="unfinished-project-list">
+                    <div id="unfinished-project-list" class="unfinished-list">
                         <p class="dropdown-empty">No unfinished Icons</p>
                     </div>
                 </div>
             </div>
 
-            <button>Edit</button>
-            <button id="home-button">Home</button>
+            <button id="home-button" class="menu-btn" title="Toggle Gallery view">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                Gallery
+            </button>
 
+            <button id="shortcuts-trigger-btn" class="menu-btn" title="Keyboard Shortcuts (Press ?)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="10" y2="8"/><line x1="14" y1="8" x2="14" y2="8"/><line x1="18" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="10" y1="12" x2="10" y2="12"/><line x1="14" y1="12" x2="14" y2="12"/><line x1="18" y1="12" x2="18" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+                Shortcuts
+            </button>
         </nav>
 
         <div class="actions">
-            <button id="save-project-button">Save</button>
-            <button id="finish-project-button" class="finish-btn">Finish</button>
-            <button class="export-btn">Export</button>
+            <button id="save-project-button" class="btn btn-secondary" title="Save changes (Ctrl+S)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span>Save</span>
+            </button>
+
+            <button id="finish-project-button" class="btn btn-finish finish-btn" title="Complete and add to Gallery">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Finish</span>
+            </button>
+
+            <button id="topbar-export-btn" class="btn btn-primary export-btn" title="Export as SVG or PNG">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Export</span>
+            </button>
         </div>
 
     </header>
 
 
     <!-- =====================================
-     HOME PAGE
-===================================== -->
-
+         HOME PAGE / GALLERY SCREEN
+    ===================================== -->
     <section class="home-screen show" id="home-screen">
 
         <!-- LEFT SIDEBAR -->
-
         <aside class="home-sidebar">
 
             <!-- GROUP 1: MAIN NAVIGATION -->
             <div class="sidebar-primary-group">
-
                 <div class="home-logo">
-                    ✦ Icon Maker
+                    <span class="logo-sparkle">✦</span>
+                    <span class="logo-heading">Icon Maker</span>
                 </div>
 
                 <nav class="sidebar-options">
-
-                    <button class="sidebar-option active">
-                        <span>⌂</span> Home
+                    <button class="sidebar-option active" data-home-view="gallery">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        <span>Gallery</span>
                     </button>
 
-                    <button class="sidebar-option">
-                        <span>▦</span> Projects
+                    <button class="sidebar-option" data-home-view="projects">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        <span>All Projects</span>
+                        <span id="sidebar-projects-count" class="sidebar-badge">0</span>
                     </button>
 
-                    <button class="sidebar-option">
-                        <span>⚙</span> Settings
+                    <button class="sidebar-option" data-home-view="settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span>Preferences</span>
                     </button>
-
                 </nav>
-
             </div>
-
 
             <!-- GROUP 2: GLOBAL CUSTOMIZATION -->
             <div class="sidebar-scroll-area">
-
                 <div class="sidebar-customization">
-
                     <div class="customization-heading">
-                        <h3>Customization</h3>
-
-                        <button type="button" id="reset-global-customization" title="Reset to default"
-                            aria-label="Reset customization">
-                            <img src="assets/icons/reset.svg" alt="">
+                        <div class="heading-with-info">
+                            <h3>Global Preview</h3>
+                            <span class="customization-subtitle">Applies to gallery</span>
+                        </div>
+                        <button type="button" id="reset-global-customization" title="Reset to defaults" aria-label="Reset customization">
+                            <img src="assets/icons/reset.svg" alt="Reset">
                         </button>
                     </div>
 
                     <!-- ICON COLOR -->
                     <div class="customization-control">
-
                         <label for="global-icon-color">
-                            Icon color
+                            <span>Icon color</span>
+                            <span id="global-color-value" class="control-value">#ffffff</span>
                         </label>
-
-                        <input type="color" id="global-icon-color" value="#ffffff">
-
+                        <div class="color-picker-wrapper">
+                            <input type="color" id="global-icon-color" value="#ffffff">
+                            <span class="color-preview-chip" id="global-color-chip"></span>
+                        </div>
                     </div>
-
 
                     <!-- STROKE WIDTH -->
                     <div class="customization-control">
-
                         <label for="global-stroke-width">
-                            Stroke width
-                            <span id="global-stroke-value">2px</span>
+                            <span>Stroke width</span>
+                            <span id="global-stroke-value" class="control-value">2px</span>
                         </label>
-
                         <input type="range" id="global-stroke-width" min="0.5" max="5" step="0.1" value="2">
-
                     </div>
-
 
                     <!-- ICON SIZE -->
                     <div class="customization-control">
-
                         <label for="global-icon-size">
-                            Icon size
-                            <span id="global-size-value">24px</span>
+                            <span>Tile size</span>
+                            <span id="global-size-value" class="control-value">24px</span>
                         </label>
+                        <input type="range" id="global-icon-size" min="16" max="64" step="1" value="24">
+                    </div>
 
-                        <input type="range" id="global-icon-size" min="12" max="64" step="1" value="24">
-
+                    <div class="global-customization-badge">
+                        <span>Live Preview Active</span>
                     </div>
                 </div>
             </div>
         </aside>
 
-
-
         <!-- MAIN HOME CONTENT -->
         <main class="home-main">
 
-            <!-- HOME NAVBAR -->
+            <!-- VIEW: GALLERY -->
+            <div id="home-view-gallery" class="home-view-section active">
 
-            <header class="home-navbar">
+                <!-- HOME NAVBAR -->
+                <header class="home-navbar">
+                    <nav class="home-nav-options" id="home-tabs">
+                        <button class="home-nav-option active" data-tab="all">
+                            <span>All Icons</span>
+                            <span id="tab-count-all" class="tab-pill">0</span>
+                        </button>
+                        <button class="home-nav-option" data-tab="recent">
+                            <span>Recent</span>
+                        </button>
+                        <button class="home-nav-option" data-tab="favorites">
+                            <span>Favorites</span>
+                            <span id="tab-count-fav" class="tab-pill">0</span>
+                        </button>
+                    </nav>
 
-                <nav class="home-nav-options">
+                    <div class="home-navbar-actions">
+                        <button id="theme-toggle" type="button" aria-label="Switch theme" title="Toggle Light/Dark Theme">
+                            <span class="theme-toggle-knob">☾</span>
+                        </button>
 
-                    <button class="home-nav-option active">
-                        All Icons
-                    </button>
+                        <div class="accent-palette" title="Accent Color Theme">
+                            <button class="accent-swatch active" data-accent="#ff0077" style="--swatch-color: #ff0077" aria-label="Pink" aria-pressed="true"></button>
+                            <button class="accent-swatch" data-accent="#a200ff" style="--swatch-color: #a200ff" aria-label="Purple" aria-pressed="false"></button>
+                            <button class="accent-swatch" data-accent="#0084ff" style="--swatch-color: #0084ff" aria-label="Blue" aria-pressed="false"></button>
+                            <button class="accent-swatch" data-accent="#00ffee" style="--swatch-color: #00ffee" aria-label="Cyan" aria-pressed="false"></button>
+                            <button class="accent-swatch" data-accent="#00ff73" style="--swatch-color: #00ff73" aria-label="Green" aria-pressed="false"></button>
+                            <button class="accent-swatch" data-accent="#a6ff00" style="--swatch-color: #a6ff00" aria-label="Lime" aria-pressed="false"></button>
+                            <button class="accent-swatch" data-accent="#f56565" style="--swatch-color: #f56565" aria-label="Coral" aria-pressed="false"></button>
+                            <button class="accent-swatch" data-accent="#ff0000" style="--swatch-color: #ff0000" aria-label="Red" aria-pressed="false"></button>
+                        </div>
 
-                    <button class="home-nav-option">
-                        Recent
-                    </button>
+                        <!-- User prompt: The homepage Edit button must continue creating a new project and opening the editor -->
+                        <button id="home-edit-button" class="btn btn-primary" title="Create a new icon project and open editor">
+                            <span>＋ New Icon</span>
+                        </button>
+                    </div>
+                </header>
 
-                    <button class="home-nav-option">
-                        Favorites
-                    </button>
-
-                </nav>
-
-                <div class="home-navbar-actions">
-
-                    <button id="theme-toggle" type="button" aria-label="Switch to light theme">
-                        <span class="theme-toggle-knob">☾</span>
-                    </button>
-
-                    <div class="accent-palette">
-
-                        <button class="accent-swatch active" data-accent="#ff0077" style="--swatch-color: #ff0077"
-                            aria-label="Pink" aria-pressed="true"></button>
-
-                        <button class="accent-swatch" data-accent="#a200ff" style="--swatch-color: #a200ff"
-                            aria-label="Purple" aria-pressed="false"></button>
-
-                        <button class="accent-swatch" data-accent="#0084ff" style="--swatch-color: #0084ff"
-                            aria-label="Blue" aria-pressed="false"></button>
-
-                        <button class="accent-swatch" data-accent="#00ffee" style="--swatch-color: #00ffee"
-                            aria-label="Cyan" aria-pressed="false"></button>
-
-                        <button class="accent-swatch" data-accent="#00ff73" style="--swatch-color: #00ff73"
-                            aria-label="Green" aria-pressed="false"></button>
-
-                        <button class="accent-swatch" data-accent="#a6ff00" style="--swatch-color: #a6ff00"
-                            aria-label="Lime" aria-pressed="false"></button>
-
-                        <button class="accent-swatch" data-accent="#f56565" style="--swatch-color: #f56565"
-                            aria-label="Coral" aria-pressed="false"></button>
-
-                        <button class="accent-swatch" data-accent="#ff0000" style="--swatch-color: #ff0000"
-                            aria-label="Red" aria-pressed="false"></button>
-
+                <!-- SEARCH & FILTER CONTROLS -->
+                <div class="home-controls">
+                    <div class="home-search">
+                        <span class="search-icon">⌕</span>
+                        <input type="text" id="home-search-input" placeholder="Search by name, category, or tags..." autocomplete="off">
+                        <button type="button" id="clear-search-btn" class="clear-search-btn" title="Clear search" style="display: none;">×</button>
                     </div>
 
-                    <button id="home-edit-button">Edit</button>
+                    <select id="home-category-select" class="home-sort-select" title="Filter by category">
+                        <option value="all">All categories</option>
+                    </select>
 
+                    <select id="home-sort-select" class="home-sort-select" title="Sort order">
+                        <option value="newest">Recently saved</option>
+                        <option value="oldest">Oldest first</option>
+                        <option value="az">Name: A to Z</option>
+                        <option value="za">Name: Z to A</option>
+                    </select>
+
+                    <div class="home-view-toggle">
+                        <button type="button" class="active" data-view="grid" title="Grid view (▦)">▦</button>
+                        <button type="button" data-view="list" title="List view (☷)">☷</button>
+                    </div>
                 </div>
 
-            </header>
-
-
-
-            <!-- SEARCH BAR -->
-            <div class="home-controls">
-
-                <div class="home-search">
-                    <span>⌕</span>
-                    <input type="text" id="home-search-input" placeholder="Search your icons...">
-                </div>
-
-                <select id="home-category-select" class="home-sort-select">
-                    <option value="all">All categories</option>
-                </select>
-
-                <select id="home-sort-select" class="home-sort-select">
-                    <option value="newest">Recently added</option>
-                    <option value="oldest">Oldest first</option>
-                    <option value="az">Name: A to Z</option>
-                    <option value="za">Name: Z to A</option>
-                </select>
-
-                <div class="home-view-toggle">
-                    <button type="button" class="active" data-view="grid" title="Grid view">
-                        ▦
-                    </button>
-                    <button type="button" data-view="list" title="List view">
-                        ☷
-                    </button>
-                </div>
+                <!-- PROJECT GALLERY GRID / LIST -->
+                <section class="home-projects">
+                    <div class="home-project-grid" id="home-project-grid">
+                        <p class="home-empty">No finished projects yet.</p>
+                    </div>
+                </section>
 
             </div>
 
-
-            <!-- PROJECT GRID -->
-            <section class="home-projects">
-
-                <div class="home-project-grid" id="home-project-grid">
-
-                    <p class="home-empty">
-                        No finished projects yet.
-                    </p>
-
+            <!-- VIEW: ALL PROJECTS MANAGER -->
+            <div id="home-view-projects" class="home-view-section" style="display: none;">
+                <div class="management-header">
+                    <div>
+                        <h2>Project Manager</h2>
+                        <p class="management-subtitle">Manage all finished and unfinished icons in your browser storage.</p>
+                    </div>
+                    <div class="management-actions">
+                        <button id="manager-new-icon-btn" class="btn btn-primary">＋ New Icon</button>
+                    </div>
                 </div>
+                <div class="management-table-wrapper" id="management-table-container">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
 
-            </section>
+            <!-- VIEW: SETTINGS -->
+            <div id="home-view-settings" class="home-view-section" style="display: none;">
+                <div class="management-header">
+                    <div>
+                        <h2>Editor Preferences</h2>
+                        <p class="management-subtitle">Configure drawing helpers, snapping behavior, and canvas options.</p>
+                    </div>
+                </div>
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h3>Snapping & Alignment</h3>
+                        <label class="setting-row">
+                            <span>Snap to endpoints while dragging</span>
+                            <input type="checkbox" id="setting-endpoint-snapping" checked>
+                        </label>
+                        <label class="setting-row">
+                            <span>Smart alignment guidelines (cyan)</span>
+                            <input type="checkbox" id="setting-smart-guides" checked>
+                        </label>
+                        <label class="setting-row">
+                            <span>Snap curve angles (10° increments)</span>
+                            <input type="checkbox" id="setting-curve-snapping" checked>
+                        </label>
+                    </div>
 
+                    <div class="settings-card">
+                        <h3>Canvas Display</h3>
+                        <label class="setting-row">
+                            <span>Default coordinate labels (4, 8, 12...)</span>
+                            <input type="checkbox" id="setting-default-coordinates">
+                        </label>
+                        <label class="setting-row">
+                            <span>Highlight nearest grid point on hover</span>
+                            <input type="checkbox" id="setting-default-grid-hover">
+                        </label>
+                        <label class="setting-row">
+                            <span>Default workspace guidelines</span>
+                            <input type="checkbox" id="setting-default-guidelines" checked>
+                        </label>
+                    </div>
 
+                    <div class="settings-card">
+                        <h3>Storage & Data</h3>
+                        <div class="storage-info-row">
+                            <span>Active storage key:</span>
+                            <code>iconMakerProjects</code>
+                        </div>
+                        <div class="storage-actions-row">
+                            <button id="settings-backup-btn" class="btn btn-secondary">Download Backup (.json)</button>
+                            <button id="settings-clear-all-btn" class="btn btn-danger">Clear All Data</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <!-- SELECTED PROJECT PREVIEW -->
+            <!-- SELECTED PROJECT PREVIEW DRAWER -->
             <div class="project-details" id="project-details" aria-hidden="true">
 
                 <!-- ICON PREVIEW -->
                 <div class="project-preview" id="project-preview">
                     <img id="project-preview-image" src="" alt="Icon preview">
+                    <button id="project-favorite-btn" class="preview-favorite-btn" title="Toggle Favorite">☆</button>
                 </div>
 
                 <!-- ICON INFORMATION -->
                 <div class="project-info">
-
                     <div class="project-info-heading">
                         <h3 id="project-name">Icon name</h3>
                         <span class="project-version">24 × 24</span>
                     </div>
 
-                    <div class="project-search-terms" id="project-search-terms">
-                    </div>
+                    <div class="project-search-terms" id="project-search-terms"></div>
 
-                    <span class="project-category">Icon</span>
+                    <div class="project-meta-row">
+                        <span class="project-category" id="project-category-badge">Icon</span>
+                        <span class="project-date" id="project-date-badge"></span>
+                    </div>
 
                     <!-- PREVIEW CONTROLS -->
                     <div class="project-preview-controls">
-
                         <div class="stroke-control">
                             <label for="preview-stroke-width">
-                                Stroke width
-                                <span id="preview-stroke-value">2</span>
+                                <span>Preview stroke width</span>
+                                <span id="preview-stroke-value">2.0</span>
                             </label>
-
                             <input type="range" id="preview-stroke-width" min="0.5" max="5" step="0.1" value="2">
                         </div>
 
                         <div class="preview-actions">
+                            <button id="project-edit-button" class="btn btn-primary preview-edit-button">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                <span>Edit Icon</span>
+                            </button>
 
-                            <button id="project-more-search-button">
+                            <button id="project-remix-button" class="btn btn-secondary preview-remix-button">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+                                <span>Remix Icon</span>
+                            </button>
+
+                            <button id="project-more-search-button" class="btn btn-secondary">
                                 More icons with this name
                             </button>
 
-                            <button id="project-edit-button" class="preview-edit-button">
-                                ✎ Edit Icon
+                            <button id="project-delete-button" class="btn btn-danger preview-delete-button">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                <span>Delete Icon</span>
                             </button>
-                            <button id="project-remix-button" class="preview-remix-button">
-                                <i data-lucide="git-branch"></i>
-                                Remix Icon
-                            </button>
-
-                            <button id="project-delete-button" class="preview-delete-button">
-                                🗑 Delete Icon
-                            </button>
-
                         </div>
-
                     </div>
-
                 </div>
+
                 <!-- RELATED ICONS -->
                 <section class="project-related" id="project-related" hidden>
-
                     <div class="related-heading">
                         <h3 id="related-heading-text">Related icons</h3>
                         <span id="related-count"></span>
                     </div>
-
-                    <div class="related-project-grid" id="related-project-grid">
-                    </div>
-
+                    <div class="related-project-grid" id="related-project-grid"></div>
                 </section>
-                <!-- CLOSE BUTTON -->
-                <button id="project-details-close" class="project-details-close" type="button"
-                    aria-label="Close preview">×</button>
 
+                <!-- CLOSE BUTTON -->
+                <button id="project-details-close" class="project-details-close" type="button" aria-label="Close preview">×</button>
             </div>
 
-
         </main>
-
     </section>
 
 
+    <!-- =====================================
+         MAIN EDITOR
+    ===================================== -->
     <main class="editor">
 
         <!-- LEFT PANEL -->
@@ -338,42 +418,44 @@
             <div class="collapse-heading">
                 <h3>Tools</h3>
                 <button class="collapse-btn" aria-expanded="true" title="Collapse Tools">
-                    <img src="assets/icons/collapse.svg" alt="">
+                    <img src="assets/icons/collapse.svg" alt="Collapse">
                 </button>
             </div>
+
             <div class="collapse-content">
                 <div class="tool-list">
-
-                    <div class="tool" draggable="true" data-tool="line">
+                    <div class="tool" draggable="true" data-tool="line" title="Line Tool (Drag to canvas)">
                         <span>╱</span>
                         <p>Line</p>
                     </div>
 
-                    <div class="tool" draggable="true" data-tool="curve">
+                    <div class="tool" draggable="true" data-tool="curve" title="Circular Arc Curve Tool (Drag to canvas)">
                         <span>⌒</span>
                         <p>Curve</p>
                     </div>
 
-                    <div class="tool" draggable="true" data-tool="circle">
+                    <div class="tool" draggable="true" data-tool="circle" title="Circle Tool (Drag to canvas)">
                         <span>○</span>
                         <p>Circle</p>
                     </div>
 
-                    <div class="tool" draggable="true" data-tool="rectangle">
+                    <div class="tool" draggable="true" data-tool="rectangle" title="Rectangle Tool (Drag to canvas)">
                         <span>□</span>
                         <p>Rectangle</p>
                     </div>
-                    <div class="tool" draggable="true" data-tool="path">
+
+                    <div class="tool" draggable="true" data-tool="path" title="Path Tool (Drag to canvas, click points, Enter to finish)">
                         <span>⌁</span>
                         <p>Path</p>
                     </div>
-                    <div class="tool" draggable="true" data-tool="cutout">
+
+                    <div class="tool" draggable="true" data-tool="cutout" title="Cutout Tool (Requires selected path, cut out holes with evenodd rule)">
                         <span>◌</span>
                         <p>Cutout</p>
                     </div>
 
-                    <button class="trash-btn" id="delete-shape" title="Delete selected shape">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none"
+                    <button class="trash-btn" id="delete-shape" title="Delete selected shape (Del)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 6h18" />
                             <path d="M8 6V4h8v2" />
@@ -383,32 +465,28 @@
                         </svg>
                         <span>Delete selected</span>
                     </button>
-
                 </div>
+
                 <div class="path-style-control">
-
-                    <label>Drawing style</label>
-
-                    <label class="curve-path-toggle">
+                    <label>Path drawing style</label>
+                    <label class="curve-path-toggle" title="Generate smooth curves instead of straight lines">
                         <input type="checkbox" id="path-style-toggle">
                         <span class="curve-path-checkmark"></span>
-                        Curve path
+                        <span>Curve path</span>
                     </label>
-
                 </div>
             </div>
 
+            <!-- PROPERTIES PANEL -->
             <div class="properties-panel" id="properties-panel">
                 <div class="properties-heading collapse-heading">
                     <div class="properties-center">
                         <h3>Properties</h3>
                         <span id="properties-selection">No selection</span>
                     </div>
-                    <div class="collapse-btn">
-                        <button class="collapse-btn" aria-expanded="true" title="Collapse Tools">
-                            <img src="assets/icons/collapse.svg" alt="">
-                        </button>
-                    </div>
+                    <button class="collapse-btn" aria-expanded="true" title="Collapse Properties">
+                        <img src="assets/icons/collapse.svg" alt="Collapse">
+                    </button>
                 </div>
 
                 <div class="collapse-content">
@@ -422,84 +500,121 @@
 
 
         <!-- CENTER WORKSPACE -->
-
-        <!-- CENTER WORKSPACE -->
         <section class="workspace-section">
 
             <div class="workspace-heading">
-                <span>Workspace</span>
-                <span>24 × 24</span>
+                <div class="workspace-title-group">
+                    <span class="workspace-label">Workspace</span>
+                    <span class="workspace-dimen">24 × 24 px</span>
+                </div>
 
-                <label class="coordinate-toggle">
-                    <input type="checkbox" id="show-guidelines" checked>
-                    Guidelines
-                </label>
+                <div class="workspace-toggles">
+                    <label class="coordinate-toggle" title="Toggle center and grid guidelines">
+                        <input type="checkbox" id="show-guidelines" checked>
+                        <span>Guidelines</span>
+                    </label>
 
-                <label class="coordinate-toggle">
-                    <input type="checkbox" id="show-coordinates">
-                    Coordinates
-                </label>
+                    <label class="coordinate-toggle" title="Show 0, 4, 8, 12, 16, 20, 24 axis labels">
+                        <input type="checkbox" id="show-coordinates">
+                        <span>Coordinates</span>
+                    </label>
 
-                <label class="coordinate-toggle">
-                    <input type="checkbox" id="show-grid-highlight">
-                    Highlight grid point
-                </label>
+                    <label class="coordinate-toggle" title="Highlight nearest integer coordinate point on hover">
+                        <input type="checkbox" id="show-grid-highlight">
+                        <span>Grid point</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- QUICK TRANSFORM & ALIGNMENT TOOLBAR -->
+            <div class="transform-toolbar" id="transform-toolbar">
+                <div class="toolbar-group" title="Alignment">
+                    <button type="button" class="tool-action-btn" data-action="align-left" title="Align Left">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="2" x2="4" y2="22"/><rect x="8" y="5" width="12" height="5" rx="1"/><rect x="8" y="14" width="8" height="5" rx="1"/></svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-center-x" title="Align Center X">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><rect x="6" y="5" width="12" height="5" rx="1"/><rect x="8" y="14" width="8" height="5" rx="1"/></svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-right" title="Align Right">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="20" y1="2" x2="20" y2="22"/><rect x="4" y="5" width="12" height="5" rx="1"/><rect x="8" y="14" width="8" height="5" rx="1"/></svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-top" title="Align Top">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="4" x2="22" y2="4"/><rect x="5" y="8" width="5" height="12" rx="1"/><rect x="14" y="8" width="5" height="8" rx="1"/></svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-middle-y" title="Align Middle Y">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="12" x2="22" y2="12"/><rect x="5" y="6" width="5" height="12" rx="1"/><rect x="14" y="8" width="5" height="8" rx="1"/></svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-bottom" title="Align Bottom">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="20" x2="22" y2="20"/><rect x="5" y="4" width="5" height="12" rx="1"/><rect x="14" y="8" width="5" height="8" rx="1"/></svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group" title="Flip / Mirror">
+                    <button type="button" class="tool-action-btn" data-action="flip-h" title="Flip Horizontal">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><polyline points="4 7 8 12 4 17"/><polyline points="20 7 16 12 20 17"/></svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="flip-v" title="Flip Vertical">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="12" x2="22" y2="12"/><polyline points="7 4 12 8 17 4"/><polyline points="7 20 12 16 17 20"/></svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group" title="Order & Duplicate">
+                    <button type="button" class="tool-action-btn" data-action="duplicate" title="Duplicate (Ctrl+D)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="bring-front" title="Bring to Front">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                    </button>
+                </div>
             </div>
 
             <div class="workspace-stage">
 
                 <!-- LEFT CONTROLS -->
                 <div class="workspace-side-controls left-controls">
-
                     <button id="undo-btn" title="Undo (Ctrl + Z)" disabled>
                         ↶
                     </button>
-
-                    <button id="redo-btn" title="Redo (Ctrl + Y)" disabled>
+                    <button id="redo-btn" title="Redo (Ctrl + Y / Ctrl + Shift + Z)" disabled>
                         ↷
                     </button>
-
                 </div>
 
-                <!-- CENTER CANVAS -->
+                <!-- CENTER CANVAS CONTAINER -->
                 <div class="workspace-container">
 
                     <svg id="workspace" class="workspace" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-
                         <defs>
                             <pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse">
-                                <path d="M 1 0 L 0 0 0 1" fill="none" stroke="#52617c" stroke-width="0.035"
-                                    opacity="0.85" />
+                                <path d="M 1 0 L 0 0 0 1" fill="none" stroke="#52617c" stroke-width="0.035" opacity="0.85" />
                             </pattern>
 
                             <pattern id="major-grid" width="3" height="3" patternUnits="userSpaceOnUse">
-                                <path d="M 3 0 L 0 0 0 3" fill="none" stroke="#91a9d5" stroke-width="0.065"
-                                    opacity="1" />
+                                <path d="M 3 0 L 0 0 0 3" fill="none" stroke="#91a9d5" stroke-width="0.065" opacity="1" />
                             </pattern>
                         </defs>
 
                         <!-- WORKSPACE GUIDELINES -->
                         <g id="workspace-guidelines">
-
                             <!-- Minor grid -->
                             <rect width="24" height="24" fill="url(#grid)" />
-
                             <!-- Major grid -->
                             <rect width="24" height="24" fill="url(#major-grid)" pointer-events="none" />
-
                             <!-- Vertical center guideline -->
                             <line x1="12" y1="0" x2="12" y2="24" stroke="#8eafff" stroke-width="0.055" opacity="0.7"
                                 stroke-dasharray="0.25 0.2" pointer-events="none" />
-
                             <!-- Horizontal center guideline -->
                             <line x1="0" y1="12" x2="24" y2="12" stroke="#8eafff" stroke-width="0.055" opacity="0.7"
                                 stroke-dasharray="0.25 0.2" pointer-events="none" />
-
                         </g>
 
+                        <!-- COORDINATE LABELS -->
                         <g id="coordinate-labels" display="none" fill="#aebbd3" font-size="0.55"
                             font-family="Segoe UI, sans-serif" text-anchor="middle" pointer-events="none">
-
                             <text x="0.5" y="0.65">0</text>
                             <text x="4" y="0.65">4</text>
                             <text x="8" y="0.65">8</text>
@@ -514,39 +629,32 @@
                             <text x="0.55" y="16.2">16</text>
                             <text x="0.55" y="20.2">20</text>
                             <text x="0.55" y="23.5">24</text>
-
                         </g>
 
+                        <!-- HOVER GRID MARKER -->
                         <circle id="grid-hover-marker" cx="0" cy="0" r="0.18" fill="#a9c5ff" stroke="#ffffff"
                             stroke-width="0.06" style="display: none;" pointer-events="none" />
-
                     </svg>
 
                 </div>
 
                 <!-- RIGHT CONTROLS -->
                 <div class="workspace-side-controls right-controls">
-
-                    <button id="zoom-in" title="Zoom in">+</button>
-
+                    <button id="zoom-in" title="Zoom in (+)">+</button>
                     <span id="zoom-level">100%</span>
-
-                    <button id="zoom-out" title="Zoom out">−</button>
-
-                    <button id="zoom-reset" title="Reset zoom">
+                    <button id="zoom-out" title="Zoom out (−)">−</button>
+                    <button id="zoom-reset" title="Reset zoom (100%)">
                         <span>Reset</span>
                     </button>
-
                 </div>
 
             </div>
 
             <p class="workspace-tip">
-                Drag a shape from the tools panel into the workspace
+                Drag a shape from the tools panel onto the 24×24 canvas. Alt + Scroll to zoom, two-finger drag to pan.
             </p>
 
         </section>
-
 
 
         <!-- RIGHT PANEL -->
@@ -554,61 +662,54 @@
 
             <!-- LAYERS PANEL -->
             <div class="layers-panel">
-
                 <div class="layers-heading collapse-heading">
-                    <h3>Layers</h3>
-                    <span id="layer-count">0</span>
-                    <button class="collapse-btn" aria-expanded="true" title="Collapse Tools">
-                        <img src="assets/icons/collapse.svg" alt="">
+                    <div class="heading-with-badge">
+                        <h3>Layers</h3>
+                        <span id="layer-count" class="badge">0</span>
+                    </div>
+                    <button class="collapse-btn" aria-expanded="true" title="Collapse Layers">
+                        <img src="assets/icons/collapse.svg" alt="Collapse">
                     </button>
                 </div>
 
                 <div class="collapse-content">
                     <div class="layer-list" id="layer-list">
-
-                        <p class="empty-layers">
-                            No layers yet
-                        </p>
-
+                        <p class="empty-layers">No layers yet</p>
                     </div>
                 </div>
-
             </div>
 
             <!-- SVG SOURCE -->
             <div class="svg">
-
                 <div class="code-heading collapse-heading">
                     <h3>SVG Source</h3>
-
-                    <button class="collapse-btn" aria-expanded="true" title="Collapse SVG Source">
-                        <img src="assets/icons/collapse.svg" alt="">
-                    </button>
-
-                    <button id="copy-code">Copy</button>
+                    <div class="code-header-actions">
+                        <button id="copy-code" class="btn btn-sm btn-ghost" title="Copy SVG code to clipboard">Copy</button>
+                        <button class="collapse-btn" aria-expanded="true" title="Collapse SVG Source">
+                            <img src="assets/icons/collapse.svg" alt="Collapse">
+                        </button>
+                    </div>
                 </div>
 
                 <div class="collapse-content">
-
                     <textarea id="svg-code" spellcheck="false" autocapitalize="off" autocomplete="off"
-                        autocorrect="off"></textarea>
+                        autocorrect="off" placeholder="<svg>...</svg>"></textarea>
 
                     <div class="code-actions">
-                        <button id="apply-code">Apply</button>
+                        <button id="apply-code" class="btn btn-sm btn-primary">Apply Source Changes</button>
                     </div>
-
                 </div>
-
             </div>
 
             <!-- MEASUREMENT PANEL -->
             <div class="measurement-panel" id="measurement-panel">
-
                 <div class="measurement-heading collapse-heading">
-                    <h3>Measurements</h3>
-                    <span id="measurement-selection">No selection</span>
-                    <button class="collapse-btn" aria-expanded="true" title="Collapse Tools">
-                        <img src="assets/icons/collapse.svg" alt="">
+                    <div class="properties-center">
+                        <h3>Measurements</h3>
+                        <span id="measurement-selection">No selection</span>
+                    </div>
+                    <button class="collapse-btn" aria-expanded="true" title="Collapse Measurements">
+                        <img src="assets/icons/collapse.svg" alt="Collapse">
                     </button>
                 </div>
 
@@ -617,73 +718,187 @@
                         <p>Select a shape to view its measurements</p>
                     </div>
                 </div>
-
             </div>
 
         </aside>
 
-
     </main>
-    <!-- FINISH PROJECT POPUP -->
+
+
+    <!-- =====================================
+         FINISH PROJECT POPUP MODAL
+    ===================================== -->
     <div class="finish-modal" id="finish-modal">
-
         <div class="finish-dialog">
+            <div class="dialog-header">
+                <h3>Name your icon</h3>
+                <p>Give your finished icon a recognizable name and category.</p>
+            </div>
 
-            <h3>Name your icon</h3>
+            <div class="form-group">
+                <label for="finish-icon-name">Icon name</label>
+                <input type="text" id="finish-icon-name" placeholder="e.g. Navigation Arrow, User Shield..." maxlength="40" autocomplete="off">
+            </div>
 
-            <p>Give your finished icon a name.</p>
-
-            <input type="text" id="finish-icon-name" placeholder="Enter icon name..." maxlength="40">
-            <label for="finish-icon-category" class="finish-category-label">
-                Icon category
-            </label>
-
-            <select id="finish-icon-category">
-                <option value="General">General</option>
-                <option value="Navigation">Navigation</option>
-                <option value="Interface">Interface</option>
-                <option value="Communication">Communication</option>
-                <option value="Media">Media</option>
-                <option value="Files">Files</option>
-                <option value="Shapes">Shapes</option>
-                <option value="Arrows">Arrows</option>
-                <option value="Other">Other</option>
-            </select>
+            <div class="form-group">
+                <label for="finish-icon-category" class="finish-category-label">Icon category</label>
+                <select id="finish-icon-category">
+                    <option value="General">General</option>
+                    <option value="Navigation">Navigation</option>
+                    <option value="Interface">Interface</option>
+                    <option value="Communication">Communication</option>
+                    <option value="Media">Media</option>
+                    <option value="Files">Files</option>
+                    <option value="Shapes">Shapes</option>
+                    <option value="Arrows">Arrows</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
 
             <div class="finish-actions">
-                <button id="finish-cancel">Cancel</button>
-                <button id="finish-confirm">Finish</button>
+                <button id="finish-cancel" class="btn btn-ghost">Cancel</button>
+                <button id="finish-confirm" class="btn btn-primary">Finish & Save</button>
             </div>
-
         </div>
-
     </div>
-    <!-- SVG DOWNLOAD COLOR POPUP -->
+
+
+    <!-- =====================================
+         EXPORT MODAL (SVG + PNG WITH RESOLUTIONS)
+    ===================================== -->
     <div class="export-modal" id="export-modal">
         <div class="export-dialog">
-            <h3>Download SVG</h3>
-            <p>Choose the stroke color for your exported icon.</p>
-
-            <div class="export-options">
-                <button class="export-option" data-color="original">
-                    <span class="color-preview original-preview"></span>
-                    Original
-                </button>
-
-                <button class="export-option" data-color="white">
-                    <span class="color-preview white-preview"></span>
-                    White
-                </button>
-
-                <button class="export-option" data-color="black">
-                    <span class="color-preview black-preview"></span>
-                    Black
-                </button>
+            <div class="dialog-header">
+                <h3>Export Icon</h3>
+                <p>Download your icon as production-ready SVG or high-resolution PNG.</p>
             </div>
 
-            <button class="export-cancel" id="export-cancel">Cancel</button>
+            <!-- EXPORT TABS -->
+            <div class="export-tabs">
+                <button type="button" class="export-tab active" data-export-format="svg">SVG Vector</button>
+                <button type="button" class="export-tab" data-export-format="png">PNG Bitmap</button>
+            </div>
+
+            <!-- COLOR SELECTION -->
+            <div class="export-section">
+                <label class="export-section-label">Stroke color</label>
+                <div class="export-options">
+                    <button class="export-option active" data-color="original">
+                        <span class="color-preview original-preview"></span>
+                        Original
+                    </button>
+                    <button class="export-option" data-color="white">
+                        <span class="color-preview white-preview"></span>
+                        White
+                    </button>
+                    <button class="export-option" data-color="black">
+                        <span class="color-preview black-preview"></span>
+                        Black
+                    </button>
+                    <button class="export-option" data-color="accent">
+                        <span class="color-preview accent-preview"></span>
+                        Accent
+                    </button>
+                </div>
+            </div>
+
+            <!-- PNG RESOLUTION SELECTOR (shown when PNG tab active) -->
+            <div class="export-section" id="png-resolution-section" style="display: none;">
+                <label class="export-section-label">Output resolution</label>
+                <div class="resolution-options">
+                    <button type="button" class="res-btn" data-scale="1">1× (24px)</button>
+                    <button type="button" class="res-btn active" data-scale="2">2× (48px)</button>
+                    <button type="button" class="res-btn" data-scale="4">4× (96px)</button>
+                    <button type="button" class="res-btn" data-scale="8">8× (192px)</button>
+                    <button type="button" class="res-btn" data-scale="16">16× (384px)</button>
+                    <button type="button" class="res-btn" data-scale="21.333">512px</button>
+                </div>
+            </div>
+
+            <div class="export-dialog-actions">
+                <button class="export-cancel btn btn-ghost" id="export-cancel">Cancel</button>
+                <button class="btn btn-primary" id="export-download-btn">Download Icon</button>
+            </div>
         </div>
     </div>
+
+
+    <!-- =====================================
+         KEYBOARD SHORTCUTS MODAL
+    ===================================== -->
+    <div class="shortcuts-modal" id="shortcuts-modal">
+        <div class="shortcuts-dialog">
+            <div class="dialog-header">
+                <h3>Keyboard Shortcuts</h3>
+                <p>Speed up your icon editing workflow.</p>
+            </div>
+
+            <div class="shortcuts-grid">
+                <div class="shortcut-item"><kbd>Ctrl</kbd> + <kbd>Z</kbd><span>Undo action</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd> + <kbd>Y</kbd><span>Redo action</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd> + <kbd>C</kbd><span>Copy selected shape</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd> + <kbd>V</kbd><span>Paste copied shape</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd> + <kbd>D</kbd><span>Duplicate shape</span></div>
+                <div class="shortcut-item"><kbd>Delete</kbd> / <kbd>Backspace</kbd><span>Delete selection</span></div>
+                <div class="shortcut-item"><kbd>Enter</kbd><span>Finish Path / Cutout drawing</span></div>
+                <div class="shortcut-item"><kbd>Escape</kbd><span>Cancel Path / Deselect / Close modal</span></div>
+                <div class="shortcut-item"><kbd>Shift</kbd> + Click<span>Multi-select shapes</span></div>
+                <div class="shortcut-item"><kbd>Alt</kbd> + Scroll<span>Smooth Zoom in/out</span></div>
+                <div class="shortcut-item"><kbd>?</kbd><span>Open this shortcuts help</span></div>
+            </div>
+
+            <div class="shortcuts-footer">
+                <button id="shortcuts-close-btn" class="btn btn-primary">Got it</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- =====================================
+         CANVAS CONTEXT MENU
+    ===================================== -->
+    <div id="canvas-context-menu" class="context-menu" style="display: none;">
+        <button class="context-menu-item" data-context="duplicate">
+            <span>Duplicate</span>
+            <kbd>Ctrl+D</kbd>
+        </button>
+        <button class="context-menu-item" data-context="copy">
+            <span>Copy</span>
+            <kbd>Ctrl+C</kbd>
+        </button>
+        <button class="context-menu-item" data-context="paste">
+            <span>Paste</span>
+            <kbd>Ctrl+V</kbd>
+        </button>
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" data-context="bring-front">
+            <span>Bring to Front</span>
+        </button>
+        <button class="context-menu-item" data-context="send-back">
+            <span>Send to Back</span>
+        </button>
+        <button class="context-menu-item" data-context="flip-h">
+            <span>Flip Horizontal</span>
+        </button>
+        <button class="context-menu-item" data-context="flip-v">
+            <span>Flip Vertical</span>
+        </button>
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item" data-context="toggle-lock">
+            <span>Lock / Unlock</span>
+        </button>
+        <button class="context-menu-item danger" data-context="delete">
+            <span>Delete</span>
+            <kbd>Del</kbd>
+        </button>
+    </div>
+
+
+    <!-- =====================================
+         TOAST NOTIFICATION CONTAINER
+    ===================================== -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
     <script src="script.js"></script>
 
 </body>
