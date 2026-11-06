@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Maker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+
+    <header class="topbar">
+
+        <div class="logo">✦ Icon Maker</div>
+
+        <nav class="menu">
+
+            <div class="file-menu-wrapper">
+                <button id="file-menu-button">File</button>
+
+                <div class="file-dropdown" id="file-dropdown">
+                    <button id="new-project-button">＋ New Icon</button>
+
+                    <div class="dropdown-divider"></div>
+
+                    <p class="dropdown-heading">Unfinished Icons</p>
+
+                    <div id="unfinished-project-list">
+                        <p class="dropdown-empty">No unfinished Icons</p>
+                    </div>
+                </div>
+            </div>
+
+            <button>Edit</button>
+            <button id="home-button">Home</button>
+
+        </nav>
+
+        <div class="actions">
+            <button id="save-project-button">Save</button>
+            <button id="finish-project-button" class="finish-btn">Finish</button>
+            <button class="export-btn">Export</button>
+        </div>
+
+    </header>
+
+
+    <!-- =====================================
+     HOME PAGE
+===================================== -->
+
+    <section class="home-screen show" id="home-screen">
+
+        <!-- LEFT SIDEBAR -->
+
+        <aside class="home-sidebar">
+
+            <!-- GROUP 1: MAIN NAVIGATION -->
+            <div class="sidebar-primary-group">
+
+                <div class="home-logo">
+                    ✦ Icon Maker
+                </div>
+
+                <nav class="sidebar-options">
+
+                    <button class="sidebar-option active">
+                        <span>⌂</span> Home
+                    </button>
+
+                    <button class="sidebar-option">
+                        <span>▦</span> Projects
+                    </button>
+
+                    <button class="sidebar-option">
+                        <span>⚙</span> Settings
+                    </button>
+
+                </nav>
+
+            </div>
+
+
+            <!-- GROUP 2: GLOBAL CUSTOMIZATION -->
+            <div class="sidebar-scroll-area">
+
+                <div class="sidebar-customization">
+
+                    <div class="customization-heading">
+                        <h3>Customization</h3>
+
+                        <button type="button" id="reset-global-customization" title="Reset to default"
+                            aria-label="Reset customization">
+                            <img src="assets/icons/reset.svg" alt="">
+                        </button>
+                    </div>
+
+                    <!-- ICON COLOR -->
+                    <div class="customization-control">
+
+                        <label for="global-icon-color">
+                            Icon color
+                        </label>
+
+                        <input type="color" id="global-icon-color" value="#ffffff">
+
+                    </div>
+
+
+                    <!-- STROKE WIDTH -->
+                    <div class="customization-control">
+
+                        <label for="global-stroke-width">
+                            Stroke width
+                            <span id="global-stroke-value">2px</span>
+                        </label>
+
+                        <input type="range" id="global-stroke-width" min="0.5" max="5" step="0.1" value="2">
+
+                    </div>
+
+
+                    <!-- ICON SIZE -->
+                    <div class="customization-control">
+
+                        <label for="global-icon-size">
+                            Icon size
+                            <span id="global-size-value">24px</span>
+                        </label>
+
+                        <input type="range" id="global-icon-size" min="12" max="64" step="1" value="24">
+
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+
+
+        <!-- MAIN HOME CONTENT -->
+        <main class="home-main">
+
+            <!-- HOME NAVBAR -->
+
+            <header class="home-navbar">
+
+                <nav class="home-nav-options">
+
+                    <button class="home-nav-option active">
+                        All Icons
+                    </button>
+
+                    <button class="home-nav-option">
+                        Recent
+                    </button>
+
+                    <button class="home-nav-option">
+                        Favorites
+                    </button>
+
+                </nav>
+
+                <div class="home-navbar-actions">
+
+                    <button id="theme-toggle" type="button" aria-label="Switch to light theme">
+                        <span class="theme-toggle-knob">☾</span>
+                    </button>
+
+                    <div class="accent-palette">
+
+                        <button class="accent-swatch active" data-accent="#ff0077" style="--swatch-color: #ff0077"
+                            aria-label="Pink" aria-pressed="true"></button>
+
+                        <button class="accent-swatch" data-accent="#a200ff" style="--swatch-color: #a200ff"
+                            aria-label="Purple" aria-pressed="false"></button>
+
+                        <button class="accent-swatch" data-accent="#0084ff" style="--swatch-color: #0084ff"
+                            aria-label="Blue" aria-pressed="false"></button>
+
+                        <button class="accent-swatch" data-accent="#00ffee" style="--swatch-color: #00ffee"
+                            aria-label="Cyan" aria-pressed="false"></button>
+
+                        <button class="accent-swatch" data-accent="#00ff73" style="--swatch-color: #00ff73"
+                            aria-label="Green" aria-pressed="false"></button>
+
+                        <button class="accent-swatch" data-accent="#a6ff00" style="--swatch-color: #a6ff00"
+                            aria-label="Lime" aria-pressed="false"></button>
+
+                        <button class="accent-swatch" data-accent="#f56565" style="--swatch-color: #f56565"
+                            aria-label="Coral" aria-pressed="false"></button>
+
+                        <button class="accent-swatch" data-accent="#ff0000" style="--swatch-color: #ff0000"
+                            aria-label="Red" aria-pressed="false"></button>
+
+                    </div>
+
+                    <button id="home-edit-button">Edit</button>
+
+                </div>
+
+            </header>
+
+
+
+            <!-- SEARCH BAR -->
+            <div class="home-controls">
+
+                <div class="home-search">
+                    <span>⌕</span>
+                    <input type="text" id="home-search-input" placeholder="Search your icons...">
+                </div>
+
+                <select id="home-category-select" class="home-sort-select">
+                    <option value="all">All categories</option>
+                </select>
+
+                <select id="home-sort-select" class="home-sort-select">
+                    <option value="newest">Recently added</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="az">Name: A to Z</option>
+                    <option value="za">Name: Z to A</option>
+                </select>
+
+                <div class="home-view-toggle">
+                    <button type="button" class="active" data-view="grid" title="Grid view">
+                        ▦
+                    </button>
+                    <button type="button" data-view="list" title="List view">
+                        ☷
+                    </button>
+                </div>
+
+            </div>
+
+
+            <!-- PROJECT GRID -->
+            <section class="home-projects">
+
+                <div class="home-project-grid" id="home-project-grid">
+
+                    <p class="home-empty">
+                        No finished projects yet.
+                    </p>
+
+                </div>
+
+            </section>
+
+
+
+            <!-- SELECTED PROJECT PREVIEW -->
+            <div class="project-details" id="project-details" aria-hidden="true">
+
+                <!-- ICON PREVIEW -->
+                <div class="project-preview" id="project-preview">
+                    <img id="project-preview-image" src="" alt="Icon preview">
+                </div>
+
+                <!-- ICON INFORMATION -->
+                <div class="project-info">
+
+                    <div class="project-info-heading">
+                        <h3 id="project-name">Icon name</h3>
+                        <span class="project-version">24 × 24</span>
+                    </div>
+
+                    <div class="project-search-terms" id="project-search-terms">
+                    </div>
+
+                    <span class="project-category">Icon</span>
+
+                    <!-- PREVIEW CONTROLS -->
+                    <div class="project-preview-controls">
+
+                        <div class="stroke-control">
+                            <label for="preview-stroke-width">
+                                Stroke width
+                                <span id="preview-stroke-value">2</span>
+                            </label>
+
+                            <input type="range" id="preview-stroke-width" min="0.5" max="5" step="0.1" value="2">
+                        </div>
+
+                        <div class="preview-actions">
+
+                            <button id="project-more-search-button">
+                                More icons with this name
+                            </button>
+
+                            <button id="project-edit-button" class="preview-edit-button">
+                                ✎ Edit Icon
+                            </button>
+                            <button id="project-remix-button" class="preview-remix-button">
+                                <i data-lucide="git-branch"></i>
+                                Remix Icon
+                            </button>
+
+                            <button id="project-delete-button" class="preview-delete-button">
+                                🗑 Delete Icon
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+                <!-- RELATED ICONS -->
+                <section class="project-related" id="project-related" hidden>
+
+                    <div class="related-heading">
+                        <h3 id="related-heading-text">Related icons</h3>
+                        <span id="related-count"></span>
+                    </div>
+
+                    <div class="related-project-grid" id="related-project-grid">
+                    </div>
+
+                </section>
+                <!-- CLOSE BUTTON -->
+                <button id="project-details-close" class="project-details-close" type="button"
+                    aria-label="Close preview">×</button>
+
+            </div>
+
+
+        </main>
+
+    </section>
+
+
+    <main class="editor">
+
+        <!-- LEFT PANEL -->
+        <aside class="tools-panel">
+
+            <div class="collapse-heading">
+                <h3>Tools</h3>
+                <button class="collapse-btn" aria-expanded="true" title="Collapse Tools">
+                    <img src="assets/icons/collapse.svg" alt="">
+                </button>
+            </div>
+            <div class="collapse-content">
+                <div class="tool-list">
+
+                    <div class="tool" draggable="true" data-tool="line">
+                        <span>╱</span>
+                        <p>Line</p>
+                    </div>
+
+                    <div class="tool" draggable="true" data-tool="curve">
+                        <span>⌒</span>
+                        <p>Curve</p>
+                    </div>
+
+                    <div class="tool" draggable="true" data-tool="circle">
+                        <span>○</span>
+                        <p>Circle</p>
+                    </div>
+
+                    <div class="tool" draggable="true" data-tool="rectangle">
+                        <span>□</span>
+                        <p>Rectangle</p>
+                    </div>
+                    <div class="tool" draggable="true" data-tool="path">
+                        <span>⌁</span>
+                        <p>Path</p>
+                    </div>
+                    <div class="tool" draggable="true" data-tool="cutout">
+                        <span>◌</span>
+                        <p>Cutout</p>
+                    </div>
+
+                    <button class="trash-btn" id="delete-shape" title="Delete selected shape">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4h8v2" />
+                            <path d="M19 6l-1 14H6L5 6" />
+                            <path d="M10 11v5" />
+                            <path d="M14 11v5" />
+                        </svg>
+                        <span>Delete selected</span>
+                    </button>
+
+                </div>
+                <div class="path-style-control">
+
+                    <label>Drawing style</label>
+
+                    <label class="curve-path-toggle">
+                        <input type="checkbox" id="path-style-toggle">
+                        <span class="curve-path-checkmark"></span>
+                        Curve path
+                    </label>
+
+                </div>
+            </div>
+
+            <div class="properties-panel" id="properties-panel">
+                <div class="properties-heading collapse-heading">
+                    <div class="properties-center">
+                        <h3>Properties</h3>
+                        <span id="properties-selection">No selection</span>
+                    </div>
+                    <div class="collapse-btn">
+                        <button class="collapse-btn" aria-expanded="true" title="Collapse Tools">
+                            <img src="assets/icons/collapse.svg" alt="">
+                        </button>
+                    </div>
+                </div>
+
+                <div class="collapse-content">
+                    <div class="properties-fields" id="properties-fields">
+                        <p>Select a shape to edit its properties</p>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+
+        <!-- CENTER WORKSPACE -->
+
+        <!-- CENTER WORKSPACE -->
+        <section class="workspace-section">
+
+            <div class="workspace-heading">
+                <span>Workspace</span>
+                <span>24 × 24</span>
+
+                <label class="coordinate-toggle">
+                    <input type="checkbox" id="show-guidelines" checked>
+                    Guidelines
+                </label>
+
+                <label class="coordinate-toggle">
+                    <input type="checkbox" id="show-coordinates">
+                    Coordinates
+                </label>
+
+                <label class="coordinate-toggle">
+                    <input type="checkbox" id="show-grid-highlight">
+                    Highlight grid point
+                </label>
+            </div>
+
+            <div class="workspace-stage">
+
+                <!-- LEFT CONTROLS -->
+                <div class="workspace-side-controls left-controls">
+
+                    <button id="undo-btn" title="Undo (Ctrl + Z)" disabled>
+                        ↶
+                    </button>
+
+                    <button id="redo-btn" title="Redo (Ctrl + Y)" disabled>
+                        ↷
+                    </button>
+
+                </div>
+
+                <!-- CENTER CANVAS -->
+                <div class="workspace-container">
+
+                    <svg id="workspace" class="workspace" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+
+                        <defs>
+                            <pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse">
+                                <path d="M 1 0 L 0 0 0 1" fill="none" stroke="#52617c" stroke-width="0.035"
+                                    opacity="0.85" />
+                            </pattern>
+
+                            <pattern id="major-grid" width="3" height="3" patternUnits="userSpaceOnUse">
+                                <path d="M 3 0 L 0 0 0 3" fill="none" stroke="#91a9d5" stroke-width="0.065"
+                                    opacity="1" />
+                            </pattern>
+                        </defs>
+
+                        <!-- WORKSPACE GUIDELINES -->
+                        <g id="workspace-guidelines">
+
+                            <!-- Minor grid -->
+                            <rect width="24" height="24" fill="url(#grid)" />
+
+                            <!-- Major grid -->
+                            <rect width="24" height="24" fill="url(#major-grid)" pointer-events="none" />
+
+                            <!-- Vertical center guideline -->
+                            <line x1="12" y1="0" x2="12" y2="24" stroke="#8eafff" stroke-width="0.055" opacity="0.7"
+                                stroke-dasharray="0.25 0.2" pointer-events="none" />
+
+                            <!-- Horizontal center guideline -->
+                            <line x1="0" y1="12" x2="24" y2="12" stroke="#8eafff" stroke-width="0.055" opacity="0.7"
+                                stroke-dasharray="0.25 0.2" pointer-events="none" />
+
+                        </g>
+
+                        <g id="coordinate-labels" display="none" fill="#aebbd3" font-size="0.55"
+                            font-family="Segoe UI, sans-serif" text-anchor="middle" pointer-events="none">
+
+                            <text x="0.5" y="0.65">0</text>
+                            <text x="4" y="0.65">4</text>
+                            <text x="8" y="0.65">8</text>
+                            <text x="12" y="0.65">12</text>
+                            <text x="16" y="0.65">16</text>
+                            <text x="20" y="0.65">20</text>
+                            <text x="23.5" y="0.65">24</text>
+
+                            <text x="0.55" y="4.2">4</text>
+                            <text x="0.55" y="8.2">8</text>
+                            <text x="0.55" y="12.2">12</text>
+                            <text x="0.55" y="16.2">16</text>
+                            <text x="0.55" y="20.2">20</text>
+                            <text x="0.55" y="23.5">24</text>
+
+                        </g>
+
+                        <circle id="grid-hover-marker" cx="0" cy="0" r="0.18" fill="#a9c5ff" stroke="#ffffff"
+                            stroke-width="0.06" style="display: none;" pointer-events="none" />
+
+                    </svg>
+
+                </div>
+
+                <!-- RIGHT CONTROLS -->
+                <div class="workspace-side-controls right-controls">
+
+                    <button id="zoom-in" title="Zoom in">+</button>
+
+                    <span id="zoom-level">100%</span>
+
+                    <button id="zoom-out" title="Zoom out">−</button>
+
+                    <button id="zoom-reset" title="Reset zoom">
+                        <span>Reset</span>
+                    </button>
+
+                </div>
+
+            </div>
+
+            <p class="workspace-tip">
+                Drag a shape from the tools panel into the workspace
+            </p>
+
+        </section>
+
+
+
+        <!-- RIGHT PANEL -->
+        <aside class="code-panel">
+
+            <!-- LAYERS PANEL -->
+            <div class="layers-panel">
+
+                <div class="layers-heading collapse-heading">
+                    <h3>Layers</h3>
+                    <span id="layer-count">0</span>
+                    <button class="collapse-btn" aria-expanded="true" title="Collapse Tools">
+                        <img src="assets/icons/collapse.svg" alt="">
+                    </button>
+                </div>
+
+                <div class="collapse-content">
+                    <div class="layer-list" id="layer-list">
+
+                        <p class="empty-layers">
+                            No layers yet
+                        </p>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- SVG SOURCE -->
+            <div class="svg">
+
+                <div class="code-heading collapse-heading">
+                    <h3>SVG Source</h3>
+
+                    <button class="collapse-btn" aria-expanded="true" title="Collapse SVG Source">
+                        <img src="assets/icons/collapse.svg" alt="">
+                    </button>
+
+                    <button id="copy-code">Copy</button>
+                </div>
+
+                <div class="collapse-content">
+
+                    <textarea id="svg-code" spellcheck="false" autocapitalize="off" autocomplete="off"
+                        autocorrect="off"></textarea>
+
+                    <div class="code-actions">
+                        <button id="apply-code">Apply</button>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- MEASUREMENT PANEL -->
+            <div class="measurement-panel" id="measurement-panel">
+
+                <div class="measurement-heading collapse-heading">
+                    <h3>Measurements</h3>
+                    <span id="measurement-selection">No selection</span>
+                    <button class="collapse-btn" aria-expanded="true" title="Collapse Tools">
+                        <img src="assets/icons/collapse.svg" alt="">
+                    </button>
+                </div>
+
+                <div class="collapse-content">
+                    <div class="measurement-fields" id="measurement-fields">
+                        <p>Select a shape to view its measurements</p>
+                    </div>
+                </div>
+
+            </div>
+
+        </aside>
+
+
+    </main>
+    <!-- FINISH PROJECT POPUP -->
+    <div class="finish-modal" id="finish-modal">
+
+        <div class="finish-dialog">
+
+            <h3>Name your icon</h3>
+
+            <p>Give your finished icon a name.</p>
+
+            <input type="text" id="finish-icon-name" placeholder="Enter icon name..." maxlength="40">
+            <label for="finish-icon-category" class="finish-category-label">
+                Icon category
+            </label>
+
+            <select id="finish-icon-category">
+                <option value="General">General</option>
+                <option value="Navigation">Navigation</option>
+                <option value="Interface">Interface</option>
+                <option value="Communication">Communication</option>
+                <option value="Media">Media</option>
+                <option value="Files">Files</option>
+                <option value="Shapes">Shapes</option>
+                <option value="Arrows">Arrows</option>
+                <option value="Other">Other</option>
+            </select>
+
+            <div class="finish-actions">
+                <button id="finish-cancel">Cancel</button>
+                <button id="finish-confirm">Finish</button>
+            </div>
+
+        </div>
+
+    </div>
+    <!-- SVG DOWNLOAD COLOR POPUP -->
+    <div class="export-modal" id="export-modal">
+        <div class="export-dialog">
+            <h3>Download SVG</h3>
+            <p>Choose the stroke color for your exported icon.</p>
+
+            <div class="export-options">
+                <button class="export-option" data-color="original">
+                    <span class="color-preview original-preview"></span>
+                    Original
+                </button>
+
+                <button class="export-option" data-color="white">
+                    <span class="color-preview white-preview"></span>
+                    White
+                </button>
+
+                <button class="export-option" data-color="black">
+                    <span class="color-preview black-preview"></span>
+                    Black
+                </button>
+            </div>
+
+            <button class="export-cancel" id="export-cancel">Cancel</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+
+</body>
+
+</html>

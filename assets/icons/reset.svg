@@ -1,0 +1,47 @@
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+>
+    <path
+        d="M 19.6328 14.7359 A 8 8 0 1 1 17.2576 5.8714"
+        fill="none"
+        stroke="#FFFFFF"
+        stroke-width="2"
+        stroke-linecap="round"
+    />
+
+    <line
+        x1="14.9422"
+        y1="8.2197"
+        x2="19.4125"
+        y2="8.2197"
+        stroke="#FFFFFF"
+        stroke-width="2"
+        stroke-linecap="round"
+        fill="none"
+    />
+
+    <line
+        x1="19.4125"
+        y1="8.2197"
+        x2="19.4125"
+        y2="3.7164"
+        stroke="#FFFFFF"
+        stroke-width="2"
+        stroke-linecap="round"
+        fill="none"
+    />
+
+    <line
+        x1="17.2576"
+        y1="5.8714"
+        x2="19.4125"
+        y2="8.2197"
+        stroke="#FFFFFF"
+        stroke-width="2"
+        stroke-linecap="round"
+        fill="none"
+    />
+</svg>
