@@ -3,7 +3,7 @@
  * ICON MAKER PRO — CORE JAVASCRIPT APPLICATION
  * Advanced 24×24 Vector Drawing Engine, Multi-Project Manager & Studio UI
  * ============================================================================
- */
+ */ 
 
 (function () {
     "use strict";
@@ -35,23 +35,47 @@
     const pathStyleToggle = document.getElementById("path-style-toggle");
     const deleteButton = document.getElementById("delete-shape");
 
-    // Guidelines & Highlight
+    // Guidelines, Safe Area & Highlights
     const showGuidelinesCheckbox = document.getElementById("show-guidelines");
     const workspaceGuidelines = document.getElementById("workspace-guidelines");
     const showCoordinatesCheckbox = document.getElementById("show-coordinates");
     const coordinateLabels = document.getElementById("coordinate-labels");
     const gridHighlightToggle = document.getElementById("show-grid-highlight");
     const gridHoverMarker = document.getElementById("grid-hover-marker");
+    const showSafeAreaCheckbox = document.getElementById("show-safe-area");
+    const safeAreaRect = document.getElementById("safe-area-rect");
+    const dotGridBg = document.getElementById("dot-grid-bg");
+    const customMirrorAxesGroup = document.getElementById("custom-mirror-axes");
+    const symmetryPreviewLayer = document.getElementById("symmetry-preview-layer");
+    const endpointSnapIndicator = document.getElementById("endpoint-snap-indicator");
+    const marqueeSelectionBox = document.getElementById("marquee-selection-box");
+
+    // Artboard Size Selector
+    const artboardSizeSelector = document.getElementById("artboard-size-selector");
+    const artboardSizeButtons = artboardSizeSelector?.querySelectorAll(".size-btn") || [];
+    const workspaceDimenLabel = document.querySelector(".workspace-dimen");
 
     // History & Actions
     const undoButton = document.getElementById("undo-btn");
     const redoButton = document.getElementById("redo-btn");
 
-    // Zoom & Pan
+    // Floating View Controls
+    const floatZoomIn = document.getElementById("float-zoom-in");
+    const floatZoomOut = document.getElementById("float-zoom-out");
+    const floatZoomLevel = document.getElementById("float-zoom-level");
+    const gridModeSelect = document.getElementById("grid-mode-select");
+
+    // Zoom & Pan (Sidebar Controls)
     const zoomInButton = document.getElementById("zoom-in");
     const zoomOutButton = document.getElementById("zoom-out");
     const zoomResetButton = document.getElementById("zoom-reset");
     const zoomLevelText = document.getElementById("zoom-level");
+    const floatZoomResetButton = document.getElementById("float-zoom-reset");
+
+    // Live Symmetry Controls
+    const liveSymmetryHCheckbox = document.getElementById("live-symmetry-h");
+    const liveSymmetryVCheckbox = document.getElementById("live-symmetry-v");
+    const customMirrorToolBtn = document.getElementById("custom-mirror-tool-btn");
 
     // Properties & Measurements
     const propertiesPanel = document.getElementById("properties-panel");
@@ -81,6 +105,7 @@
     const importProjectJsonBtn = document.getElementById("import-project-json-btn");
     const importProjectFileInput = document.getElementById("import-project-file-input");
     const shortcutsTriggerBtn = document.getElementById("shortcuts-trigger-btn");
+    const unfinishedProjectList = document.getElementById("unfinished-project-list");
 
     // Home Screen & Gallery
     const homeScreen = document.getElementById("home-screen");
@@ -96,7 +121,13 @@
     const tabCountFav = document.getElementById("tab-count-fav");
     const sidebarProjectsCount = document.getElementById("sidebar-projects-count");
 
-    // Sidebar Views
+    // Sidebar Category & View Mode Controls
+    const viewModeAllBtn = document.getElementById("view-mode-all");
+    const viewModeCategoriesBtn = document.getElementById("view-mode-categories");
+    const categoriesAlphabeticalList = document.getElementById("categories-alphabetical-list");
+    const clearCategoryFilterBtn = document.getElementById("clear-category-filter");
+
+    // Project Manager Views
     const sidebarOptions = document.querySelectorAll(".sidebar-option");
     const homeViewSections = {
         gallery: document.getElementById("home-view-gallery"),
@@ -105,6 +136,10 @@
     };
     const managementTableContainer = document.getElementById("management-table-container");
     const managerNewIconBtn = document.getElementById("manager-new-icon-btn");
+    const finishedProjectGrid = document.getElementById("finished-project-grid");
+    const unfinishedProjectGrid = document.getElementById("unfinished-project-grid");
+    const managerFinishedCount = document.getElementById("manager-finished-count");
+    const managerUnfinishedCount = document.getElementById("manager-unfinished-count");
 
     // Global Customization Controls
     const globalIconColor = document.getElementById("global-icon-color");
@@ -124,6 +159,7 @@
     // Preview Details Drawer
     const projectDetails = document.getElementById("project-details");
     const projectDetailsClose = document.getElementById("project-details-close");
+    const projectPreview = document.getElementById("project-preview");
     const projectPreviewImage = document.getElementById("project-preview-image");
     const projectName = document.getElementById("project-name");
     const projectSearchTerms = document.getElementById("project-search-terms");
@@ -148,6 +184,11 @@
     const finishCancel = document.getElementById("finish-cancel");
     const finishConfirm = document.getElementById("finish-confirm");
 
+    const deleteConfirmModal = document.getElementById("delete-confirm-modal");
+    const deleteTargetProjectName = document.getElementById("delete-target-project-name");
+    const deleteConfirmBtn = document.getElementById("delete-confirm-btn");
+    const deleteCancelBtn = document.getElementById("delete-cancel-btn");
+
     const exportModal = document.getElementById("export-modal");
     const exportCancel = document.getElementById("export-cancel");
     const exportTabs = document.querySelectorAll(".export-tab");
@@ -165,6 +206,7 @@
     const transformToolbar = document.getElementById("transform-toolbar");
 
     // Settings View Controls
+
     const settingEndpointSnapping = document.getElementById("setting-endpoint-snapping");
     const settingSmartGuides = document.getElementById("setting-smart-guides");
     const settingCurveSnapping = document.getElementById("setting-curve-snapping");
@@ -190,13 +232,28 @@
     let isRestoringProject = false;
     let activeHomeTab = "all"; // 'all' | 'recent' | 'favorites'
     let homeViewMode = "grid"; // 'grid' | 'list'
+    let galleryViewCategory = "all"; // 'all' | 'categories'
+    let selectedCategoryFilter = null;
     let selectedHomeProject = null;
+    let projectToDelete = null;
+
+    let artboardSize = 24; // 24 | 32
+    let liveSymmetryH = false;
+    let liveSymmetryV = false;
+    let customMirrorAxes = []; // [{ id, x1, y1, x2, y2, active }]
+    let isPlacingMirrorAxis = false;
+    let mirrorAxisPlacementPoints = [];
+
+    let isMarqueeActive = false;
+    let marqueeStart = null;
+
+    let currentGridDisplayMode = "full"; // 'full' | 'keyframe' | 'clean'
 
     let zoomLevel = 1;
     let panX = 0;
     let panY = 0;
     const MIN_ZOOM = 1;
-    const MAX_ZOOM = 5;
+    const MAX_ZOOM = 4.8;
     const ZOOM_STEP = 0.25;
 
     const COPY_OFFSET = 0.8;
@@ -238,15 +295,60 @@
     // Set of keys on shapes that are live DOM nodes (excluded from serialization)
     const shapeDOMKeys = new Set([
         "element",
+        "strokeElement",
         "hoverBg",
         "guideBg",
         "guide",
         "hitLine",
         "hitPath",
+        "hitArea",
         "horizontalGuide",
         "angleGuide",
-        "handles"
+        "alignedGuide",
+        "perpendicularGuide",
+        "handles",
+        "circumferenceGuide",
+        "verticalGuide",
+        "startRadialGuide",
+        "endRadialGuide",
+        "radiusLabel",
+        "symmetryReflections"
     ]);
+    const transformToolbarToggle = document.getElementById("transform-toolbar-toggle");
+
+    transformToolbarToggle?.addEventListener("click", () => {
+        const isOpen = transformToolbar.classList.toggle("open");
+
+        transformToolbarToggle.setAttribute("aria-expanded", isOpen);
+        transformToolbarToggle.setAttribute(
+            "aria-label",
+            isOpen ? "Close Transform & Alignment toolbar" : "Open Transform & Alignment toolbar"
+        );
+    });
+    const viewControls = document.getElementById("floating-view-controls");
+    const viewControlsToggle = document.getElementById("view-controls-toggle");
+    viewControls?.classList.add("collapsed");
+    viewControlsToggle?.classList.add("collapsed");
+
+    viewControlsToggle?.addEventListener("click", () => {
+        const isCollapsed = viewControls.classList.toggle("collapsed");
+
+        viewControlsToggle.classList.toggle("collapsed", isCollapsed);
+        viewControlsToggle.setAttribute("aria-expanded", !isCollapsed);
+    });
+    document.addEventListener("click", event => {
+        if (
+            !transformToolbar?.contains(event.target) &&
+            !transformToolbarToggle?.contains(event.target)
+        ) {
+            transformToolbar.classList.remove("open");
+            transformToolbarToggle?.setAttribute("aria-expanded", "false");
+            transformToolbarToggle?.setAttribute(
+                "aria-label",
+                "Open Transform & Alignment toolbar"
+            );
+        }
+    });
 
     // Setup Smart Alignment Guides in SVG
     const alignmentGuides = document.createElementNS(SVG_NS, "g");
@@ -514,7 +616,9 @@
             activeProject.savedAt = new Date().toISOString();
 
             if (activeProject.status === "finished") {
-                activeProject.thumbnail = generateSVG();
+                activeProject.thumbnail = generateSVG(
+                    activeProject.finishStrokeColor === "white" ? "white" : "original"
+                );
             }
 
             saveProjectManager();
@@ -567,11 +671,13 @@
         showToast("New icon project started", "info");
     }
 
-    function switchProject(projectId) {
+    function switchProject(projectId, saveCurrent = true) {
         const target = projectManager.projects.find(p => p.id === projectId);
         if (!target) return false;
 
-        saveProjectToBrowser();
+        if (saveCurrent) {
+            saveProjectToBrowser();
+        }
         projectManager.activeProjectId = projectId;
         saveProjectManager();
 
@@ -842,6 +948,111 @@
     undoButton?.addEventListener("click", undoAction);
     redoButton?.addEventListener("click", redoAction);
 
+
+    // ========================================================================
+    // W3C SVG 1.1 APPENDIX F.6 EXACT ARC CONVERSION & REFLECTION MATHEMATICS
+    // ========================================================================
+    function arcEndpointToCenter(x1, y1, rx, ry, phiDeg, largeArc, sweep, x2, y2) {
+        const phi = (phiDeg || 0) * Math.PI / 180;
+        const cosPhi = Math.cos(phi);
+        const sinPhi = Math.sin(phi);
+
+        const dx2 = (x1 - x2) / 2;
+        const dy2 = (y1 - y2) / 2;
+
+        const x1p = cosPhi * dx2 + sinPhi * dy2;
+        const y1p = -sinPhi * dx2 + cosPhi * dy2;
+
+        let rxSq = rx * rx;
+        let rySq = ry * ry;
+        const x1pSq = x1p * x1p;
+        const y1pSq = y1p * y1p;
+
+        const radiiCheck = x1pSq / rxSq + y1pSq / rySq;
+        if (radiiCheck > 1) {
+            const scale = Math.sqrt(radiiCheck);
+            rx *= scale;
+            ry *= scale;
+            rxSq = rx * rx;
+            rySq = ry * ry;
+        }
+
+        const sign = (largeArc === sweep) ? -1 : 1;
+        const numerator = rxSq * rySq - rxSq * y1pSq - rySq * x1pSq;
+        const denominator = rxSq * y1pSq + rySq * x1pSq;
+        const sq = Math.max(0, numerator / (denominator || 1));
+        const coef = sign * Math.sqrt(sq);
+
+        const cxp = coef * (rx * y1p / ry);
+        const cyp = coef * -(ry * x1p / rx);
+
+        const cx = cosPhi * cxp - sinPhi * cyp + (x1 + x2) / 2;
+        const cy = sinPhi * cxp + cosPhi * cyp + (y1 + y2) / 2;
+
+        function vectorAngle(ux, uy, vx, vy) {
+            const dot = ux * vx + uy * vy;
+            const len = Math.sqrt(ux * ux + uy * uy) * Math.sqrt(vx * vx + vy * vy);
+            let ang = Math.acos(Math.max(-1, Math.min(1, dot / (len || 1))));
+            if (ux * vy - uy * vx < 0) ang = -ang;
+            return ang;
+        }
+
+        const vx1 = (x1p - cxp) / rx;
+        const vy1 = (y1p - cyp) / ry;
+        const vx2 = (-x1p - cxp) / rx;
+        const vy2 = (-y1p - cyp) / ry;
+
+        let startAngle = vectorAngle(1, 0, vx1, vy1);
+        let deltaAngle = vectorAngle(vx1, vy1, vx2, vy2);
+
+        if (!sweep && deltaAngle > 0) {
+            deltaAngle -= 2 * Math.PI;
+        } else if (sweep && deltaAngle < 0) {
+            deltaAngle += 2 * Math.PI;
+        }
+
+        let endAngle = startAngle + deltaAngle;
+
+        return { cx, cy, rx, ry, startAngle, endAngle, sweep, largeArc };
+    }
+
+    function arcCenterToEndpoints(cx, cy, r, startAngle, endAngle, sweep = 1) {
+        const x1 = cx + r * Math.cos(startAngle);
+        const y1 = cy + r * Math.sin(startAngle);
+        const x2 = cx + r * Math.cos(endAngle);
+        const y2 = cy + r * Math.sin(endAngle);
+
+        let delta = endAngle - startAngle;
+        if (sweep) {
+            while (delta < 0) delta += 2 * Math.PI;
+            while (delta >= 2 * Math.PI) delta -= 2 * Math.PI;
+        } else {
+            while (delta > 0) delta -= 2 * Math.PI;
+            while (delta <= -2 * Math.PI) delta += 2 * Math.PI;
+        }
+
+        const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
+        return { x1, y1, x2, y2, largeArc, sweep };
+    }
+
+    function reflectPointAcrossLine(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq === 0) return { x: px, y: py };
+
+        const vx = px - x1;
+        const vy = py - y1;
+        const t = (vx * dx + vy * dy) / lenSq;
+        const projX = x1 + t * dx;
+        const projY = y1 + t * dy;
+
+        return {
+            x: Math.round((2 * projX - px) * 1000) / 1000,
+            y: Math.round((2 * projY - py) * 1000) / 1000
+        };
+    }
+
     // ========================================================================
     // 8. COORDINATE MAPPING, ZOOM & PAN
     // ========================================================================
@@ -850,48 +1061,189 @@
         point.x = event.clientX;
         point.y = event.clientY;
 
+        const currentSize = artboardSize || 24;
         const svgPoint = point.matrixTransform(workspace.getScreenCTM().inverse());
         return {
-            x: Math.max(0, Math.min(24, svgPoint.x)),
-            y: Math.max(0, Math.min(24, svgPoint.y))
+            x: Math.max(0, Math.min(currentSize, svgPoint.x)),
+            y: Math.max(0, Math.min(currentSize, svgPoint.y))
         };
     }
 
     function updateWorkspaceZoom() {
-        const viewSize = 24 / zoomLevel;
-        const maxPan = 24 - viewSize;
+        const currentSize = artboardSize || 24;
+        const viewSize = currentSize / zoomLevel;
+        const maxPan = currentSize - viewSize;
 
         panX = Math.max(0, Math.min(maxPan, panX));
         panY = Math.max(0, Math.min(maxPan, panY));
 
         workspace.setAttribute("viewBox", `${panX} ${panY} ${viewSize} ${viewSize}`);
-        if (zoomLevelText) {
-            zoomLevelText.textContent = `${Math.round(zoomLevel * 100)}%`;
+        const zoomText = `${Math.round(zoomLevel * 100)}%`;
+        if (zoomLevelText) zoomLevelText.textContent = zoomText;
+        if (floatZoomLevel) floatZoomLevel.textContent = zoomText;
+
+        // Toggle subtle dot matrix: show when zoom >= 200%, hide when < 200%
+        if (dotGridBg) {
+            dotGridBg.style.display = (zoomLevel >= 2 && currentGridDisplayMode === "full") ? "block" : "none";
         }
     }
 
-    zoomInButton?.addEventListener("click", () => {
-        zoomLevel = Math.min(MAX_ZOOM, zoomLevel + ZOOM_STEP);
+    function setArtboardSize(size, saveHistory = true) {
+        if (size !== 24 && size !== 32) size = 24;
+        artboardSize = size;
+
+        // Update selector UI buttons
+        artboardSizeButtons.forEach(btn => {
+            btn.classList.toggle("active", Number(btn.dataset.size) === size);
+        });
+
+        // Update workspace label
+        if (workspaceDimenLabel) {
+            workspaceDimenLabel.textContent = `${size} × ${size} px`;
+        }
+
+        // Update guidelines dimensions & center axes
+        const minorRect = document.getElementById("minor-grid-rect");
+        const majorRect = document.getElementById("major-grid-rect");
+        if (minorRect) { minorRect.setAttribute("width", size); minorRect.setAttribute("height", size); }
+        if (majorRect) { majorRect.setAttribute("width", size); majorRect.setAttribute("height", size); }
+
+        const half = size / 2;
+        const vLine = document.getElementById("guide-vertical-center");
+        const hLine = document.getElementById("guide-horizontal-center");
+        if (vLine) {
+            vLine.setAttribute("x1", half); vLine.setAttribute("x2", half);
+            vLine.setAttribute("y1", 0); vLine.setAttribute("y2", size);
+        }
+        if (hLine) {
+            hLine.setAttribute("x1", 0); hLine.setAttribute("x2", size);
+            hLine.setAttribute("y1", half); hLine.setAttribute("y2", half);
+        }
+
+        // Safe Area Rect: 20x20 inside 24x24 / 28x28 inside 32x32 (inset by 2 units)
+        if (safeAreaRect) {
+            const inset = 2;
+            const safeDim = size - inset * 2;
+            safeAreaRect.setAttribute("x", inset);
+            safeAreaRect.setAttribute("y", inset);
+            safeAreaRect.setAttribute("width", safeDim);
+            safeAreaRect.setAttribute("height", safeDim);
+        }
+
+        // Update coordinate labels (0, 4, 8, 12, 16, 20, 24, 28, 32)
+        if (coordinateLabels) {
+            let labelsHtml = "";
+            for (let i = 0; i <= size; i += 4) {
+                const xPos = i === 0 ? 0.5 : (i === size ? size - 0.5 : i);
+                labelsHtml += `<text x="${xPos}" y="0.65">${i}</text>`;
+                if (i > 0) {
+                    const yPos = i === size ? size - 0.5 : i + 0.2;
+                    labelsHtml += `<text x="0.55" y="${yPos}">${i}</text>`;
+                }
+            }
+            coordinateLabels.innerHTML = labelsHtml;
+        }
+
+        // Save artboardSize to active project
+        const activeProj = getActiveProject();
+        if (activeProj) {
+            if (!activeProj.data) activeProj.data = {};
+            if (!activeProj.data.settings) activeProj.data.settings = {};
+            activeProj.data.settings.artboardSize = size;
+            saveProjectToBrowser();
+        }
+
         updateWorkspaceZoom();
+        updateSVGSource();
+
+        if (saveHistory) {
+            commitHistoryAction();
+            showToast(`Workspace set to ${size}×${size}px`, "info");
+        }
+    }
+
+    function setGridDisplayMode(mode) {
+        currentGridDisplayMode = mode;
+        if (gridModeSelect) gridModeSelect.value = mode;
+
+        const minorRect = document.getElementById("minor-grid-rect");
+        const majorRect = document.getElementById("major-grid-rect");
+        const vLine = document.getElementById("guide-vertical-center");
+        const hLine = document.getElementById("guide-horizontal-center");
+
+        if (mode === "clean") {
+            if (workspaceGuidelines) workspaceGuidelines.style.display = "none";
+            if (coordinateLabels) coordinateLabels.style.display = "none";
+            if (safeAreaRect) safeAreaRect.style.display = "none";
+            if (dotGridBg) dotGridBg.style.display = "none";
+        } else if (mode === "keyframe") {
+            if (workspaceGuidelines) workspaceGuidelines.style.display = "block";
+            if (minorRect) minorRect.style.display = "none";
+            if (majorRect) majorRect.style.display = "none";
+            if (vLine) vLine.style.display = "block";
+            if (hLine) hLine.style.display = "block";
+            if (safeAreaRect) safeAreaRect.style.display = showSafeAreaCheckbox?.checked ? "block" : "none";
+            if (coordinateLabels) coordinateLabels.style.display = showCoordinatesCheckbox?.checked ? "block" : "none";
+            if (dotGridBg) dotGridBg.style.display = "none";
+        } else { // "full"
+            if (workspaceGuidelines) workspaceGuidelines.style.display = "block";
+            if (minorRect) minorRect.style.display = "block";
+            if (majorRect) majorRect.style.display = "block";
+            if (vLine) vLine.style.display = "block";
+            if (hLine) hLine.style.display = "block";
+            if (safeAreaRect) safeAreaRect.style.display = showSafeAreaCheckbox?.checked ? "block" : "none";
+            if (coordinateLabels) coordinateLabels.style.display = showCoordinatesCheckbox?.checked ? "block" : "none";
+            if (dotGridBg) dotGridBg.style.display = zoomLevel >= 2 ? "block" : "none";
+        }
+    }
+
+    artboardSizeButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const size = Number(btn.dataset.size);
+            if (size && size !== artboardSize) {
+                setArtboardSize(size, true);
+            }
+        });
     });
 
-    zoomOutButton?.addEventListener("click", () => {
-        zoomLevel = Math.max(MIN_ZOOM, zoomLevel - ZOOM_STEP);
-        updateWorkspaceZoom();
+    showSafeAreaCheckbox?.addEventListener("change", () => {
+        if (safeAreaRect) {
+            safeAreaRect.style.display = showSafeAreaCheckbox.checked ? "block" : "none";
+        }
     });
 
-    zoomResetButton?.addEventListener("click", () => {
-        zoomLevel = 1;
-        panX = 0;
-        panY = 0;
-        updateWorkspaceZoom();
+    gridModeSelect?.addEventListener("change", () => {
+        setGridDisplayMode(gridModeSelect.value);
     });
 
-    // Panning & Wheel Zoom
+    [zoomInButton, floatZoomIn].forEach(btn => {
+        btn?.addEventListener("click", () => {
+            zoomLevel = Math.min(MAX_ZOOM, zoomLevel + ZOOM_STEP);
+            updateWorkspaceZoom();
+        });
+    });
+
+    [zoomOutButton, floatZoomOut].forEach(btn => {
+        btn?.addEventListener("click", () => {
+            zoomLevel = Math.max(MIN_ZOOM, zoomLevel - ZOOM_STEP);
+            updateWorkspaceZoom();
+        });
+    });
+
+    [zoomResetButton, floatZoomLevel, floatZoomResetButton].forEach(btn => {
+        btn?.addEventListener("click", () => {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            updateWorkspaceZoom();
+        });
+    });
+
+    // Panning & Wheel Zoom (Ctrl + Wheel or Alt + Wheel)
     workspaceContainer?.addEventListener("wheel", event => {
-        if (event.altKey) {
+        if (event.ctrlKey || event.altKey) {
             event.preventDefault();
-            const zoomFactor = Math.exp(-event.deltaY * 0.01);
+            const zoomFactor = Math.exp(-event.deltaY * 0.005);
             zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel * zoomFactor));
             updateWorkspaceZoom();
             return;
@@ -900,7 +1252,8 @@
         if (zoomLevel <= 1 || event.deltaMode !== 0) return;
         event.preventDefault();
 
-        const viewSize = 24 / zoomLevel;
+        const currentSize = artboardSize || 24;
+        const viewSize = currentSize / zoomLevel;
         const rect = workspace.getBoundingClientRect();
         panX += event.deltaX * (viewSize / rect.width);
         panY += event.deltaY * (viewSize / rect.height);
@@ -1063,12 +1416,85 @@
     // ========================================================================
     // 10. SHAPE FACTORIES (LINE, CURVE, CIRCLE, RECTANGLE, PATH)
     // ========================================================================
+    let isApplyingLiveSymmetry = false;
+    function applyLiveSymmetry(sourceShape) {
+        if (isApplyingLiveSymmetry) return;
+        if (!liveSymmetryH && !liveSymmetryV) return;
+
+        isApplyingLiveSymmetry = true;
+        try {
+            const modes = [];
+            if (liveSymmetryV) modes.push("v");
+            if (liveSymmetryH) modes.push("h");
+            if (liveSymmetryH && liveSymmetryV) modes.push("vh");
+
+            modes.forEach(mode => {
+                const data = {};
+                Object.keys(sourceShape).forEach(k => {
+                    if (!shapeDOMKeys.has(k)) data[k] = structuredClone(sourceShape[k]);
+                });
+
+                if (mode.includes("v")) {
+                    if (data.type === "line") {
+                        data.x1 = artboardSize - data.x1;
+                        data.x2 = artboardSize - data.x2;
+                    } else if (data.type === "curve" || data.type === "circle") {
+                        data.cx = artboardSize - data.cx;
+                        if (data.type === "curve") {
+                            data.startAngle = Math.PI - data.startAngle;
+                            data.endAngle = Math.PI - data.endAngle;
+                        }
+                    } else if (data.type === "rectangle") {
+                        data.x = artboardSize - (data.x + data.width);
+                    } else if (data.type === "path") {
+                        data.points = (data.points || []).map(p => ({ x: artboardSize - p.x, y: p.y }));
+                        data.holes = (data.holes || []).map(h => {
+                            const pts = Array.isArray(h) ? h : h.points;
+                            const mapped = pts.map(p => ({ x: artboardSize - p.x, y: p.y }));
+                            return Array.isArray(h) ? mapped : { ...h, points: mapped };
+                        });
+                    }
+                }
+
+                if (mode.includes("h")) {
+                    if (data.type === "line") {
+                        data.y1 = artboardSize - data.y1;
+                        data.y2 = artboardSize - data.y2;
+                    } else if (data.type === "curve" || data.type === "circle") {
+                        data.cy = artboardSize - data.cy;
+                        if (data.type === "curve") {
+                            data.startAngle = -data.startAngle;
+                            data.endAngle = -data.endAngle;
+                        }
+                    } else if (data.type === "rectangle") {
+                        data.y = artboardSize - (data.y + data.height);
+                    } else if (data.type === "path") {
+                        data.points = (data.points || []).map(p => ({ x: p.x, y: artboardSize - p.y }));
+                        data.holes = (data.holes || []).map(h => {
+                            const pts = Array.isArray(h) ? h : h.points;
+                            const mapped = pts.map(p => ({ x: p.x, y: artboardSize - p.y }));
+                            return Array.isArray(h) ? mapped : { ...h, points: mapped };
+                        });
+                    }
+                }
+
+                data.name = `${sourceShape.name || sourceShape.type} (Symmetry)`;
+                createShapeFromCopy(data);
+            });
+        } finally {
+            isApplyingLiveSymmetry = false;
+        }
+    }
+
     function getShapeElements(shape) {
         if (shape.type === "line") {
             return [shape.hoverBg, shape.element, shape.guideBg, shape.guide, shape.hitLine].filter(Boolean);
         }
         if (shape.type === "curve") {
             return [shape.element, shape.guideBg, shape.guide, shape.hitPath, shape.horizontalGuide, shape.angleGuide].filter(Boolean);
+        }
+        if (shape.type === "path") {
+            return [shape.element, shape.strokeElement].filter(Boolean);
         }
         return [shape.element].filter(Boolean);
     }
@@ -1082,13 +1508,17 @@
         const hitLine = document.createElementNS(SVG_NS, "line");
         const guideBg = document.createElementNS(SVG_NS, "line");
         const guide = document.createElementNS(SVG_NS, "line");
+        const horizontalGuide = document.createElementNS(SVG_NS, "line");
+        const verticalGuide = document.createElementNS(SVG_NS, "line");
+        const alignedGuide = document.createElementNS(SVG_NS, "line");
+        const perpendicularGuide = document.createElementNS(SVG_NS, "line");
 
         const shape = {
             type: "line",
             name: "Line",
             x1: Math.max(0, x - 3),
             y1: y,
-            x2: Math.min(24, x + 3),
+            x2: Math.min(artboardSize, x + 3),
             y2: y,
             width: 2,
             cap: "round",
@@ -1100,8 +1530,25 @@
             guideBg: guideBg,
             guide: guide,
             hitLine: hitLine,
-            handles: []
+            handles: [],
+            horizontalGuide: horizontalGuide,
+            alignedGuide: alignedGuide,
+            perpendicularGuide: perpendicularGuide,
+            verticalGuide: verticalGuide
         };
+        [
+            horizontalGuide,
+            verticalGuide,
+            alignedGuide,
+            perpendicularGuide
+        ].forEach(el => {
+            el.setAttribute("stroke", "#FBBF24");
+            el.setAttribute("stroke-width", "0.12");
+            el.setAttribute("stroke-dasharray", "0.4 0.3");
+            el.setAttribute("fill", "none");
+            el.setAttribute("pointer-events", "none");
+            el.style.display = "none";
+        });
 
         hoverBg.setAttribute("stroke", "#60A5FA");
         hoverBg.setAttribute("stroke-width", "1.5");
@@ -1136,33 +1583,61 @@
         hitLine.addEventListener("pointerenter", () => {
             hoverBg.style.display = "block";
             guideBg.style.display = "block";
+
+            // Fixed guides
+            horizontalGuide.style.display = "block";
+            verticalGuide.style.display = "block";
+
+            // Rotating guides
+            alignedGuide.style.display = "block";
+            perpendicularGuide.style.display = "block";
         });
+
         hitLine.addEventListener("pointerleave", () => {
             hoverBg.style.display = "none";
             guideBg.style.display = "none";
-        });
 
+            // Fixed guides
+            horizontalGuide.style.display = "none";
+            verticalGuide.style.display = "none";
+
+            // Rotating guides
+            alignedGuide.style.display = "none";
+            perpendicularGuide.style.display = "none";
+        });
+        workspace.appendChild(horizontalGuide);
+        workspace.appendChild(verticalGuide);
         workspace.appendChild(hoverBg);
         workspace.appendChild(line);
         workspace.appendChild(guideBg);
         workspace.appendChild(guide);
         workspace.appendChild(hitLine);
+        workspace.appendChild(alignedGuide);
+        workspace.appendChild(perpendicularGuide);
 
         shapes.push(shape);
         updateLine(shape);
         selectShape(shape);
+        applyLiveSymmetry(shape);
         return shape;
     }
 
     function createCurve(x, y) {
         const color = getNextColor("curve");
 
+        // Existing elements
         const horizontalGuide = document.createElementNS(SVG_NS, "line");
         const angleGuide = document.createElementNS(SVG_NS, "line");
         const path = document.createElementNS(SVG_NS, "path");
         const hitPath = document.createElementNS(SVG_NS, "path");
         const guideBg = document.createElementNS(SVG_NS, "path");
         const guide = document.createElementNS(SVG_NS, "path");
+
+        // NEW: Curve guides
+        const circumferenceGuide = document.createElementNS(SVG_NS, "circle");
+        const verticalGuide = document.createElementNS(SVG_NS, "line");
+        const startRadialGuide = document.createElementNS(SVG_NS, "line");
+        const endRadialGuide = document.createElementNS(SVG_NS, "line");
 
         const shape = {
             type: "curve",
@@ -1176,15 +1651,24 @@
             strokeWidth: 2,
             hidden: false,
             locked: false,
+
             element: path,
             hitPath: hitPath,
             guideBg: guideBg,
             guide: guide,
             handles: [],
+
             horizontalGuide: horizontalGuide,
-            angleGuide: angleGuide
+            angleGuide: angleGuide,
+
+            // NEW guide elements
+            circumferenceGuide: circumferenceGuide,
+            verticalGuide: verticalGuide,
+            startRadialGuide: startRadialGuide,
+            endRadialGuide: endRadialGuide,
         };
 
+        // Hit area
         hitPath.setAttribute("fill", "none");
         hitPath.setAttribute("stroke", "transparent");
         hitPath.setAttribute("stroke-width", "3");
@@ -1192,12 +1676,14 @@
         hitPath.setAttribute("pointer-events", "stroke");
         hitPath.style.cursor = "move";
 
+        // Main curve
         path.setAttribute("fill", "none");
         path.setAttribute("stroke", color);
         path.setAttribute("stroke-width", "2");
         path.setAttribute("stroke-linecap", "round");
         path.setAttribute("pointer-events", "none");
 
+        // Existing background guide
         guideBg.setAttribute("fill", "none");
         guideBg.setAttribute("stroke", "#334155");
         guideBg.setAttribute("stroke-width", "1.7");
@@ -1205,41 +1691,86 @@
         guideBg.setAttribute("pointer-events", "none");
         guideBg.style.display = "none";
 
+        // Existing curve guide
         guide.setAttribute("fill", "none");
         guide.setAttribute("stroke", "#FFFFFF");
         guide.setAttribute("stroke-width", "0.12");
         guide.setAttribute("stroke-dasharray", "0.35 0.25");
         guide.setAttribute("pointer-events", "none");
 
-        horizontalGuide.setAttribute("stroke", "#FBBF24");
-        horizontalGuide.setAttribute("stroke-width", "0.15");
-        horizontalGuide.setAttribute("stroke-dasharray", "0.4 0.3");
-        horizontalGuide.setAttribute("pointer-events", "none");
-        horizontalGuide.style.display = "none";
+        // Shared guide styling
+        const styleGuide = (element, color = "#FBBF24", width = "0.12") => {
+            element.setAttribute("stroke", color);
+            element.setAttribute("stroke-width", width);
+            element.setAttribute("stroke-dasharray", "0.4 0.3");
+            element.setAttribute("fill", "none");
+            element.setAttribute("pointer-events", "none");
+            element.style.display = "none";
+        };
 
-        angleGuide.setAttribute("stroke", "#FBBF24");
-        angleGuide.setAttribute("stroke-width", "0.12");
-        angleGuide.setAttribute("stroke-dasharray", "0.4 0.3");
-        angleGuide.setAttribute("pointer-events", "none");
-        angleGuide.style.display = "none";
+        styleGuide(horizontalGuide);
+        styleGuide(angleGuide);
+        styleGuide(verticalGuide);
+        styleGuide(startRadialGuide);
+        styleGuide(endRadialGuide);
 
-        hitPath.addEventListener("pointerenter", () => {
+        // Full circumference
+        circumferenceGuide.setAttribute("fill", "none");
+        circumferenceGuide.setAttribute("stroke", "#94A3B8");
+        circumferenceGuide.setAttribute("stroke-width", "0.12");
+        circumferenceGuide.setAttribute("stroke-dasharray", "0.3 0.25");
+        circumferenceGuide.setAttribute("pointer-events", "none");
+        circumferenceGuide.style.display = "none";
+
+        // Show guides when hovering over the curve
+        function showCurveGuides() {
+            [
+                circumferenceGuide,
+                horizontalGuide,
+                verticalGuide,
+                angleGuide,
+                startRadialGuide,
+                endRadialGuide
+            ].forEach(el => el.style.display = "block");
+
             guideBg.style.display = "block";
-        });
-        hitPath.addEventListener("pointerleave", () => {
+        }
+
+        function hideCurveGuides() {
+            [
+                circumferenceGuide,
+                horizontalGuide,
+                verticalGuide,
+                angleGuide,
+                startRadialGuide,
+                endRadialGuide
+            ].forEach(el => el.style.display = "none");
+
             guideBg.style.display = "none";
-        });
+        }
+
+        hitPath.addEventListener("pointerenter", showCurveGuides);
+        hitPath.addEventListener("pointerleave", hideCurveGuides);
+
+        // Add elements to workspace
+        workspace.appendChild(circumferenceGuide);
+        workspace.appendChild(horizontalGuide);
+        workspace.appendChild(verticalGuide);
+        workspace.appendChild(startRadialGuide);
+        workspace.appendChild(endRadialGuide);
+        workspace.appendChild(angleGuide);
 
         workspace.appendChild(path);
         workspace.appendChild(guideBg);
         workspace.appendChild(guide);
         workspace.appendChild(hitPath);
-        workspace.appendChild(horizontalGuide);
-        workspace.appendChild(angleGuide);
 
         shapes.push(shape);
+
         updateCurve(shape);
         selectShape(shape);
+        applyLiveSymmetry(shape);
+
         return shape;
     }
 
@@ -1248,6 +1779,20 @@
 
         const color = getNextColor(type);
         let element;
+        const horizontalGuide = document.createElementNS(SVG_NS, "line");
+        const verticalGuide = document.createElementNS(SVG_NS, "line");
+
+        function styleHelperGuide(line) {
+            line.setAttribute("stroke", "#FBBF24");
+            line.setAttribute("stroke-width", "0.12");
+            line.setAttribute("stroke-dasharray", "0.4 0.3");
+            line.setAttribute("fill", "none");
+            line.setAttribute("pointer-events", "none");
+            line.style.display = "none";
+        }
+
+        styleHelperGuide(horizontalGuide);
+        styleHelperGuide(verticalGuide);
 
         if (type === "circle") {
             element = document.createElementNS(SVG_NS, "circle");
@@ -1271,6 +1816,9 @@
         }
 
         element.style.cursor = "move";
+
+        workspace.appendChild(horizontalGuide);
+        workspace.appendChild(verticalGuide);
         workspace.appendChild(element);
 
         const shape = {
@@ -1282,7 +1830,9 @@
             strokeWidth: 2,
             hidden: false,
             locked: false,
-            handles: []
+            handles: [],
+            horizontalGuide: horizontalGuide,
+            verticalGuide: verticalGuide
         };
 
         if (type === "circle") {
@@ -1294,11 +1844,25 @@
             shape.y = Math.max(0, y - 2);
             shape.width = 5;
             shape.height = 4;
+            shape.cornerRadius = 0;
         }
+        function showHelperGuides() {
+            horizontalGuide.style.display = "block";
+            verticalGuide.style.display = "block";
+        }
+
+        function hideHelperGuides() {
+            horizontalGuide.style.display = "none";
+            verticalGuide.style.display = "none";
+        }
+
+        element.addEventListener("pointerenter", showHelperGuides);
+        element.addEventListener("pointerleave", hideHelperGuides);
 
         shapes.push(shape);
         updateSVGSource();
         selectShape(shape);
+        applyLiveSymmetry(shape);
         return shape;
     }
 
@@ -1352,17 +1916,65 @@
     }
 
     function updatePathShape(shape) {
-        const parts = getPathParts(shape);
-        const pathData = parts.map(item => createPathData(item.points, item.curved)).join(" ");
+        // Render imported SVG paths without changing their original geometry
+        if (typeof shape.svgPathData === "string") {
+            shape.element.setAttribute("d", shape.svgPathData);
+            shape.element.setAttribute("fill", shape.fill || "none");
+            shape.element.setAttribute("fill-rule", "evenodd");
+            shape.element.setAttribute("stroke", shape.color || "#FFFFFF");
+            shape.element.setAttribute("stroke-width", shape.strokeWidth || 2);
+            shape.element.setAttribute("stroke-linecap", "round");
+            shape.element.setAttribute("stroke-linejoin", "round");
+            shape.element.setAttribute("transform",
+                `translate(${shape.offsetX || 0} ${shape.offsetY || 0})`
+            );
+            shape.element.style.cursor = "move";
 
-        shape.element.setAttribute("d", pathData);
-        shape.element.setAttribute("fill", shape.fill || "none");
-        shape.element.setAttribute("fill-rule", "evenodd");
-        shape.element.setAttribute("stroke", shape.color);
-        shape.element.setAttribute("stroke-width", shape.strokeWidth);
-        shape.element.setAttribute("stroke-linecap", "round");
-        shape.element.setAttribute("stroke-linejoin", "round");
-        shape.element.style.cursor = "move";
+            return;
+        }
+        const hasHoles = shape.holes && shape.holes.length > 0;
+        const outerPathData = createPathData(shape.points, shape.curved);
+
+        if (hasHoles) {
+            const parts = getPathParts(shape);
+            const compoundPathData = parts.map(item => createPathData(item.points, item.curved)).join(" ");
+
+            // shape.element renders the compound fill without stroke (holes are transparent negative space)
+            shape.element.setAttribute("d", compoundPathData);
+            shape.element.setAttribute("fill", shape.fill || "none");
+            shape.element.setAttribute("fill-rule", "evenodd");
+            shape.element.setAttribute("stroke", "none");
+            shape.element.style.cursor = "move";
+
+            // shape.strokeElement renders the outer boundary stroke only (no outline around holes)
+            if (!shape.strokeElement) {
+                shape.strokeElement = document.createElementNS(SVG_NS, "path");
+                shape.strokeElement.style.pointerEvents = "none";
+                if (shape.element.parentNode) {
+                    shape.element.parentNode.insertBefore(shape.strokeElement, shape.element.nextSibling);
+                }
+            }
+            shape.strokeElement.setAttribute("d", outerPathData);
+            shape.strokeElement.setAttribute("fill", "none");
+            shape.strokeElement.setAttribute("stroke", shape.color);
+            shape.strokeElement.setAttribute("stroke-width", shape.strokeWidth);
+            shape.strokeElement.setAttribute("stroke-linecap", "round");
+            shape.strokeElement.setAttribute("stroke-linejoin", "round");
+            shape.strokeElement.style.display = shape.hidden ? "none" : "block";
+        } else {
+            if (shape.strokeElement) {
+                shape.strokeElement.remove();
+                shape.strokeElement = null;
+            }
+            shape.element.setAttribute("d", outerPathData);
+            shape.element.setAttribute("fill", shape.fill || "none");
+            shape.element.setAttribute("fill-rule", "evenodd");
+            shape.element.setAttribute("stroke", shape.color);
+            shape.element.setAttribute("stroke-width", shape.strokeWidth);
+            shape.element.setAttribute("stroke-linecap", "round");
+            shape.element.setAttribute("stroke-linejoin", "round");
+            shape.element.style.cursor = "move";
+        }
 
         if (selectedShape === shape && !shape.hidden && !shape.locked) {
             updatePathHandles(shape);
@@ -1391,6 +2003,11 @@
                 points: [...pathDrawing.points],
                 curved: pathDrawing.curved
             });
+
+            // If shape had no fill, ensure fill is active so the cutout creates negative space
+            if (!shape.fill || shape.fill === "none") {
+                shape.fill = shape.color || "#ffffff";
+            }
 
             updatePathShape(shape);
             pathDrawing = null;
@@ -1421,6 +2038,7 @@
         shapes.push(pathShape);
 
         selectShape(pathShape);
+        applyLiveSymmetry(pathShape);
         commitHistoryAction();
         showToast("Path created", "success");
     }
@@ -1494,14 +2112,27 @@
 
     // Line Handles
     function updateHandles(shape) {
-        shape.handles?.forEach(el => el.remove());
-        shape.handles = [];
         if (shape.type !== "line") return;
 
         const points = [
             { x: shape.x1, y: shape.y1, end: "start" },
             { x: shape.x2, y: shape.y2, end: "end" }
         ];
+
+        // If handles already exist, update their positions only.
+        if (shape.handles?.length) {
+            shape.handles.forEach(el => {
+                const point = points.find(p => p.end === el.dataset.end);
+                if (!point) return;
+
+                el.setAttribute("cx", point.x);
+                el.setAttribute("cy", point.y);
+            });
+
+            return;
+        }
+
+        shape.handles = [];
 
         points.forEach(pt => {
             const hoverBg = document.createElementNS(SVG_NS, "circle");
@@ -1511,6 +2142,7 @@
             hoverBg.setAttribute("fill", "#64748B");
             hoverBg.setAttribute("pointer-events", "none");
             hoverBg.style.display = "none";
+            hoverBg.dataset.end = pt.end;
 
             const hitArea = document.createElementNS(SVG_NS, "circle");
             hitArea.setAttribute("cx", pt.x);
@@ -1530,9 +2162,16 @@
             handle.setAttribute("stroke-width", "0.1");
             handle.setAttribute("pointer-events", "none");
             handle.classList.add("edit-handle");
+            handle.dataset.end = pt.end;
 
-            hitArea.addEventListener("pointerenter", () => hoverBg.style.display = "block");
+            hitArea.addEventListener("pointerenter", () => {
+                hoverBg.style.display = "block";
+                handle.setAttribute("r", "0.42");
+            });
+
             hitArea.addEventListener("pointerleave", () => {
+                handle.setAttribute("r", "0.32");
+
                 if (dragging?.shape !== shape || dragging?.end !== pt.end) {
                     hoverBg.style.display = "none";
                 }
@@ -1541,21 +2180,23 @@
             workspace.appendChild(hoverBg);
             workspace.appendChild(handle);
             workspace.appendChild(hitArea);
+
             shape.handles.push(hoverBg, handle, hitArea);
         });
     }
 
-    // Curve Handles
+    // Curve Handles (Restored Complete Original 4-Handle Circular-Arc Model)
     function updateCurveHandles(shape) {
         shape.handles?.forEach(el => el.remove());
         shape.handles = [];
-        if (shape.type !== "curve") return;
+        if (shape.type !== "curve" || selectedShape !== shape) return;
 
         function makeHandle(x, y, action, color, radius = 0.32) {
             const hoverBg = document.createElementNS(SVG_NS, "circle");
+            hoverBg.dataset.action = action;
             hoverBg.setAttribute("cx", x);
             hoverBg.setAttribute("cy", y);
-            hoverBg.setAttribute("r", "0.95");
+            hoverBg.setAttribute("r", "1.05");
             hoverBg.setAttribute("fill", "#64748B");
             hoverBg.setAttribute("pointer-events", "none");
             hoverBg.style.display = "none";
@@ -1563,13 +2204,16 @@
             const hitArea = document.createElementNS(SVG_NS, "circle");
             hitArea.setAttribute("cx", x);
             hitArea.setAttribute("cy", y);
-            hitArea.setAttribute("r", "1.15");
+            hitArea.setAttribute("r", "1.25");
             hitArea.setAttribute("fill", "transparent");
+            hitArea.setAttribute("stroke", "transparent");
+            hitArea.setAttribute("stroke-width", "0.5");
             hitArea.setAttribute("pointer-events", "all");
             hitArea.classList.add("curve-hit-area");
             hitArea.dataset.action = action;
 
             const handle = document.createElementNS(SVG_NS, "circle");
+            handle.dataset.action = action;
             handle.setAttribute("cx", x);
             handle.setAttribute("cy", y);
             handle.setAttribute("r", radius);
@@ -1587,31 +2231,78 @@
             shape.handles.push(hoverBg, handle, hitArea);
         }
 
-        // Start angle handle
-        makeHandle(
-            shape.cx + shape.radius * Math.cos(shape.startAngle),
-            shape.cy + shape.radius * Math.sin(shape.startAngle),
-            "rotate-a",
-            "#10131a"
-        );
+        let delta = shape.endAngle - shape.startAngle;
+        while (delta < 0) delta += Math.PI * 2;
+        while (delta >= Math.PI * 2) delta -= Math.PI * 2;
 
-        // End angle handle
-        makeHandle(
-            shape.cx + shape.radius * Math.cos(shape.endAngle),
-            shape.cy + shape.radius * Math.sin(shape.endAngle),
-            "rotate-b",
-            "#10131a"
-        );
+        // 1. Start endpoint handle (A)
+        const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
+        const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
+        makeHandle(startX, startY, "start", "#60A5FA");
 
-        // Radius handle (green center circle)
-        const midAngle = (shape.startAngle + shape.endAngle) / 2;
-        makeHandle(
-            shape.cx + shape.radius * Math.cos(midAngle),
-            shape.cy + shape.radius * Math.sin(midAngle),
-            "radius",
-            "#10B981",
-            0.28
-        );
+        // 2. End endpoint handle (B)
+        const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
+        const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
+        makeHandle(endX, endY, "end", "#60A5FA");
+
+        // 3. Rotate around B handle (at 25% arc)
+        const angleB = shape.startAngle + delta * 0.25;
+        const bX = shape.cx + shape.radius * Math.cos(angleB);
+        const bY = shape.cy + shape.radius * Math.sin(angleB);
+        makeHandle(bX, bY, "rotate-b", "#FBBF24");
+
+        // 4. Rotate around A handle (at 75% arc)
+        const angleA = shape.startAngle + delta * 0.75;
+        const aX = shape.cx + shape.radius * Math.cos(angleA);
+        const aY = shape.cy + shape.radius * Math.sin(angleA);
+        makeHandle(aX, aY, "rotate-a", "#FBBF24");
+
+        // 5. Radius handle (green handle at imaginary circle centre)
+        makeHandle(shape.cx, shape.cy, "radius", "#10B981", 0.36);
+    }
+    function moveCurveHandles(shape) {
+        if (shape.type !== "curve" || selectedShape !== shape) return;
+
+        let delta = shape.endAngle - shape.startAngle;
+
+        while (delta < 0) delta += Math.PI * 2;
+        while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+
+        const positions = {
+            start: {
+                x: shape.cx + shape.radius * Math.cos(shape.startAngle),
+                y: shape.cy + shape.radius * Math.sin(shape.startAngle)
+            },
+
+            end: {
+                x: shape.cx + shape.radius * Math.cos(shape.endAngle),
+                y: shape.cy + shape.radius * Math.sin(shape.endAngle)
+            },
+
+            "rotate-b": {
+                x: shape.cx + shape.radius * Math.cos(shape.startAngle + delta * 0.25),
+                y: shape.cy + shape.radius * Math.sin(shape.startAngle + delta * 0.25)
+            },
+
+            "rotate-a": {
+                x: shape.cx + shape.radius * Math.cos(shape.startAngle + delta * 0.75),
+                y: shape.cy + shape.radius * Math.sin(shape.startAngle + delta * 0.75)
+            },
+
+            radius: {
+                x: shape.cx,
+                y: shape.cy
+            }
+        };
+
+        shape.handles.forEach(element => {
+            const position = positions[element.dataset.action];
+
+            if (!position) return;
+
+            element.setAttribute("cx", position.x);
+            element.setAttribute("cy", position.y);
+        });
     }
 
     // Basic Shape Handles (Circle & Rectangle)
@@ -1655,6 +2346,11 @@
             makeHandle(x, y, "nw");
             makeHandle(x + w / 2, y, "n");
             makeHandle(x + w, y, "ne");
+            makeHandle(
+                x + (shape.cornerRadius || 0),
+                y,
+                "corner-radius"
+            );
             makeHandle(x + w, y + h / 2, "e");
             makeHandle(x + w, y + h, "se");
             makeHandle(x + w / 2, y + h, "s");
@@ -1664,60 +2360,152 @@
     }
 
     // Path Vertex Handles (Allows Direct Vertex Editing on Canvas)
-    function updatePathHandles(shape) {
-        shape.handles?.forEach(h => h.remove());
-        shape.handles = [];
-        if (shape.type !== "path" || selectedShape !== shape) return;
+    
+function updatePathHandles(shape) {
+    shape.handles?.forEach(h => h.remove());
+    shape.handles = [];
 
-        function makeVertexHandle(pt, vertexIndex, holeIndex = -1) {
+    if (shape.type !== "path" || selectedShape !== shape) return;
+
+    // Imported SVG path handles
+    if (Array.isArray(shape.svgEditableSegments)) {
+        shape.svgEditableSegments.forEach((segment, index) => {
+            // Move commands only establish starting positions
+            if (segment.type === "move" || segment.type === "close") return;
+
             const hit = document.createElementNS(SVG_NS, "circle");
-            hit.setAttribute("cx", pt.x);
-            hit.setAttribute("cy", pt.y);
-            hit.setAttribute("r", "0.75");
+            hit.setAttribute("cx", segment.x + (shape.offsetX || 0));
+            hit.setAttribute("cy", segment.y + (shape.offsetY || 0));
+            hit.setAttribute("r", "0.8");
             hit.setAttribute("fill", "transparent");
             hit.setAttribute("pointer-events", "all");
-            hit.classList.add("path-vertex-hit-area");
-            hit.dataset.vertexIndex = vertexIndex;
-            hit.dataset.holeIndex = holeIndex;
+            hit.classList.add("svg-segment-hit-area");
+            hit.dataset.segmentIndex = index;
 
             const visible = document.createElementNS(SVG_NS, "circle");
-            visible.setAttribute("cx", pt.x);
-            visible.setAttribute("cy", pt.y);
-            visible.setAttribute("r", "0.26");
-            visible.setAttribute("fill", holeIndex === -1 ? "#818CF8" : "#F472B6");
+            visible.setAttribute("cx", segment.x + (shape.offsetX || 0));
+            visible.setAttribute("cy", segment.y + (shape.offsetY || 0));
+            visible.setAttribute("r", "0.28");
+            visible.setAttribute("fill", "#818CF8");
             visible.setAttribute("stroke", "#FFFFFF");
             visible.setAttribute("stroke-width", "0.08");
             visible.setAttribute("pointer-events", "none");
 
             workspace.appendChild(visible);
             workspace.appendChild(hit);
+
             shape.handles.push(visible, hit);
-        }
-
-        // Primary outline vertices
-        shape.points.forEach((pt, idx) => makeVertexHandle(pt, idx, -1));
-
-        // Cutout hole vertices
-        (shape.holes || []).forEach((hole, hIdx) => {
-            const pts = Array.isArray(hole) ? hole : hole.points;
-            pts.forEach((pt, pIdx) => makeVertexHandle(pt, pIdx, hIdx));
         });
+
+        return;
     }
 
+    // Existing point-based path handles
+    function makeVertexHandle(pt, vertexIndex, holeIndex = -1) {
+        const hit = document.createElementNS(SVG_NS, "circle");
+        hit.setAttribute("cx", pt.x);
+        hit.setAttribute("cy", pt.y);
+        hit.setAttribute("r", "0.75");
+        hit.setAttribute("fill", "transparent");
+        hit.setAttribute("pointer-events", "all");
+        hit.classList.add("path-vertex-hit-area");
+        hit.dataset.vertexIndex = vertexIndex;
+        hit.dataset.holeIndex = holeIndex;
+
+        const visible = document.createElementNS(SVG_NS, "circle");
+        visible.setAttribute("cx", pt.x);
+        visible.setAttribute("cy", pt.y);
+        visible.setAttribute("r", "0.26");
+        visible.setAttribute("fill", holeIndex === -1 ? "#818CF8" : "#F472B6");
+        visible.setAttribute("stroke", "#FFFFFF");
+        visible.setAttribute("stroke-width", "0.08");
+        visible.setAttribute("pointer-events", "none");
+
+        workspace.appendChild(visible);
+        workspace.appendChild(hit);
+        shape.handles.push(visible, hit);
+    }
+
+    shape.points.forEach((pt, idx) => makeVertexHandle(pt, idx, -1));
+
+    (shape.holes || []).forEach((hole, hIdx) => {
+        const pts = Array.isArray(hole) ? hole : hole.points;
+        pts.forEach((pt, pIdx) => makeVertexHandle(pt, pIdx, hIdx));
+    });
+}
+
+
     // Updates Geometry for Line, Curve, Basic
+
     function updateLine(shape) {
-        [shape.element, shape.hoverBg, shape.guideBg, shape.guide, shape.hitLine].forEach(el => {
+        const elements = [
+            shape.element,
+            shape.hoverBg,
+            shape.guideBg,
+            shape.guide,
+            shape.hitLine
+        ];
+
+        elements.forEach(el => {
             if (!el) return;
+
             el.setAttribute("x1", shape.x1);
             el.setAttribute("y1", shape.y1);
             el.setAttribute("x2", shape.x2);
             el.setAttribute("y2", shape.y2);
         });
 
-        if (selectedShape === shape) updateHandles(shape);
+        // Calculate line midpoint
+        const midX = (shape.x1 + shape.x2) / 2;
+        const midY = (shape.y1 + shape.y2) / 2;
+
+        // Fixed horizontal guide
+        shape.horizontalGuide.setAttribute("x1", 0);
+        shape.horizontalGuide.setAttribute("y1", midY);
+        shape.horizontalGuide.setAttribute("x2", artboardSize);
+        shape.horizontalGuide.setAttribute("y2", midY);
+
+        // Fixed vertical guide
+        shape.verticalGuide.setAttribute("x1", midX);
+        shape.verticalGuide.setAttribute("y1", 0);
+        shape.verticalGuide.setAttribute("x2", midX);
+        shape.verticalGuide.setAttribute("y2", artboardSize);
+
+        // Calculate line direction
+        const angle = Math.atan2(
+            shape.y2 - shape.y1,
+            shape.x2 - shape.x1
+        );
+
+        // Length of rotating guides
+        const length = artboardSize * 1.5;
+
+        // Parallel guide
+        const dx = Math.cos(angle) * length / 2;
+        const dy = Math.sin(angle) * length / 2;
+
+        shape.alignedGuide.setAttribute("x1", midX - dx);
+        shape.alignedGuide.setAttribute("y1", midY - dy);
+        shape.alignedGuide.setAttribute("x2", midX + dx);
+        shape.alignedGuide.setAttribute("y2", midY + dy);
+
+        // Perpendicular guide
+        const px = Math.cos(angle + Math.PI / 2) * length / 2;
+        const py = Math.sin(angle + Math.PI / 2) * length / 2;
+
+        shape.perpendicularGuide.setAttribute("x1", midX - px);
+        shape.perpendicularGuide.setAttribute("y1", midY - py);
+        shape.perpendicularGuide.setAttribute("x2", midX + px);
+        shape.perpendicularGuide.setAttribute("y2", midY + py);
+
+        if (selectedShape === shape) {
+            updateHandles(shape);
+        }
+
         updateSVGSource();
         shape.element?.setAttribute("stroke", shape.color);
     }
+
 
     function snapAngle(angle) {
         const step = Math.PI / 18; // 10 degrees
@@ -1727,34 +2515,85 @@
     function updateCurve(shape) {
         const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
         const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
+
         const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
         const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
 
         let delta = shape.endAngle - shape.startAngle;
+
         while (delta < 0) delta += Math.PI * 2;
         while (delta >= Math.PI * 2) delta -= Math.PI * 2;
 
         const largeArc = delta > Math.PI ? 1 : 0;
-        const curvePath = `M ${startX} ${startY} A ${shape.radius} ${shape.radius} 0 ${largeArc} 1 ${endX} ${endY}`;
 
+        const curvePath =
+            `M ${startX} ${startY} A ${shape.radius} ${shape.radius} 0 ${largeArc} 1 ${endX} ${endY}`;
+
+        // Main curve
         shape.element.setAttribute("d", curvePath);
         shape.element.setAttribute("stroke-width", shape.strokeWidth);
+
         shape.guideBg.setAttribute("d", curvePath);
         shape.guide.setAttribute("d", curvePath);
         shape.hitPath.setAttribute("d", curvePath);
 
-        shape.horizontalGuide.setAttribute("x1", shape.cx);
+        // Full circumference
+        shape.circumferenceGuide.setAttribute("cx", shape.cx);
+        shape.circumferenceGuide.setAttribute("cy", shape.cy);
+        shape.circumferenceGuide.setAttribute("r", shape.radius);
+
+        // Full-length horizontal centerline
+        shape.horizontalGuide.setAttribute("x1", 0);
         shape.horizontalGuide.setAttribute("y1", shape.cy);
-        shape.horizontalGuide.setAttribute("x2", 24);
+        shape.horizontalGuide.setAttribute("x2", artboardSize);
         shape.horizontalGuide.setAttribute("y2", shape.cy);
 
-        const activeAngle = dragging?.shape === shape && dragging.action === "rotate-a" ? shape.startAngle : shape.endAngle;
+        // Full-length vertical centerline
+        shape.verticalGuide.setAttribute("x1", shape.cx);
+        shape.verticalGuide.setAttribute("y1", 0);
+        shape.verticalGuide.setAttribute("x2", shape.cx);
+        shape.verticalGuide.setAttribute("y2", artboardSize);
+
+        // Radial line to start endpoint
+        shape.startRadialGuide.setAttribute("x1", shape.cx);
+        shape.startRadialGuide.setAttribute("y1", shape.cy);
+        shape.startRadialGuide.setAttribute("x2", startX);
+        shape.startRadialGuide.setAttribute("y2", startY);
+
+        // Radial line to end endpoint
+        shape.endRadialGuide.setAttribute("x1", shape.cx);
+        shape.endRadialGuide.setAttribute("y1", shape.cy);
+        shape.endRadialGuide.setAttribute("x2", endX);
+        shape.endRadialGuide.setAttribute("y2", endY);
+
+        // Existing active angle guide
+        const activeAngle =
+            dragging?.shape === shape && dragging.action === "rotate-a"
+                ? shape.startAngle
+                : shape.endAngle;
+
         shape.angleGuide.setAttribute("x1", shape.cx);
         shape.angleGuide.setAttribute("y1", shape.cy);
-        shape.angleGuide.setAttribute("x2", shape.cx + shape.radius * Math.cos(activeAngle));
-        shape.angleGuide.setAttribute("y2", shape.cy + shape.radius * Math.sin(activeAngle));
+        shape.angleGuide.setAttribute(
+            "x2",
+            shape.cx + shape.radius * Math.cos(activeAngle)
+        );
+        shape.angleGuide.setAttribute(
+            "y2",
+            shape.cy + shape.radius * Math.sin(activeAngle)
+        );
 
-        if (selectedShape === shape) updateCurveHandles(shape);
+        // Radius indicator and label
+        const radiusAngle = (shape.startAngle + shape.endAngle) / 2;
+
+        const radiusEndX = shape.cx + shape.radius * Math.cos(radiusAngle);
+        const radiusEndY = shape.cy + shape.radius * Math.sin(radiusAngle);
+
+
+        if (selectedShape === shape) {
+            moveCurveHandles(shape);
+        }
+
         updateSVGSource();
     }
 
@@ -1772,7 +2611,30 @@
             shape.element.setAttribute("y", shape.y);
             shape.element.setAttribute("width", shape.width);
             shape.element.setAttribute("height", shape.height);
+            shape.element.setAttribute("rx", shape.cornerRadius || 0);
+            shape.element.setAttribute("ry", shape.cornerRadius || 0);
         }
+        // Update helper gridlines
+        let centerX;
+        let centerY;
+
+        if (shape.type === "circle") {
+            centerX = shape.cx;
+            centerY = shape.cy;
+        } else {
+            centerX = shape.x + shape.width / 2;
+            centerY = shape.y + shape.height / 2;
+        }
+
+        shape.horizontalGuide.setAttribute("x1", 0);
+        shape.horizontalGuide.setAttribute("y1", centerY);
+        shape.horizontalGuide.setAttribute("x2", artboardSize);
+        shape.horizontalGuide.setAttribute("y2", centerY);
+
+        shape.verticalGuide.setAttribute("x1", centerX);
+        shape.verticalGuide.setAttribute("y1", 0);
+        shape.verticalGuide.setAttribute("x2", centerX);
+        shape.verticalGuide.setAttribute("y2", artboardSize);
 
         if (selectedShape === shape && !shape.hidden && !shape.locked) {
             updateBasicShapeHandles(shape);
@@ -1784,6 +2646,7 @@
     // 12. SNAPPING & ALIGNMENT GUIDES
     // ========================================================================
     function getShapeEndpoints(shape) {
+        if (!shape) return [];
         if (shape.type === "line") {
             return [
                 { x: shape.x1, y: shape.y1, shape, end: "start" },
@@ -1793,19 +2656,61 @@
         if (shape.type === "curve") {
             return [
                 { x: shape.cx + shape.radius * Math.cos(shape.startAngle), y: shape.cy + shape.radius * Math.sin(shape.startAngle), shape, end: "start" },
-                { x: shape.cx + shape.radius * Math.cos(shape.endAngle), y: shape.cy + shape.radius * Math.sin(shape.endAngle), shape, end: "end" }
+                { x: shape.cx + shape.radius * Math.cos(shape.endAngle), y: shape.cy + shape.radius * Math.sin(shape.endAngle), shape, end: "end" },
+                { x: shape.cx, y: shape.cy, shape, end: "center" }
             ];
+        }
+        if (shape.type === "circle") {
+            return [
+                { x: shape.cx, y: shape.cy, shape, end: "center" },
+                { x: shape.cx, y: shape.cy - shape.radius, shape, end: "top" },
+                { x: shape.cx, y: shape.cy + shape.radius, shape, end: "bottom" },
+                { x: shape.cx - shape.radius, y: shape.cy, shape, end: "left" },
+                { x: shape.cx + shape.radius, y: shape.cy, shape, end: "right" }
+            ];
+        }
+        if (shape.type === "rectangle") {
+            return [
+                { x: shape.x, y: shape.y, shape, end: "nw" },
+                { x: shape.x + shape.width, y: shape.y, shape, end: "ne" },
+                { x: shape.x, y: shape.y + shape.height, shape, end: "sw" },
+                { x: shape.x + shape.width, y: shape.y + shape.height, shape, end: "se" },
+                { x: shape.x + shape.width / 2, y: shape.y + shape.height / 2, shape, end: "center" }
+            ];
+        }
+        if (shape.type === "path") {
+            const endpoints = [];
+            (shape.points || []).forEach((pt, idx) => {
+                endpoints.push({ x: pt.x, y: pt.y, shape, end: `v_${idx}` });
+            });
+            (shape.holes || []).forEach((hole, hIdx) => {
+                const pts = Array.isArray(hole) ? hole : hole.points;
+                (pts || []).forEach((pt, pIdx) => {
+                    endpoints.push({ x: pt.x, y: pt.y, shape, end: `h_${hIdx}_${pIdx}` });
+                });
+            });
+            return endpoints;
         }
         return [];
     }
 
-    function getSnappedPoint(x, y, currentShape) {
-        const snapDistance = 0.3;
-        const releaseDistance = 0.4;
+    function getSnappedPoint(x, y, currentShape, shiftKey = false) {
+        if (shiftKey) {
+            if (endpointSnapIndicator) endpointSnapIndicator.style.display = "none";
+            return { x, y };
+        }
+
+        const snapDistance = 0.55;
+        const releaseDistance = 0.65;
 
         if (dragging?.snappedTo) {
             const target = getShapeEndpoints(dragging.snappedTo.shape).find(pt => pt.end === dragging.snappedTo.end);
             if (target && Math.hypot(x - target.x, y - target.y) <= releaseDistance) {
+                if (endpointSnapIndicator) {
+                    endpointSnapIndicator.setAttribute("cx", target.x);
+                    endpointSnapIndicator.setAttribute("cy", target.y);
+                    endpointSnapIndicator.style.display = "block";
+                }
                 return { x: target.x, y: target.y };
             }
             dragging.snappedTo = null;
@@ -1827,9 +2732,15 @@
 
         if (closest) {
             dragging.snappedTo = { shape: closest.shape, end: closest.end };
+            if (endpointSnapIndicator) {
+                endpointSnapIndicator.setAttribute("cx", closest.x);
+                endpointSnapIndicator.setAttribute("cy", closest.y);
+                endpointSnapIndicator.style.display = "block";
+            }
             return { x: closest.x, y: closest.y };
         }
 
+        if (endpointSnapIndicator) endpointSnapIndicator.style.display = "none";
         return { x, y };
     }
 
@@ -1844,7 +2755,13 @@
             return { left: Math.min(shape.x1, shape.x2), right: Math.max(shape.x1, shape.x2), top: Math.min(shape.y1, shape.y2), bottom: Math.max(shape.y1, shape.y2) };
         }
         if (shape.type === "curve") {
-            return { left: shape.cx - shape.radius, right: shape.cx + shape.radius, top: shape.cy - shape.radius, bottom: shape.cy + shape.radius };
+            const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
+            const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
+            const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
+            const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
+            const xs = [startX, endX, shape.cx];
+            const ys = [startY, endY, shape.cy];
+            return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) };
         }
         if (shape.type === "path" && shape.points?.length) {
             const xs = shape.points.map(p => p.x);
@@ -1867,8 +2784,8 @@
         const movingX = [movingBounds.left, (movingBounds.left + movingBounds.right) / 2, movingBounds.right];
         const movingY = [movingBounds.top, (movingBounds.top + movingBounds.bottom) / 2, movingBounds.bottom];
 
-        const targetsX = [0, 12, 24];
-        const targetsY = [0, 12, 24];
+        const targetsX = [0, artboardSize / 2, artboardSize];
+        const targetsY = [0, artboardSize / 2, artboardSize];
 
         shapes.forEach(other => {
             if (other === movingShape || other.hidden) return;
@@ -1886,17 +2803,35 @@
             alignmentVertical.setAttribute("x1", verticalMatch);
             alignmentVertical.setAttribute("x2", verticalMatch);
             alignmentVertical.setAttribute("y1", 0);
-            alignmentVertical.setAttribute("y2", 24);
+            alignmentVertical.setAttribute("y2", artboardSize);
             alignmentVertical.style.display = "block";
         }
 
         if (horizontalMatch !== undefined) {
             alignmentHorizontal.setAttribute("x1", 0);
-            alignmentHorizontal.setAttribute("x2", 24);
+            alignmentHorizontal.setAttribute("x2", artboardSize);
             alignmentHorizontal.setAttribute("y1", horizontalMatch);
             alignmentHorizontal.setAttribute("y2", horizontalMatch);
             alignmentHorizontal.style.display = "block";
         }
+    }
+
+    function renderCustomMirrorAxes() {
+        if (!customMirrorAxesGroup) return;
+        customMirrorAxesGroup.innerHTML = "";
+        customMirrorAxes.forEach(axis => {
+            const line = document.createElementNS(SVG_NS, "line");
+            line.setAttribute("x1", axis.x1);
+            line.setAttribute("y1", axis.y1);
+            line.setAttribute("x2", axis.x2);
+            line.setAttribute("y2", axis.y2);
+            line.setAttribute("stroke", "#EC4899");
+            line.setAttribute("stroke-width", "0.35");
+            line.setAttribute("stroke-dasharray", "0.8 0.5");
+            line.setAttribute("opacity", "0.9");
+            line.setAttribute("pointer-events", "none");
+            customMirrorAxesGroup.appendChild(line);
+        });
     }
 
     // ========================================================================
@@ -1906,11 +2841,39 @@
         // Close context menu on any click
         hideContextMenu();
 
+        const pos = getSVGPosition(event);
+
+        // Custom Mirror Axis 2-Point Placement Mode
+        if (isPlacingMirrorAxis) {
+            if (event.button !== 0) return;
+            if (!customMirrorStart) {
+                customMirrorStart = { x: Math.round(pos.x * 2) / 2, y: Math.round(pos.y * 2) / 2 };
+                showToast("First point placed. Click second point to complete mirror axis.", "info");
+            } else {
+                const end = { x: Math.round(pos.x * 2) / 2, y: Math.round(pos.y * 2) / 2 };
+                if (end.x !== customMirrorStart.x || end.y !== customMirrorStart.y) {
+                    customMirrorAxes = [{
+                        id: `axis-${Date.now()}`,
+                        x1: customMirrorStart.x,
+                        y1: customMirrorStart.y,
+                        x2: end.x,
+                        y2: end.y,
+                        active: true
+                    }];
+                    renderCustomMirrorAxes();
+                    showToast("Custom mirror axis set!", "success");
+                }
+                customMirrorStart = null;
+                isPlacingMirrorAxis = false;
+                customMirrorToolBtn?.classList.remove("active");
+            }
+            return;
+        }
+
         // Path drawing in progress
         if (pathDrawing) {
             if (event.button !== 0) return;
             event.preventDefault();
-            const pos = getSVGPosition(event);
             pathDrawing.points.push(pos);
             const pathData = createPathData(pathDrawing.points, pathDrawing.curved);
             pathDrawing.preview.setAttribute("d", pathData);
@@ -1918,6 +2881,9 @@
         }
 
         beginHistoryAction();
+        if (event.button === 0 && event.target.setPointerCapture) {
+            event.target.setPointerCapture(event.pointerId);
+        }
 
         // Check if locked shape clicked
         const lockedShape = shapes.find(shape => {
@@ -1959,7 +2925,6 @@
             if (!shape) return;
             selectShape(shape);
 
-            const pos = getSVGPosition(event);
             dragging = {
                 shape,
                 type: "basic-handle",
@@ -1970,38 +2935,83 @@
                 initialY: shape.y,
                 initialWidth: shape.width,
                 initialHeight: shape.height,
-                initialRadius: shape.radius
+                initialRadius: shape.radius,
+                initialCornerRadius: shape.cornerRadius || 0
             };
+            // Show helper guides
+            shape.horizontalGuide.style.display = "block";
+            shape.verticalGuide.style.display = "block";
             return;
         }
 
         // 3. Curve Handle
         if (curveHit) {
-            const shape = shapes.find(s => s.type === "curve" && s.handles?.includes(curveHit));
-            if (!shape) return;
-            selectShape(shape);
+            const shape = shapes.find(s =>
+                s.type === "curve" &&
+                s.handles?.includes(curveHit)
+            );
 
-            const pos = getSVGPosition(event);
+            if (!shape) return;
+
             const action = curveHit.dataset.action;
 
-            let pivot = null;
-            if (action === "rotate-b") {
-                pivot = { x: shape.cx + shape.radius * Math.cos(shape.endAngle), y: shape.cy + shape.radius * Math.sin(shape.endAngle) };
-            } else if (action === "rotate-a") {
-                pivot = { x: shape.cx + shape.radius * Math.cos(shape.startAngle), y: shape.cy + shape.radius * Math.sin(shape.startAngle) };
+            if (selectedShape !== shape) {
+                selectShape(shape);
             }
+
+            // Determine fixed pivot for yellow rotation handles
+            let pivot = null;
+
+            if (action === "rotate-a") {
+                pivot = {
+                    x: shape.cx + shape.radius * Math.cos(shape.startAngle),
+                    y: shape.cy + shape.radius * Math.sin(shape.startAngle)
+                };
+            }
+
+            else if (action === "rotate-b") {
+                pivot = {
+                    x: shape.cx + shape.radius * Math.cos(shape.endAngle),
+                    y: shape.cy + shape.radius * Math.sin(shape.endAngle)
+                };
+            }
+
+            const initialCursorAngle = pivot
+                ? Math.atan2(
+                    pos.y - pivot.y,
+                    pos.x - pivot.x
+                )
+                : null;
 
             dragging = {
                 shape,
                 type: "curve-handle",
                 action,
+
+                startX: pos.x,
                 startY: pos.y,
+
                 startRadius: shape.radius,
-                pivot,
+
+                startCx: shape.cx,
+                startCy: shape.cy,
+
                 startAngle: shape.startAngle,
                 initialEndAngle: shape.endAngle,
+
+                pivot,
+                initialCursorAngle,
+
                 snappedTo: null
             };
+            // Show all curve helper guides
+            shape.circumferenceGuide.style.display = "block";
+            shape.horizontalGuide.style.display = "block";
+            shape.verticalGuide.style.display = "block";
+            shape.startRadialGuide.style.display = "block";
+            shape.endRadialGuide.style.display = "block";
+            shape.angleGuide.style.display = "block";
+
             return;
         }
 
@@ -2024,7 +3034,7 @@
         const clickedShape = shapes.find(item => {
             if (item.hidden) return false;
             if (item.type === "circle" || item.type === "rectangle" || item.type === "path") {
-                return item.element === event.target;
+                return item.element === event.target || item.strokeElement === event.target;
             }
             if (item.type === "line") {
                 return item.hitLine === event.target || item.element === event.target;
@@ -2037,7 +3047,6 @@
 
         if (clickedShape) {
             selectShape(clickedShape, event.shiftKey);
-            const pos = getSVGPosition(event);
 
             dragging = {
                 shape: clickedShape,
@@ -2054,9 +3063,24 @@
             return;
         }
 
-        // Clicking empty canvas
-        if (!event.shiftKey) {
-            selectShape(null);
+        // 6. Clicking empty canvas -> start marquee selection box
+        if (event.button === 0) {
+            marqueeStart = {
+                x: pos.x,
+                y: pos.y,
+                shiftKey: event.shiftKey,
+                initialSelection: event.shiftKey ? [...selectedShapes] : []
+            };
+            if (!event.shiftKey) {
+                selectShape(null);
+            }
+            if (marqueeSelectionBox) {
+                marqueeSelectionBox.setAttribute("x", pos.x);
+                marqueeSelectionBox.setAttribute("y", pos.y);
+                marqueeSelectionBox.setAttribute("width", "0");
+                marqueeSelectionBox.setAttribute("height", "0");
+                marqueeSelectionBox.style.display = "block";
+            }
         }
     });
 
@@ -2070,6 +3094,49 @@
             gridHoverMarker.setAttribute("cx", rx);
             gridHoverMarker.setAttribute("cy", ry);
             gridHoverMarker.style.display = "block";
+        }
+
+        // Marquee Selection Box Update
+        if (marqueeStart && marqueeSelectionBox) {
+            const minX = Math.min(marqueeStart.x, position.x);
+            const minY = Math.min(marqueeStart.y, position.y);
+            const width = Math.abs(position.x - marqueeStart.x);
+            const height = Math.abs(position.y - marqueeStart.y);
+
+            marqueeSelectionBox.setAttribute("x", minX);
+            marqueeSelectionBox.setAttribute("y", minY);
+            marqueeSelectionBox.setAttribute("width", width);
+            marqueeSelectionBox.setAttribute("height", height);
+
+            const marqueeRect = { left: minX, right: minX + width, top: minY, bottom: minY + height };
+            const intersected = [];
+
+            shapes.forEach(shape => {
+                if (shape.hidden || shape.locked) return;
+                const b = getAlignmentBounds(shape);
+                if (b && !(b.right < marqueeRect.left || b.left > marqueeRect.right || b.bottom < marqueeRect.top || b.top > marqueeRect.bottom)) {
+                    intersected.push(shape);
+                }
+            });
+
+            if (marqueeStart.shiftKey) {
+                const combined = Array.from(new Set([...marqueeStart.initialSelection, ...intersected]));
+                selectedShapes = combined;
+                selectedShape = selectedShapes[0] || null;
+            } else {
+                selectedShapes = intersected;
+                selectedShape = intersected[0] || null;
+            }
+
+            shapes.forEach(item => {
+                if (item.element) {
+                    item.element.classList.toggle("is-selected", selectedShapes.includes(item));
+                }
+            });
+            updatePropertiesPanel();
+            updateMeasurementPanel();
+            renderLayers();
+            return;
         }
 
         if (!dragging || dragging.shape.locked || dragging.shape.hidden) return;
@@ -2092,9 +3159,9 @@
             return;
         }
 
-        // Line Endpoint Drag
+        // Line Endpoint Drag (with snapping and Shift override)
         if (dragging.type === "endpoint") {
-            const snapped = getSnappedPoint(position.x, position.y, shape);
+            const snapped = getSnappedPoint(position.x, position.y, shape, event.shiftKey);
             if (dragging.end === "start") {
                 shape.x1 = snapped.x;
                 shape.y1 = snapped.y;
@@ -2103,24 +3170,133 @@
                 shape.y2 = snapped.y;
             }
             updateLine(shape);
+            dragging.shape.alignedGuide.style.display = "block";
+            dragging.shape.perpendicularGuide.style.display = "block";
             return;
         }
 
-        // Curve Handle Move
+        // =====================================
+        // CURVE CENTER DRAG
+        // =====================================
+
+        if (dragging.type === "curve-center") {
+
+            const dx = position.x - dragging.startX;
+            const dy = position.y - dragging.startY;
+
+            const newX = dragging.initialCx + dx;
+            const newY = dragging.initialCy + dy;
+
+            // Snap center to 1-unit grid
+            const snappedX = event.shiftKey ? newX : Math.round(newX);
+            const snappedY = event.shiftKey ? newY : Math.round(newY);
+
+            shape.cx = Math.max(
+                shape.radius,
+                Math.min(artboardSize - shape.radius, snappedX)
+            );
+
+            shape.cy = Math.max(
+                shape.radius,
+                Math.min(artboardSize - shape.radius, snappedY)
+            );
+
+            updateCurve(shape);
+            return;
+        }
+
+
+        // =====================================
+        // CURVE HANDLE MOVEMENT
+        // =====================================
+
         if (dragging.type === "curve-handle") {
-            if (dragging.action === "rotate-a" || dragging.action === "rotate-b") {
-                const angle = Math.atan2(position.y - shape.cy, position.x - shape.cx);
-                const finalAngle = snapAngle(angle);
 
-                if (dragging.action === "rotate-a") shape.startAngle = finalAngle;
-                else shape.endAngle = finalAngle;
+            const action = dragging.action;
 
-                updateCurve(shape);
-            } else if (dragging.action === "radius") {
-                const dist = Math.hypot(position.x - shape.cx, position.y - shape.cy);
-                shape.radius = Math.max(0.5, Math.min(12, dist));
-                updateCurve(shape);
+            // BLUE A: Change start angle
+            if (action === "start") {
+
+                const angle = Math.atan2(
+                    position.y - shape.cy,
+                    position.x - shape.cx
+                );
+
+                shape.startAngle = snapAngle(angle);
             }
+
+
+            // BLUE B: Change end angle
+            else if (action === "end") {
+
+                const angle = Math.atan2(
+                    position.y - shape.cy,
+                    position.x - shape.cx
+                );
+
+                shape.endAngle = snapAngle(angle);
+            }
+
+
+            // YELLOW: Rotate around fixed endpoint
+            else if (
+                action === "rotate-a" ||
+                action === "rotate-b"
+            ) {
+
+                const currentAngle = Math.atan2(
+                    position.y - dragging.pivot.y,
+                    position.x - dragging.pivot.x
+                );
+
+                let rotation =
+                    currentAngle - dragging.initialCursorAngle;
+
+                // Normalize rotation
+                rotation = Math.atan2(
+                    Math.sin(rotation),
+                    Math.cos(rotation)
+                );
+
+                // Snap rotation to 10 degrees
+                rotation = snapAngle(rotation);
+
+                const pivot = dragging.pivot;
+
+                const dx = dragging.startCx - pivot.x;
+                const dy = dragging.startCy - pivot.y;
+
+                // Rotate curve centre around fixed endpoint
+                shape.cx = pivot.x +
+                    dx * Math.cos(rotation) -
+                    dy * Math.sin(rotation);
+
+                shape.cy = pivot.y +
+                    dx * Math.sin(rotation) +
+                    dy * Math.cos(rotation);
+
+                // Rotate both endpoints by exactly the same amount
+                shape.startAngle = dragging.startAngle + rotation;
+                shape.endAngle = dragging.initialEndAngle + rotation;
+            }
+
+
+            // GREEN: Change radius vertically
+            else if (action === "radius") {
+
+                const movement = dragging.startY - position.y;
+                const newRadius = dragging.startRadius + movement;
+
+                shape.radius = Math.max(
+                    0.3,
+                    Math.min(
+                        artboardSize,
+                        event.shiftKey ? newRadius : Math.round(newRadius)
+                    )
+                );
+            }
+
+            updateCurve(shape);
             return;
         }
 
@@ -2128,12 +3304,24 @@
         if (dragging.type === "basic-handle") {
             if (shape.type === "circle") {
                 const dist = Math.hypot(position.x - shape.cx, position.y - shape.cy);
-                shape.radius = Math.max(0.2, Math.min(12, dist));
+                shape.radius = Math.max(0.2, Math.min(artboardSize, dist));
                 updateBasicShape(shape);
             } else if (shape.type === "rectangle") {
                 const dx = position.x - dragging.startX;
                 const dy = position.y - dragging.startY;
                 const action = dragging.action;
+                if (dragging.action === "corner-radius") {
+                    shape.cornerRadius = Math.max(
+                        0,
+                        Math.min(
+                            Math.min(shape.width, shape.height) / 2,
+                            position.x - shape.x
+                        )
+                    );
+
+                    updateBasicShape(shape);
+                    return;
+                }
 
                 if (action.includes("e")) shape.width = Math.max(0.5, dragging.initialWidth + dx);
                 if (action.includes("s")) shape.height = Math.max(0.5, dragging.initialHeight + dy);
@@ -2152,41 +3340,54 @@
             return;
         }
 
-        // Whole Shape Body Drag
+        // Whole Shape Body Drag (Multi-selection group move, preserving artboardSize)
         if (dragging.type === "body") {
             const dx = position.x - dragging.previousX;
             const dy = position.y - dragging.previousY;
             dragging.previousX = position.x;
             dragging.previousY = position.y;
 
-            // Move all selected shapes together
             const targets = selectedShapes.length ? selectedShapes : [shape];
 
             targets.forEach(item => {
                 if (item.type === "line") {
-                    item.x1 = Math.max(0, Math.min(24, item.x1 + dx));
-                    item.y1 = Math.max(0, Math.min(24, item.y1 + dy));
-                    item.x2 = Math.max(0, Math.min(24, item.x2 + dx));
-                    item.y2 = Math.max(0, Math.min(24, item.y2 + dy));
+                    item.x1 = Math.max(0, Math.min(artboardSize, item.x1 + dx));
+                    item.y1 = Math.max(0, Math.min(artboardSize, item.y1 + dy));
+                    item.x2 = Math.max(0, Math.min(artboardSize, item.x2 + dx));
+                    item.y2 = Math.max(0, Math.min(artboardSize, item.y2 + dy));
                     updateLine(item);
                 } else if (item.type === "curve") {
-                    item.cx = Math.max(0, Math.min(24, item.cx + dx));
-                    item.cy = Math.max(0, Math.min(24, item.cy + dy));
+                    item.cx = Math.max(0, Math.min(artboardSize, item.cx + dx));
+                    item.cy = Math.max(0, Math.min(artboardSize, item.cy + dy));
                     updateCurve(item);
                 } else if (item.type === "circle") {
-                    item.cx = Math.max(0, Math.min(24, item.cx + dx));
-                    item.cy = Math.max(0, Math.min(24, item.cy + dy));
+                    item.cx = Math.max(0, Math.min(artboardSize, item.cx + dx));
+                    item.cy = Math.max(0, Math.min(artboardSize, item.cy + dy));
                     updateBasicShape(item);
                 } else if (item.type === "rectangle") {
-                    item.x = Math.max(0, Math.min(24 - item.width, item.x + dx));
-                    item.y = Math.max(0, Math.min(24 - item.height, item.y + dy));
+                    item.x = Math.max(0, Math.min(artboardSize - item.width, item.x + dx));
+                    item.y = Math.max(0, Math.min(artboardSize - item.height, item.y + dy));
                     updateBasicShape(item);
                 } else if (item.type === "path") {
-                    item.points.forEach(p => { p.x += dx; p.y += dy; });
-                    (item.holes || []).forEach(h => {
-                        const pts = Array.isArray(h) ? h : h.points;
-                        pts.forEach(p => { p.x += dx; p.y += dy; });
-                    });
+
+                    if (typeof item.svgPathData === "string") {
+                        item.offsetX = (item.offsetX || 0) + dx;
+                        item.offsetY = (item.offsetY || 0) + dy;
+                    } else {
+                        item.points.forEach(p => {
+                            p.x += dx;
+                            p.y += dy;
+                        });
+
+                        (item.holes || []).forEach(h => {
+                            const pts = Array.isArray(h) ? h : h.points;
+                            pts.forEach(p => {
+                                p.x += dx;
+                                p.y += dy;
+                            });
+                        });
+                    }
+
                     updatePathShape(item);
                 }
             });
@@ -2195,14 +3396,48 @@
         }
     });
 
-    function stopMovement() {
+    function stopMovement(event) {
+        if (event && event.target.hasPointerCapture?.(event.pointerId)) {
+            event.target.releasePointerCapture(event.pointerId);
+        }
+        if (marqueeStart) {
+            marqueeStart = null;
+            if (marqueeSelectionBox) {
+                marqueeSelectionBox.style.display = "none";
+            }
+            if (selectedShape && !selectedShape.hidden && !selectedShape.locked) {
+                createHandlesForShape(selectedShape);
+            }
+        }
+
+        if (endpointSnapIndicator) {
+            endpointSnapIndicator.style.display = "none";
+        }
+
         if (!dragging) return;
 
         if (dragging.shape?.type === "curve") {
-            dragging.shape.horizontalGuide.style.display = "none";
-            dragging.shape.angleGuide.style.display = "none";
-        }
+            const shape = dragging.shape;
 
+            shape.circumferenceGuide.style.display = "none";
+            shape.horizontalGuide.style.display = "none";
+            shape.verticalGuide.style.display = "none";
+            shape.startRadialGuide.style.display = "none";
+            shape.endRadialGuide.style.display = "none";
+            shape.angleGuide.style.display = "none";
+        }
+        if (dragging.shape?.type === "line") {
+            dragging.shape.alignedGuide.style.display = "none";
+            dragging.shape.perpendicularGuide.style.display = "none";
+        }
+        // Hide circle and rectangle helper guides
+        if (
+            dragging.shape?.type === "circle" ||
+            dragging.shape?.type === "rectangle"
+        ) {
+            dragging.shape.horizontalGuide.style.display = "none";
+            dragging.shape.verticalGuide.style.display = "none";
+        }
         hideAlignmentGuides();
         dragging = null;
 
@@ -2215,6 +3450,7 @@
     workspace.addEventListener("pointercancel", stopMovement);
     workspace.addEventListener("pointerleave", () => {
         if (gridHoverMarker) gridHoverMarker.style.display = "none";
+        if (endpointSnapIndicator) endpointSnapIndicator.style.display = "none";
         hideAlignmentGuides();
     });
 
@@ -2490,12 +3726,16 @@
 
         if (style === "stroke-color") {
             shape.color = input.value;
-            shape.element.setAttribute("stroke", shape.color);
+            if (shape.type === "path") updatePathShape(shape);
+            else shape.element.setAttribute("stroke", shape.color);
         } else if (style === "stroke-width") {
             const val = Math.max(0.1, Math.min(5, Number(input.value) || 2));
             if (shape.type === "line") {
                 shape.width = val;
                 shape.element.setAttribute("stroke-width", val);
+            } else if (shape.type === "path") {
+                shape.strokeWidth = val;
+                updatePathShape(shape);
             } else {
                 shape.strokeWidth = val;
                 shape.element.setAttribute("stroke-width", val);
@@ -2719,9 +3959,16 @@
                     shape.x2 = midX - (shape.x2 - midX);
                     updateLine(shape);
                 } else if (shape.type === "curve") {
+                    shape.cx = midX - (shape.cx - midX);
                     shape.startAngle = Math.PI - shape.startAngle;
                     shape.endAngle = Math.PI - shape.endAngle;
                     updateCurve(shape);
+                } else if (shape.type === "circle") {
+                    shape.cx = midX - (shape.cx - midX);
+                    updateBasicShape(shape);
+                } else if (shape.type === "rectangle") {
+                    shape.x = midX - (shape.x + shape.width - midX);
+                    updateBasicShape(shape);
                 } else if (shape.type === "path") {
                     shape.points.forEach(p => { p.x = midX - (p.x - midX); });
                     (shape.holes || []).forEach(h => {
@@ -2736,9 +3983,16 @@
                     shape.y2 = midY - (shape.y2 - midY);
                     updateLine(shape);
                 } else if (shape.type === "curve") {
+                    shape.cy = midY - (shape.cy - midY);
                     shape.startAngle = -shape.startAngle;
                     shape.endAngle = -shape.endAngle;
                     updateCurve(shape);
+                } else if (shape.type === "circle") {
+                    shape.cy = midY - (shape.cy - midY);
+                    updateBasicShape(shape);
+                } else if (shape.type === "rectangle") {
+                    shape.y = midY - (shape.y + shape.height - midY);
+                    updateBasicShape(shape);
                 } else if (shape.type === "path") {
                     shape.points.forEach(p => { p.y = midY - (p.y - midY); });
                     (shape.holes || []).forEach(h => {
@@ -2750,8 +4004,154 @@
             }
         });
 
+        if (selectedShape) createHandlesForShape(selectedShape);
+        updateMeasurementPanel();
+        updatePropertiesPanel();
         commitHistoryAction();
         showToast(`Flipped ${axis === "h" ? "horizontally" : "vertically"}`, "info");
+    }
+
+    function mirrorSelectedShapes(axis) {
+        const targets = selectedShapes.length ? selectedShapes : (selectedShape ? [selectedShape] : []);
+        if (!targets.length) return;
+
+        beginHistoryAction();
+        const mid = artboardSize / 2;
+
+        targets.forEach(shape => {
+            if (axis === "h") {
+                if (shape.type === "line") {
+                    shape.y1 = artboardSize - shape.y1;
+                    shape.y2 = artboardSize - shape.y2;
+                    updateLine(shape);
+                } else if (shape.type === "curve") {
+                    shape.cy = artboardSize - shape.cy;
+                    shape.startAngle = -shape.startAngle;
+                    shape.endAngle = -shape.endAngle;
+                    updateCurve(shape);
+                } else if (shape.type === "circle") {
+                    shape.cy = artboardSize - shape.cy;
+                    updateBasicShape(shape);
+                } else if (shape.type === "rectangle") {
+                    shape.y = artboardSize - (shape.y + shape.height);
+                    updateBasicShape(shape);
+                } else if (shape.type === "path") {
+                    shape.points.forEach(p => { p.y = artboardSize - p.y; });
+                    (shape.holes || []).forEach(h => {
+                        const pts = Array.isArray(h) ? h : h.points;
+                        pts.forEach(p => { p.y = artboardSize - p.y; });
+                    });
+                    updatePathShape(shape);
+                }
+            } else if (axis === "v") {
+                if (shape.type === "line") {
+                    shape.x1 = artboardSize - shape.x1;
+                    shape.x2 = artboardSize - shape.x2;
+                    updateLine(shape);
+                } else if (shape.type === "curve") {
+                    shape.cx = artboardSize - shape.cx;
+                    shape.startAngle = Math.PI - shape.startAngle;
+                    shape.endAngle = Math.PI - shape.endAngle;
+                    updateCurve(shape);
+                } else if (shape.type === "circle") {
+                    shape.cx = artboardSize - shape.cx;
+                    updateBasicShape(shape);
+                } else if (shape.type === "rectangle") {
+                    shape.x = artboardSize - (shape.x + shape.width);
+                    updateBasicShape(shape);
+                } else if (shape.type === "path") {
+                    shape.points.forEach(p => { p.x = artboardSize - p.x; });
+                    (shape.holes || []).forEach(h => {
+                        const pts = Array.isArray(h) ? h : h.points;
+                        pts.forEach(p => { p.x = artboardSize - p.x; });
+                    });
+                    updatePathShape(shape);
+                }
+            }
+        });
+
+        if (selectedShape) createHandlesForShape(selectedShape);
+        updateMeasurementPanel();
+        updatePropertiesPanel();
+        commitHistoryAction();
+        showToast(`Mirrored ${axis === "h" ? "horizontally" : "vertically"} across artboard`, "info");
+    }
+
+    function mirrorAcrossCustomAxis() {
+        if (!customMirrorAxes.length) {
+            showToast("No custom mirror axis set. Click 'Custom Axis' and select 2 points on canvas.", "warning");
+            return;
+        }
+        const axis = customMirrorAxes[0];
+        const targets = selectedShapes.length ? selectedShapes : (selectedShape ? [selectedShape] : []);
+        if (!targets.length) return;
+
+        beginHistoryAction();
+
+        targets.forEach(shape => {
+            if (shape.type === "line") {
+                const p1 = reflectPointAcrossLine(shape.x1, shape.y1, axis.x1, axis.y1, axis.x2, axis.y2);
+                const p2 = reflectPointAcrossLine(shape.x2, shape.y2, axis.x1, axis.y1, axis.x2, axis.y2);
+                shape.x1 = p1.x; shape.y1 = p1.y;
+                shape.x2 = p2.x; shape.y2 = p2.y;
+                updateLine(shape);
+            } else if (shape.type === "circle") {
+                const c = reflectPointAcrossLine(shape.cx, shape.cy, axis.x1, axis.y1, axis.x2, axis.y2);
+                shape.cx = c.x; shape.cy = c.y;
+                updateBasicShape(shape);
+            } else if (shape.type === "curve") {
+                const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
+                const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
+                const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
+                const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
+                const pStart = reflectPointAcrossLine(startX, startY, axis.x1, axis.y1, axis.x2, axis.y2);
+                const pEnd = reflectPointAcrossLine(endX, endY, axis.x1, axis.y1, axis.x2, axis.y2);
+                const pCenter = reflectPointAcrossLine(shape.cx, shape.cy, axis.x1, axis.y1, axis.x2, axis.y2);
+                shape.cx = pCenter.x;
+                shape.cy = pCenter.y;
+                shape.startAngle = Math.atan2(pEnd.y - shape.cy, pEnd.x - shape.cx);
+                shape.endAngle = Math.atan2(pStart.y - shape.cy, pStart.x - shape.cx);
+                updateCurve(shape);
+            } else if (shape.type === "rectangle") {
+                const p1 = reflectPointAcrossLine(shape.x, shape.y, axis.x1, axis.y1, axis.x2, axis.y2);
+                const p2 = reflectPointAcrossLine(shape.x + shape.width, shape.y + shape.height, axis.x1, axis.y1, axis.x2, axis.y2);
+                shape.x = Math.min(p1.x, p2.x);
+                shape.y = Math.min(p1.y, p2.y);
+                shape.width = Math.abs(p2.x - p1.x);
+                shape.height = Math.abs(p2.y - p1.y);
+                updateBasicShape(shape);
+            } else if (shape.type === "path") {
+                shape.points = shape.points.map(p => reflectPointAcrossLine(p.x, p.y, axis.x1, axis.y1, axis.x2, axis.y2));
+                (shape.holes || []).forEach(h => {
+                    const pts = Array.isArray(h) ? h : h.points;
+                    const reflected = pts.map(p => reflectPointAcrossLine(p.x, p.y, axis.x1, axis.y1, axis.x2, axis.y2));
+                    if (Array.isArray(h)) {
+                        h.splice(0, h.length, ...reflected);
+                    } else {
+                        h.points = reflected;
+                    }
+                });
+                updatePathShape(shape);
+            }
+        });
+
+        if (selectedShape) createHandlesForShape(selectedShape);
+        updateMeasurementPanel();
+        updatePropertiesPanel();
+        commitHistoryAction();
+        showToast("Mirrored across custom axis", "success");
+    }
+
+    function duplicateAndMirrorSelectedShapes() {
+        const targets = selectedShapes.length ? selectedShapes : (selectedShape ? [selectedShape] : []);
+        if (!targets.length) return;
+
+        duplicateSelectedShapes();
+        if (customMirrorAxes.length) {
+            mirrorAcrossCustomAxis();
+        } else {
+            mirrorSelectedShapes("v");
+        }
     }
 
     function removeShape(shape) {
@@ -2773,7 +4173,7 @@
                 if (!shapeDOMKeys.has(k)) data[k] = structuredClone(shape[k]);
             });
 
-            // Offset copy
+            // Offset copy (preserves path points AND cutout holes)
             if (data.type === "line") {
                 data.x1 += COPY_OFFSET; data.x2 += COPY_OFFSET;
                 data.y1 += COPY_OFFSET; data.y2 += COPY_OFFSET;
@@ -2782,7 +4182,12 @@
             } else if (data.type === "rectangle") {
                 data.x += COPY_OFFSET; data.y += COPY_OFFSET;
             } else if (data.type === "path") {
-                data.points = data.points.map(p => ({ x: p.x + COPY_OFFSET, y: p.y + COPY_OFFSET }));
+                data.points = (data.points || []).map(p => ({ x: p.x + COPY_OFFSET, y: p.y + COPY_OFFSET }));
+                data.holes = (data.holes || []).map(h => {
+                    const pts = Array.isArray(h) ? h : h.points;
+                    const mapped = (pts || []).map(p => ({ x: p.x + COPY_OFFSET, y: p.y + COPY_OFFSET }));
+                    return Array.isArray(h) ? mapped : { ...h, points: mapped };
+                });
             }
 
             const newShape = createShapeFromCopy(data);
@@ -2817,9 +4222,16 @@
             updateBasicShape(shape);
         } else if (data.type === "path") {
             const el = document.createElementNS(SVG_NS, "path");
-            shape = { ...structuredClone(data), element: el, handles: [] };
+
+            shape = {
+                ...structuredClone(data),
+                element: el,
+                handles: []
+            };
+
             workspace.appendChild(el);
             shapes.push(shape);
+
             updatePathShape(shape);
         }
 
@@ -2834,6 +4246,18 @@
         if (action.startsWith("align-")) alignSelectedShapes(action);
         else if (action === "flip-h") flipSelectedShapes("h");
         else if (action === "flip-v") flipSelectedShapes("v");
+        else if (action === "custom-mirror-axis") {
+            isPlacingMirrorAxis = !isPlacingMirrorAxis;
+            customMirrorStart = null;
+            btn.classList.toggle("active", isPlacingMirrorAxis);
+            if (isPlacingMirrorAxis) {
+                showToast("Click 2 points on the canvas to place a custom mirror axis", "info");
+            } else {
+                showToast("Custom mirror tool canceled", "info");
+            }
+        }
+        else if (action === "custom-mirror") mirrorAcrossCustomAxis();
+        else if (action === "duplicate-mirror") duplicateAndMirrorSelectedShapes();
         else if (action === "duplicate") duplicateSelectedShapes();
         else if (action === "bring-front") {
             if (selectedShape) {
@@ -2841,6 +4265,16 @@
                 if (idx !== -1 && idx < shapes.length - 1) reorderShape(idx, 1);
             }
         }
+    });
+
+    liveSymmetryHCheckbox?.addEventListener("change", e => {
+        liveSymmetryH = e.target.checked;
+        showToast(`Horizontal live symmetry ${liveSymmetryH ? "enabled" : "disabled"}`, "info");
+    });
+
+    liveSymmetryVCheckbox?.addEventListener("change", e => {
+        liveSymmetryV = e.target.checked;
+        showToast(`Vertical live symmetry ${liveSymmetryV ? "enabled" : "disabled"}`, "info");
     });
 
     deleteButton?.addEventListener("click", () => {
@@ -2865,9 +4299,13 @@
     }
 
     function generateSVG(colorMode = "original") {
+        return generateSVGFromShapes(shapes, colorMode);
+    }
+
+    function generateSVGFromShapes(sourceShapes, colorMode = "original") {
         const artwork = [];
 
-        shapes.forEach(shape => {
+        sourceShapes.forEach(shape => {
             if (shape.hidden) return;
 
             let strokeColor = shape.color;
@@ -2891,8 +4329,48 @@
                 const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} 1 ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
                 artwork.push(`    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`);
             } else if (shape.type === "path") {
-                const pathData = getPathParts(shape).map(p => createPathData(p.points, p.curved)).join(" ");
-                artwork.push(`    <path d="${pathData}" fill="${shape.fill || "none"}" fill-rule="evenodd" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round"/>`);
+
+                // Imported SVG path: preserve its original Bézier geometry
+                if (typeof shape.svgPathData === "string") {
+
+                    const transform =
+                        shape.offsetX || shape.offsetY
+                            ? ` transform="translate(${formatSVGNumber(shape.offsetX || 0)} ${formatSVGNumber(shape.offsetY || 0)})"`
+                            : "";
+
+                    artwork.push(
+                        `    <path d="${shape.svgPathData}"${transform} fill="${shape.fill || "none"}" fill-rule="evenodd" stroke="${strokeColor || "none"}" stroke-width="${formatSVGNumber(shape.strokeWidth || 2)}" stroke-linecap="round" stroke-linejoin="round"/>`
+                    );
+
+                } else {
+
+                    const hasHoles = shape.holes && shape.holes.length > 0;
+                    const outerPathData = createPathData(shape.points, shape.curved);
+
+                    if (hasHoles) {
+                        const parts = getPathParts(shape);
+                        const compoundPathData = parts.map(item =>
+                            createPathData(item.points, item.curved)
+                        ).join(" ");
+
+                        if (shape.fill && shape.fill !== "none") {
+                            artwork.push(
+                                `    <path d="${compoundPathData}" fill="${shape.fill}" fill-rule="evenodd" stroke="none"/>`
+                            );
+                        }
+
+                        if (shape.strokeWidth && strokeColor && strokeColor !== "none") {
+                            artwork.push(
+                                `    <path d="${compoundPathData}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round"/>`
+                            );
+                        }
+
+                    } else {
+                        artwork.push(
+                            `    <path d="${outerPathData}" fill="${shape.fill || "none"}" fill-rule="evenodd" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round"/>`
+                        );
+                    }
+                }
             } else if (shape.type === "circle") {
                 artwork.push(`    <circle cx="${formatSVGNumber(shape.cx)}" cy="${formatSVGNumber(shape.cy)}" r="${formatSVGNumber(shape.radius)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`);
             } else if (shape.type === "rectangle") {
@@ -2901,7 +4379,7 @@
         });
 
         return [
-            `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`,
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${artboardSize}" height="${artboardSize}" viewBox="0 0 ${artboardSize} ${artboardSize}">`,
             artwork.join("\n"),
             `</svg>`
         ].join("\n");
@@ -2911,6 +4389,481 @@
         if (!svgCode) return;
         svgCode.value = generateSVG();
     }
+    
+function parseSVGPathSegments(d) {
+    if (typeof d !== "string") {
+        throw new Error("SVG path data must be a string.");
+    }
+
+    // Tokenize SVG commands and numbers, including scientific notation.
+    const tokenRegex =
+        /[a-zA-Z]|[-+]?(?:\d*\.)?\d+(?:[eE][-+]?\d+)?/g;
+
+    const tokens = [];
+    let match;
+    let lastIndex = 0;
+
+    while ((match = tokenRegex.exec(d)) !== null) {
+        const skipped = d.slice(lastIndex, match.index);
+
+        // Only SVG separators are allowed between tokens.
+        if (!/^[\s,]*$/.test(skipped)) {
+            throw new Error(
+                `Invalid SVG path data near: "${skipped}"`
+            );
+        }
+
+        tokens.push(match[0]);
+        lastIndex = tokenRegex.lastIndex;
+    }
+
+    if (!/^[\s,]*$/.test(d.slice(lastIndex))) {
+        throw new Error("Invalid characters at the end of SVG path data.");
+    }
+
+    const segments = [];
+
+    let i = 0;
+    let command = null;
+
+    let x = 0;
+    let y = 0;
+
+    let startX = 0;
+    let startY = 0;
+
+    let segmentCounter = 0;
+    let anchorCounter = 0;
+    let subpathCounter = 0;
+
+    let currentAnchorId = null;
+    let subpathStartAnchorId = null;
+    let currentSubpathId = null;
+
+    let previousControl = null;
+    let previousCurveType = null;
+
+    const isCommand = token => /^[a-zA-Z]$/.test(token);
+
+    function readNumber() {
+        if (i >= tokens.length || isCommand(tokens[i])) {
+            throw new Error(
+                `Not enough parameters for SVG command "${command}".`
+            );
+        }
+
+        const value = Number(tokens[i++]);
+
+        if (!Number.isFinite(value)) {
+            throw new Error("Invalid number in SVG path data.");
+        }
+
+        return value;
+    }
+
+    function hasNumbers() {
+        return i < tokens.length && !isCommand(tokens[i]);
+    }
+
+    function createAnchorId() {
+        return `anchor-${++anchorCounter}`;
+    }
+
+    function createSegment(type, data, startId, endId) {
+        return {
+            id: `segment-${++segmentCounter}`,
+            type,
+            command,
+            subpathId: currentSubpathId,
+
+            startAnchorId: startId,
+            endAnchorId: endId,
+
+            ...data
+        };
+    }
+
+    function resetCurveControl() {
+        previousControl = null;
+        previousCurveType = null;
+    }
+
+    while (i < tokens.length) {
+        if (isCommand(tokens[i])) {
+            command = tokens[i++];
+        } else if (!command) {
+            throw new Error("SVG path must begin with a command.");
+        }
+
+        const relative = command === command.toLowerCase();
+        const type = command.toUpperCase();
+
+        if (!"MLHVCSQTAZ".includes(type)) {
+            throw new Error(`Unsupported SVG path command: "${command}".`);
+        }
+
+        // Close the current subpath.
+        if (type === "Z") {
+            if (!currentAnchorId || !subpathStartAnchorId) {
+                throw new Error("Close command has no active subpath.");
+            }
+
+            segments.push(
+                createSegment(
+                    "close",
+                    {
+                        x1: x,
+                        y1: y,
+                        x: startX,
+                        y: startY,
+                        startX,
+                        startY
+                    },
+                    currentAnchorId,
+                    subpathStartAnchorId
+                )
+            );
+
+            x = startX;
+            y = startY;
+            currentAnchorId = subpathStartAnchorId;
+
+            resetCurveControl();
+
+            // Z cannot repeat without another command.
+            command = null;
+            continue;
+        }
+
+        if (!hasNumbers()) {
+            throw new Error(
+                `SVG command "${command}" is missing its parameters.`
+            );
+        }
+
+        const ox = x;
+        const oy = y;
+
+        let segment;
+        let nx;
+        let ny;
+
+        // Move and line commands.
+        if (type === "M" || type === "L" || type === "T") {
+            nx = readNumber();
+            ny = readNumber();
+
+            if (relative) {
+                nx += ox;
+                ny += oy;
+            }
+
+            if (type === "M") {
+                currentSubpathId = `subpath-${++subpathCounter}`;
+
+                const newAnchorId = createAnchorId();
+
+                segment = createSegment(
+                    "move",
+                    {
+                        x1: ox,
+                        y1: oy,
+                        x: nx,
+                        y: ny
+                    },
+                    null,
+                    newAnchorId
+                );
+
+                startX = nx;
+                startY = ny;
+
+                currentAnchorId = newAnchorId;
+                subpathStartAnchorId = newAnchorId;
+
+                // Following coordinate pairs after M become L.
+                command = relative ? "l" : "L";
+
+                resetCurveControl();
+            } else {
+                const newAnchorId = createAnchorId();
+
+                if (type === "T") {
+                    const canReflect =
+                        previousCurveType === "quadratic";
+
+                    const cx = canReflect && previousControl
+                        ? 2 * ox - previousControl.x
+                        : ox;
+
+                    const cy = canReflect && previousControl
+                        ? 2 * oy - previousControl.y
+                        : oy;
+
+                    segment = createSegment(
+                        "smooth-quadratic",
+                        {
+                            x1: ox,
+                            y1: oy,
+                            cx,
+                            cy,
+                            x: nx,
+                            y: ny
+                        },
+                        currentAnchorId,
+                        newAnchorId
+                    );
+
+                    previousControl = { x: cx, y: cy };
+                    previousCurveType = "quadratic";
+                } else {
+                    segment = createSegment(
+                        "line",
+                        {
+                            x1: ox,
+                            y1: oy,
+                            x: nx,
+                            y: ny
+                        },
+                        currentAnchorId,
+                        newAnchorId
+                    );
+
+                    resetCurveControl();
+                }
+
+                currentAnchorId = newAnchorId;
+            }
+
+            x = nx;
+            y = ny;
+        }
+
+        // Horizontal and vertical lines.
+        else if (type === "H" || type === "V") {
+            const value = readNumber();
+
+            nx = type === "H"
+                ? (relative ? ox + value : value)
+                : ox;
+
+            ny = type === "V"
+                ? (relative ? oy + value : value)
+                : oy;
+
+            const newAnchorId = createAnchorId();
+
+            segment = createSegment(
+                "line",
+                {
+                    x1: ox,
+                    y1: oy,
+                    x: nx,
+                    y: ny
+                },
+                currentAnchorId,
+                newAnchorId
+            );
+
+            x = nx;
+            y = ny;
+            currentAnchorId = newAnchorId;
+
+            resetCurveControl();
+        }
+
+        // Cubic Bezier curves.
+        else if (type === "C") {
+            let cx1 = readNumber();
+            let cy1 = readNumber();
+            let cx2 = readNumber();
+            let cy2 = readNumber();
+
+            nx = readNumber();
+            ny = readNumber();
+
+            if (relative) {
+                cx1 += ox;
+                cy1 += oy;
+                cx2 += ox;
+                cy2 += oy;
+                nx += ox;
+                ny += oy;
+            }
+
+            const newAnchorId = createAnchorId();
+
+            segment = createSegment(
+                "cubic",
+                {
+                    x1: ox,
+                    y1: oy,
+                    cx1,
+                    cy1,
+                    cx2,
+                    cy2,
+                    x: nx,
+                    y: ny
+                },
+                currentAnchorId,
+                newAnchorId
+            );
+
+            previousControl = { x: cx2, y: cy2 };
+            previousCurveType = "cubic";
+
+            x = nx;
+            y = ny;
+            currentAnchorId = newAnchorId;
+        }
+
+        // Smooth cubic Bezier curves.
+        else if (type === "S") {
+            let cx2 = readNumber();
+            let cy2 = readNumber();
+
+            nx = readNumber();
+            ny = readNumber();
+
+            if (relative) {
+                cx2 += ox;
+                cy2 += oy;
+                nx += ox;
+                ny += oy;
+            }
+
+            const canReflect =
+                previousCurveType === "cubic";
+
+            const cx1 = canReflect && previousControl
+                ? 2 * ox - previousControl.x
+                : ox;
+
+            const cy1 = canReflect && previousControl
+                ? 2 * oy - previousControl.y
+                : oy;
+
+            const newAnchorId = createAnchorId();
+
+            segment = createSegment(
+                "smooth-cubic",
+                {
+                    x1: ox,
+                    y1: oy,
+                    cx1,
+                    cy1,
+                    cx2,
+                    cy2,
+                    x: nx,
+                    y: ny
+                },
+                currentAnchorId,
+                newAnchorId
+            );
+
+            previousControl = { x: cx2, y: cy2 };
+            previousCurveType = "cubic";
+
+            x = nx;
+            y = ny;
+            currentAnchorId = newAnchorId;
+        }
+
+        // Quadratic Bezier curves.
+        else if (type === "Q") {
+            let cx = readNumber();
+            let cy = readNumber();
+
+            nx = readNumber();
+            ny = readNumber();
+
+            if (relative) {
+                cx += ox;
+                cy += oy;
+                nx += ox;
+                ny += oy;
+            }
+
+            const newAnchorId = createAnchorId();
+
+            segment = createSegment(
+                "quadratic",
+                {
+                    x1: ox,
+                    y1: oy,
+                    cx,
+                    cy,
+                    x: nx,
+                    y: ny
+                },
+                currentAnchorId,
+                newAnchorId
+            );
+
+            previousControl = { x: cx, y: cy };
+            previousCurveType = "quadratic";
+
+            x = nx;
+            y = ny;
+            currentAnchorId = newAnchorId;
+        }
+
+        // Elliptical arc segments.
+        else if (type === "A") {
+            const rx = readNumber();
+            const ry = readNumber();
+            const rotation = readNumber();
+            const largeArc = readNumber();
+            const sweep = readNumber();
+
+            nx = readNumber();
+            ny = readNumber();
+
+            if (relative) {
+                nx += ox;
+                ny += oy;
+            }
+
+            if (
+                (largeArc !== 0 && largeArc !== 1) ||
+                (sweep !== 0 && sweep !== 1)
+            ) {
+                throw new Error("Invalid SVG arc flags.");
+            }
+
+            const newAnchorId = createAnchorId();
+
+            segment = createSegment(
+                "arc",
+                {
+                    x1: ox,
+                    y1: oy,
+                    rx: Math.abs(rx),
+                    ry: Math.abs(ry),
+                    rotation,
+                    largeArc,
+                    sweep,
+                    x: nx,
+                    y: ny
+                },
+                currentAnchorId,
+                newAnchorId
+            );
+
+            x = nx;
+            y = ny;
+            currentAnchorId = newAnchorId;
+
+            resetCurveControl();
+        }
+
+        if (segment) {
+            segments.push(segment);
+        }
+    }
+
+    return segments;
+}
 
     // Bug Fix: Enhanced SVG Source Parser that accepts arbitrary paths and large arcs
     function readSVGSource() {
@@ -2961,6 +4914,8 @@
                     y: Number(el.getAttribute("y")) || 0,
                     width: Number(el.getAttribute("width")) || 5,
                     height: Number(el.getAttribute("height")) || 4,
+                    cornerRadius: parseFloat(el.getAttribute("rx")) || 0,
+                    cornerRadiusY: parseFloat(el.getAttribute("ry")) || 0,
                     color: stroke,
                     fill,
                     strokeWidth
@@ -2968,35 +4923,50 @@
             } else if (tag === "path") {
                 const d = el.getAttribute("d") || "";
 
-                // Check if simple circular arc
-                const arcMatch = d.match(/^\s*M\s*([-\d.]+)[,\s]+([-\d.]+)\s+A\s*([-\d.]+)[,\s]+([-\d.]+)\s+0\s+([01])\s+([01])\s+([-\d.]+)[,\s]+([-\d.]+)\s*$/i);
-                if (arcMatch) {
-                    const [, x1, y1, rx, ry, largeArc, sweep, x2, y2] = arcMatch;
-                    const cx = (Number(x1) + Number(x2)) / 2;
-                    const cy = (Number(y1) + Number(y2)) / 2;
+                if (d.trim()) {
                     parsed.push({
-                        type: "importedArc",
-                        startX: Number(x1), startY: Number(y1),
-                        endX: Number(x2), endY: Number(y2),
-                        radius: Number(rx),
-                        largeArc: Number(largeArc),
-                        sweep: Number(sweep),
+                        type: "path",
+                        svgPathData: d,
+
+                        // Individual editable SVG segments
+                        svgEditableSegments: parseSVGPathSegments(d),
+
+                        points: [],
+                        holes: [],
+                        curved: false,
                         color: stroke,
+                        fill,
                         strokeWidth
                     });
                 } else {
-                    // Arbitrary / Compound Path
-                    const points = [];
-                    const matches = d.matchAll(/[ML]\s*([-\d.]+)[,\s]+([-\d.]+)/gi);
-                    for (const m of matches) {
-                        points.push({ x: Number(m[1]), y: Number(m[2]) });
+                    // Arbitrary / Compound Path: split into subpaths
+                    const subpathRegex = /M\s*([-\d.]+)[,\s]+([-\d.]+)([^M]*)/gi;
+                    let match;
+                    let outerPoints = null;
+                    const holes = [];
+
+                    while ((match = subpathRegex.exec(d)) !== null) {
+                        const startPt = { x: Number(match[1]), y: Number(match[2]) };
+                        const rest = match[3] || "";
+                        const pts = [startPt];
+                        const ptMatches = rest.matchAll(/[L]\s*([-\d.]+)[,\s]+([-\d.]+)/gi);
+                        for (const pm of ptMatches) {
+                            pts.push({ x: Number(pm[1]), y: Number(pm[2]) });
+                        }
+                        if (pts.length >= 2) {
+                            if (!outerPoints) {
+                                outerPoints = pts;
+                            } else {
+                                holes.push({ points: pts, curved: rest.includes("Q") });
+                            }
+                        }
                     }
 
-                    if (points.length >= 2) {
+                    if (outerPoints && outerPoints.length >= 2) {
                         parsed.push({
                             type: "path",
-                            points,
-                            holes: [],
+                            points: outerPoints,
+                            holes: holes,
                             curved: d.includes("Q"),
                             color: stroke,
                             fill,
@@ -3028,17 +4998,29 @@
 
         parsed.forEach(data => {
             if (data.type === "importedArc") {
-                const cx = (data.startX + data.endX) / 2;
-                const cy = (data.startY + data.endY) / 2;
-                createCurve(cx, cy);
+                const arc = arcEndpointToCenter(
+                    data.startX, data.startY,
+                    data.radius, data.radius,
+                    data.phi || 0,
+                    data.largeArc, data.sweep,
+                    data.endX, data.endY
+                );
+
+                createCurve(arc.cx, arc.cy);
                 const s = shapes[shapes.length - 1];
-                s.radius = data.radius;
-                s.startAngle = Math.atan2(data.startY - cy, data.startX - cx);
-                s.endAngle = Math.atan2(data.endY - cy, data.endX - cx);
+                s.radius = arc.rx;
+                s.startAngle = arc.startAngle;
+                s.endAngle = arc.endAngle;
                 s.color = data.color;
                 s.strokeWidth = data.strokeWidth;
                 updateCurve(s);
+
             } else {
+                if (data.type === "path") {
+                    console.log("Original path:", data.svgPathData);
+                    console.log("Editable segments:", data.svgEditableSegments);
+                }
+
                 createShapeFromCopy(data);
             }
         });
@@ -3071,8 +5053,32 @@
     let activeExportFormat = "svg";
     let activeExportColor = "original";
     let activeExportScale = 2; // 48px
+    let exportTargetProject = null;
 
     topbarExportBtn?.addEventListener("click", () => {
+
+        const activeProject = projectManager.projects.find(
+            p => p.id === projectManager.activeProjectId
+        );
+
+        // Use the homepage preview project if its drawer is open.
+        // Otherwise, use the editor's active project.
+        exportTargetProject = selectedHomeProject || activeProject;
+
+        if (!exportTargetProject) {
+            showToast("No project selected for export", "error");
+            return;
+        }
+
+        activeExportColor = exportTargetProject.finishStrokeColor || "original";
+
+        document.querySelectorAll(".export-option").forEach(option => {
+            option.classList.toggle(
+                "active",
+                option.dataset.color === activeExportColor
+            );
+        });
+
         exportModal?.classList.add("show");
     });
 
@@ -3109,9 +5115,21 @@
     });
 
     exportDownloadBtn?.addEventListener("click", () => {
-        const activeProject = projectManager.projects.find(p => p.id === projectManager.activeProjectId);
-        const fileName = (activeProject?.name || "icon").toLowerCase().replace(/[^a-z0-9_-]/g, "-");
-        const svgString = generateSVG(activeExportColor);
+        const activeProject = exportTargetProject;
+
+        if (!activeProject?.data?.shapes) {
+            showToast("Project drawing data is missing", "error");
+            return;
+        }
+
+        const fileName = (activeProject.name || "icon")
+            .toLowerCase()
+            .replace(/[^a-z0-9_-]/g, "-");
+
+        const svgString = generateSVGFromShapes(
+            activeProject.data.shapes,
+            activeExportColor
+        );
 
         if (activeExportFormat === "svg") {
             const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
@@ -3169,7 +5187,8 @@
             return project.searchTerms;
         }
         const name = (project.name || "").trim().toLowerCase();
-        const baseTerms = [name, project.category?.toLowerCase() || "icon"];
+        const category = (project.category || "").trim().toLowerCase();
+        const baseTerms = [name, category].filter(Boolean);
 
         // Expanded intelligent synonym matching
         if (["search", "magnifier", "magnifying glass", "find"].some(k => name.includes(k))) {
@@ -3192,7 +5211,8 @@
         if (!homeProjectGrid) return;
         homeProjectGrid.innerHTML = "";
 
-        let finished = projectManager.projects.filter(p => p.status === "finished");
+        const allFinished = projectManager.projects.filter(p => p.status === "finished");
+        let finished = [...allFinished];
 
         // Filter by Tab
         if (activeHomeTab === "recent") {
@@ -3202,35 +5222,61 @@
             finished = finished.filter(p => p.favorite === true);
         }
 
-        // Category Filter
+        // Populate alphabetical category list in sidebar
+        const categoryCounts = {};
+        allFinished.forEach(p => {
+            const cat = (p.category || "General").trim();
+            categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+        });
+        const sortedCategories = Object.keys(categoryCounts).sort((a, b) => a.localeCompare(b));
+
+        if (categoriesAlphabeticalList) {
+            categoriesAlphabeticalList.innerHTML = "";
+            sortedCategories.forEach(cat => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = `cat-list-pill ${selectedCategoryFilter === cat ? "active" : ""}`;
+                item.innerHTML = `<span class="cat-pill-name">${cat}</span><span class="cat-pill-count">${categoryCounts[cat]}</span>`;
+                item.addEventListener("click", () => {
+                    selectedCategoryFilter = selectedCategoryFilter === cat ? null : cat;
+                    renderHomeProjects();
+                });
+                categoriesAlphabeticalList.appendChild(item);
+            });
+        }
+
+        if (clearCategoryFilterBtn) {
+            clearCategoryFilterBtn.style.display = selectedCategoryFilter ? "inline-block" : "none";
+        }
+
+        // Category Select Dropdown in Toolbar
         if (homeCategorySelect) {
             const previous = homeCategorySelect.value;
-            const categories = [...new Set(projectManager.projects.filter(p => p.status === "finished").map(p => (p.category || "General").trim()))].sort();
-
             homeCategorySelect.innerHTML = `<option value="all">All categories</option>`;
-            categories.forEach(cat => {
+            sortedCategories.forEach(cat => {
                 const opt = document.createElement("option");
                 opt.value = cat;
-                opt.textContent = cat;
+                opt.textContent = `${cat} (${categoryCounts[cat]})`;
                 homeCategorySelect.appendChild(opt);
             });
-
-            if (categories.includes(previous)) homeCategorySelect.value = previous;
+            if (sortedCategories.includes(previous)) homeCategorySelect.value = previous;
         }
 
         const activeCategory = homeCategorySelect?.value || "all";
-        if (activeCategory !== "all") {
+        if (selectedCategoryFilter) {
+            finished = finished.filter(p => (p.category || "General").trim() === selectedCategoryFilter);
+        } else if (activeCategory !== "all") {
             finished = finished.filter(p => (p.category || "General").trim() === activeCategory);
         }
 
-        // Search Filter
+        // Search Filter (only matches name, category, or specific keywords; no default "icon" match)
         const query = homeSearchInput?.value.trim().toLowerCase();
         if (clearSearchBtn) {
             clearSearchBtn.style.display = query ? "block" : "none";
         }
 
         if (query) {
-            const words = query.split(/\s+/);
+            const words = query.split(/\s+/).filter(Boolean);
             finished = finished.filter(p => {
                 const text = `${p.name || ""} ${p.category || ""} ${getProjectSearchTerms(p).join(" ")}`.toLowerCase();
                 return words.every(w => text.includes(w));
@@ -3258,13 +5304,14 @@
         if (finished.length === 0) {
             const msg = query ? `No icons matching "${query}"` : "No icons found in this view.";
             homeProjectGrid.innerHTML = `<p class="home-no-results">${msg}</p>`;
+            updateProjectCounters();
             return;
         }
 
-        // Render Cards
-        finished.forEach(project => {
+        function createHomeProjectCard(project) {
             const card = document.createElement("div");
-            card.className = "home-project-card";
+            card.className = `home-project-card ${selectedHomeProject?.id === project.id ? "active" : ""
+                }`;
             card.dataset.projectId = project.id;
             card.tabIndex = 0;
 
@@ -3272,15 +5319,17 @@
             preview.className = "home-project-preview";
 
             if (project.thumbnail) {
-                const img = document.createElement("img");
-                img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(project.thumbnail)}`;
-                img.alt = project.name || "Icon";
-                preview.appendChild(img);
+                preview.innerHTML = project.thumbnail;
             } else {
                 preview.textContent = "✦";
             }
 
+            const tooltip = document.createElement("div");
+            tooltip.className = "home-card-tooltip";
+            tooltip.textContent = project.name || "Untitled icon";
+
             const starBtn = document.createElement("button");
+            starBtn.type = "button";
             starBtn.className = `home-card-fav-star ${project.favorite ? "active" : ""}`;
             starBtn.innerHTML = project.favorite ? "★" : "☆";
             starBtn.title = "Toggle Favorite";
@@ -3321,6 +5370,7 @@
                 card.appendChild(name);
             }
 
+            card.appendChild(tooltip);
             card.appendChild(starBtn);
 
             card.addEventListener("click", () => showProjectPreview(project));
@@ -3331,11 +5381,73 @@
                 }
             });
 
-            homeProjectGrid.appendChild(card);
-        });
+            return card;
+        }
+
+        if (galleryViewCategory === "categories" && !selectedCategoryFilter) {
+            const grouped = {};
+            finished.forEach(p => {
+                const c = (p.category || "General").trim();
+                if (!grouped[c]) grouped[c] = [];
+                grouped[c].push(p);
+            });
+
+            Object.keys(grouped).sort((a, b) => a.localeCompare(b)).forEach(catName => {
+                const groupContainer = document.createElement("div");
+                groupContainer.className = "gallery-category-group";
+
+                const header = document.createElement("div");
+                header.className = "gallery-category-header";
+                header.innerHTML = `
+                    <span class="cat-header-title">${catName}</span>
+                    <span class="cat-header-count">${grouped[catName].length} ${grouped[catName].length === 1 ? "icon" : "icons"}</span>
+                `;
+
+                const cardsGrid = document.createElement("div");
+                cardsGrid.className = `gallery-category-cards home-project-grid ${homeViewMode === "list" ? "list-view" : ""}`;
+
+                grouped[catName].forEach(p => cardsGrid.appendChild(createHomeProjectCard(p)));
+
+                groupContainer.appendChild(header);
+                groupContainer.appendChild(cardsGrid);
+                homeProjectGrid.appendChild(groupContainer);
+            });
+        } else {
+            finished.forEach(project => {
+                homeProjectGrid.appendChild(createHomeProjectCard(project));
+            });
+        }
 
         updateProjectCounters();
     }
+
+    function updateHomeProjectSelection() {
+        document.querySelectorAll(".home-project-card").forEach(card => {
+            card.classList.toggle(
+                "active",
+                card.dataset.projectId === selectedHomeProject?.id
+            );
+        });
+    }
+
+    viewModeAllBtn?.addEventListener("click", () => {
+        viewModeAllBtn.classList.add("active");
+        viewModeCategoriesBtn?.classList.remove("active");
+        galleryViewCategory = "all";
+        renderHomeProjects();
+    });
+
+    viewModeCategoriesBtn?.addEventListener("click", () => {
+        viewModeCategoriesBtn.classList.add("active");
+        viewModeAllBtn?.classList.remove("active");
+        galleryViewCategory = "categories";
+        renderHomeProjects();
+    });
+
+    clearCategoryFilterBtn?.addEventListener("click", () => {
+        selectedCategoryFilter = null;
+        renderHomeProjects();
+    });
 
     homeTabs.forEach(tab => {
         tab.addEventListener("click", () => {
@@ -3353,7 +5465,7 @@
             homeViewMode = btn.dataset.view;
             try {
                 localStorage.setItem(VIEW_MODE_STORAGE_KEY, homeViewMode);
-            } catch (e) {}
+            } catch (e) { }
             renderHomeProjects();
         });
     });
@@ -3378,6 +5490,7 @@
         if (!project || !projectDetails) return;
 
         selectedHomeProject = project;
+        updateHomeProjectSelection();
         if (projectRelated) projectRelated.hidden = true;
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
@@ -3406,7 +5519,7 @@
         }
 
         if (projectMoreSearchButton) {
-            projectMoreSearchButton.textContent = `More icons with "${project.name}" in their name`;
+            projectMoreSearchButton.title = `More icons with "${project.name}" in their name`;
         }
 
         renderRelatedProjects(project);
@@ -3416,13 +5529,27 @@
     }
 
     function closeProjectPreview() {
-        projectDetails?.classList.remove("show");
-        projectDetails?.classList.remove("full-screen");
+        projectDetails?.classList.remove("show", "expanded");
         projectDetails?.setAttribute("aria-hidden", "true");
+
+        if (projectRelated) projectRelated.hidden = true; // ADD THIS
+
         selectedHomeProject = null;
+        updateHomeProjectSelection();
     }
 
     projectDetailsClose?.addEventListener("click", closeProjectPreview);
+    // Move drawer upward and reveal related icons
+    projectMoreSearchButton?.addEventListener("click", () => {
+        if (!selectedHomeProject || !projectDetails || !projectRelated) return;
+
+        projectRelated.hidden = false;
+        projectDetails.classList.add("expanded");
+    });
+    // Export the currently previewed icon
+    document.getElementById("project-export-button")?.addEventListener("click", () => {
+        topbarExportBtn?.click();
+    });
 
     projectFavoriteBtn?.addEventListener("click", () => {
         if (!selectedHomeProject) return;
@@ -3453,7 +5580,12 @@
     projectRemixButton?.addEventListener("click", () => {
         if (!selectedHomeProject) return;
 
-        saveProjectToBrowser();
+        if (
+            projectManager.activeProjectId &&
+            projectManager.projects.some(p => p.id === projectManager.activeProjectId)
+        ) {
+            saveProjectToBrowser();
+        }
         const sourceProject = projectManager.projects.find(p => p.id === selectedHomeProject.id);
         if (!sourceProject?.data) {
             showToast("Original icon data missing", "error");
@@ -3478,7 +5610,13 @@
         projectManager.projects.push(remix);
         saveProjectManager();
 
-        switchProject(remix.id);
+        const success = switchProject(remix.id, false);
+
+        if (!success) {
+            showToast("Remix created, but could not load into editor", "error");
+            return;
+        }
+
         closeProjectPreview();
         openIconEditor();
         showToast(`Remixed as "${remixName}"`, "success");
@@ -3497,12 +5635,7 @@
         showToast(`Deleted "${name}"`, "info");
     });
 
-    projectMoreSearchButton?.addEventListener("click", () => {
-        if (!projectDetails) return;
-        const expanded = projectDetails.classList.toggle("full-screen");
-        if (projectRelated) projectRelated.hidden = !expanded;
-        projectMoreSearchButton.textContent = expanded ? "Show less" : "More icons with this name";
-    });
+
 
     function renderRelatedProjects(project) {
         if (!relatedProjectGrid) return;
@@ -3543,8 +5676,16 @@
         });
     }
 
+    function updateHomeButtonLabel() {
+        if (!homeButton) return;
+        const isGallery = homeScreen?.classList.contains("show");
+        homeButton.textContent = isGallery ? "Editor" : "Gallery";
+        homeButton.title = isGallery ? "Return to Icon Editor" : "Open Icon Gallery";
+    }
+
     function openIconEditor() {
         homeScreen?.classList.remove("show");
+        updateHomeButtonLabel();
     }
 
     // ========================================================================
@@ -3576,67 +5717,124 @@
     });
 
     function renderManagementTable() {
-        if (!managementTableContainer) return;
+        const finished = projectManager.projects.filter(p => p.status === "finished");
+        const unfinished = projectManager.projects.filter(p => p.status === "unfinished");
 
-        if (projectManager.projects.length === 0) {
-            managementTableContainer.innerHTML = `<p class="home-empty">No projects found.</p>`;
-            return;
-        }
+        if (managerFinishedCount) managerFinishedCount.textContent = finished.length;
+        if (managerUnfinishedCount) managerUnfinishedCount.textContent = unfinished.length;
 
-        let html = `
-            <table class="project-table">
-                <thead>
-                    <tr>
-                        <th>Icon Name</th>
-                        <th>Category</th>
-                        <th>Status</th>
-                        <th>Last Modified</th>
-                        <th style="text-align: right;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
+        function createProjectManagerCard(project, isFinished) {
+            const card = document.createElement("div");
+            card.className = "management-project-card";
+            card.dataset.id = project.id;
 
-        projectManager.projects.forEach(project => {
-            const isFinished = project.status === "finished";
-            const dateStr = new Date(project.savedAt).toLocaleString();
+            const preview = document.createElement("div");
+            preview.className = "management-card-preview";
+            if (project.thumbnail) {
+                preview.innerHTML = project.thumbnail;
+            } else {
+                preview.textContent = "✦";
+            }
 
-            html += `
-                <tr data-project-id="${project.id}">
-                    <td><strong>${project.name || "Untitled"}</strong></td>
-                    <td>${project.category || "General"}</td>
-                    <td><span class="status-badge ${isFinished ? "finished" : "unfinished"}">${isFinished ? "Finished" : "Unfinished"}</span></td>
-                    <td>${dateStr}</td>
-                    <td style="text-align: right;">
-                        <div class="table-actions" style="justify-content: flex-end;">
-                            <button class="btn btn-sm btn-secondary manager-edit-btn" data-id="${project.id}">Edit</button>
-                            <button class="btn btn-sm btn-danger manager-delete-btn" data-id="${project.id}">Delete</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
+            const info = document.createElement("div");
+            info.className = "management-card-info";
 
-        html += `</tbody></table>`;
-        managementTableContainer.innerHTML = html;
+            const name = document.createElement("h4");
+            name.className = "management-card-name";
+            name.textContent = project.name || "Untitled";
 
-        managementTableContainer.querySelectorAll(".manager-edit-btn").forEach(btn => {
-            btn.addEventListener("click", () => {
-                const success = switchProject(btn.dataset.id);
+            const meta = document.createElement("p");
+            meta.className = "management-card-meta";
+            meta.textContent = `${project.category || "General"} • ${new Date(project.savedAt).toLocaleDateString()}`;
+
+            info.appendChild(name);
+            info.appendChild(meta);
+
+            const actions = document.createElement("div");
+            actions.className = "management-card-actions";
+
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "btn btn-sm btn-secondary";
+            editBtn.textContent = "Edit";
+            editBtn.addEventListener("click", () => {
+                const success = switchProject(project.id);
                 if (success) openIconEditor();
             });
-        });
 
-        managementTableContainer.querySelectorAll(".manager-delete-btn").forEach(btn => {
-            btn.addEventListener("click", () => {
-                const id = btn.dataset.id;
-                projectManager.projects = projectManager.projects.filter(p => p.id !== id);
-                saveProjectManager();
-                renderManagementTable();
-                renderHomeProjects();
-                showToast("Project deleted", "info");
+            const delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "btn btn-sm btn-danger";
+            delBtn.textContent = "Delete";
+            delBtn.addEventListener("click", () => {
+                if (isFinished) {
+                    if (deleteConfirmModal && deleteTargetProjectName && deleteConfirmBtn && deleteCancelBtn) {
+                        deleteTargetProjectName.textContent = project.name || "this icon";
+                        deleteConfirmModal.style.display = "flex";
+                        deleteConfirmModal.classList.add("show");
+
+                        deleteConfirmBtn.onclick = () => {
+                            deleteConfirmModal.style.display = "none";
+                            deleteConfirmModal.classList.remove("show");
+                            projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                            saveProjectManager();
+                            renderManagementTable();
+                            renderHomeProjects();
+                            renderUnfinishedProjects();
+                            showToast(`Deleted "${project.name}"`, "info");
+                        };
+
+                        deleteCancelBtn.onclick = () => {
+                            deleteConfirmModal.style.display = "none";
+                            deleteConfirmModal.classList.remove("show");
+                        };
+                    } else {
+                        if (confirm(`Permanently delete finished icon "${project.name}"?`)) {
+                            projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                            saveProjectManager();
+                            renderManagementTable();
+                            renderHomeProjects();
+                            renderUnfinishedProjects();
+                            showToast(`Deleted "${project.name}"`, "info");
+                        }
+                    }
+                } else {
+                    projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                    saveProjectManager();
+                    renderManagementTable();
+                    renderHomeProjects();
+                    renderUnfinishedProjects();
+                    showToast("Draft deleted", "info");
+                }
             });
-        });
+
+            actions.appendChild(editBtn);
+            actions.appendChild(delBtn);
+
+            card.appendChild(preview);
+            card.appendChild(info);
+            card.appendChild(actions);
+
+            return card;
+        }
+
+        if (finishedProjectGrid) {
+            finishedProjectGrid.innerHTML = "";
+            if (finished.length === 0) {
+                finishedProjectGrid.innerHTML = `<p class="management-empty-msg">No finished icons yet.</p>`;
+            } else {
+                finished.forEach(p => finishedProjectGrid.appendChild(createProjectManagerCard(p, true)));
+            }
+        }
+
+        if (unfinishedProjectGrid) {
+            unfinishedProjectGrid.innerHTML = "";
+            if (unfinished.length === 0) {
+                unfinishedProjectGrid.innerHTML = `<p class="management-empty-msg">No unfinished drafts.</p>`;
+            } else {
+                unfinished.forEach(p => unfinishedProjectGrid.appendChild(createProjectManagerCard(p, false)));
+            }
+        }
     }
 
     managerNewIconBtn?.addEventListener("click", () => {
@@ -3661,6 +5859,12 @@
 
         finishIconName.value = activeProject?.name || "";
         finishIconCategory.value = activeProject?.category || "General";
+        const savedColorOption = activeProject?.finishStrokeColor || "original";
+        const colorRadio = document.querySelector(
+            `input[name="finish-style-choice"][value="${savedColorOption}"]`
+        );
+
+        if (colorRadio) colorRadio.checked = true;
         finishModal.classList.add("show");
         finishIconName.focus();
     });
@@ -3677,24 +5881,36 @@
             return;
         }
 
+        const colorOption = document.querySelector(
+            'input[name="finish-style-choice"]:checked'
+        )?.value || "original";
+
         saveProjectToBrowser();
 
-        const activeProject = projectManager.projects.find(p => p.id === projectManager.activeProjectId);
+        const activeProject = projectManager.projects.find(
+            p => p.id === projectManager.activeProjectId
+        );
+
         if (!activeProject) return;
 
         activeProject.name = name;
         activeProject.category = finishIconCategory.value;
-        activeProject.thumbnail = generateSVG();
+        activeProject.finishStrokeColor = colorOption;
+        activeProject.thumbnail = generateSVG(
+            colorOption === "white" ? "white" : "original"
+        );
         activeProject.status = "finished";
         activeProject.savedAt = new Date().toISOString();
 
         saveProjectManager();
         renderHomeProjects();
         renderUnfinishedProjects();
+        renderManagementTable();
         updateActiveProjectNameDisplay();
 
         finishModal.classList.remove("show");
         homeScreen.classList.add("show");
+        updateHomeButtonLabel();
         showToast(`Finished icon "${name}" added to Gallery!`, "success");
     });
 
@@ -3772,6 +5988,7 @@
 
     homeButton?.addEventListener("click", () => {
         homeScreen.classList.toggle("show");
+        updateHomeButtonLabel();
         if (homeScreen.classList.contains("show")) {
             renderHomeProjects();
         }
@@ -3779,6 +5996,7 @@
 
     logoHomeButton?.addEventListener("click", () => {
         homeScreen.classList.add("show");
+        updateHomeButtonLabel();
         renderHomeProjects();
     });
 
@@ -3892,7 +6110,12 @@
             } else if (moved.type === "rectangle") {
                 moved.x += COPY_OFFSET; moved.y += COPY_OFFSET;
             } else if (moved.type === "path") {
-                moved.points = moved.points.map(p => ({ x: p.x + COPY_OFFSET, y: p.y + COPY_OFFSET }));
+                moved.points = (moved.points || []).map(p => ({ x: p.x + COPY_OFFSET, y: p.y + COPY_OFFSET }));
+                moved.holes = (moved.holes || []).map(h => {
+                    const pts = Array.isArray(h) ? h : h.points;
+                    const mapped = (pts || []).map(p => ({ x: p.x + COPY_OFFSET, y: p.y + COPY_OFFSET }));
+                    return Array.isArray(h) ? mapped : { ...h, points: mapped };
+                });
             }
             const s = createShapeFromCopy(moved);
             if (s) created.push(s);
@@ -4061,7 +6284,7 @@
             homeViewToggleBtns.forEach(b => b.classList.toggle("active", b.dataset.view === homeViewMode));
             homeProjectGrid?.classList.toggle("list-view", homeViewMode === "list");
         }
-    } catch (e) {}
+    } catch (e) { }
 
     resetProjectHistory();
     updateHistoryButtons();
