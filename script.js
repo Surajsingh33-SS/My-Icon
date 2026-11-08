@@ -2358,7 +2358,18 @@
             makeHandle(x, y + h / 2, "w");
         }
     }
+    function createSVGSegmentHitPath(segment) {
+        const d = `M ${segment.x1} ${segment.y1} ${segment.type === "arc"
+                ? `A ${segment.rx} ${segment.ry} ${segment.rotation} ${segment.largeArc} ${segment.sweep} ${segment.x} ${segment.y}`
+                : segment.type === "cubic" || segment.type === "smooth-cubic"
+                    ? `C ${segment.cx1} ${segment.cy1} ${segment.cx2} ${segment.cy2} ${segment.x} ${segment.y}`
+                    : segment.type === "quadratic" || segment.type === "smooth-quadratic"
+                        ? `Q ${segment.cx} ${segment.cy} ${segment.x} ${segment.y}`
+                        : `L ${segment.x} ${segment.y}`
+            }`;
 
+        return d;
+    }
     // Path Vertex Handles (Allows Direct Vertex Editing on Canvas)
 
     function updatePathHandles(shape) {
@@ -2370,6 +2381,35 @@
         // Imported SVG path: render one handle per unique anchor.
         if (Array.isArray(shape.svgEditableSegments)) {
             shape.svgAnchors ||= buildSVGAnchorMap(shape.svgEditableSegments);
+            // Create an invisible selectable path for every SVG segment.
+            shape.svgEditableSegments.forEach(segment => {
+                if (segment.type === "move") return;
+
+                const hitPath = document.createElementNS(SVG_NS, "path");
+
+                hitPath.setAttribute("d", createSVGSegmentHitPath(segment));
+                hitPath.setAttribute("fill", "none");
+                hitPath.setAttribute(
+                    "stroke",
+                    shape.selectedSegmentId === segment.id
+                        ? "#FBBF24"
+                        : "transparent"
+                );
+                hitPath.setAttribute("stroke-width", "1.5");
+                hitPath.setAttribute("stroke-linecap", "round");
+                hitPath.setAttribute("stroke-linejoin", "round");
+                hitPath.setAttribute("pointer-events", "stroke");
+                hitPath.setAttribute(
+                    "transform",
+                    `translate(${shape.offsetX || 0} ${shape.offsetY || 0})`
+                );
+
+                hitPath.classList.add("svg-segment-hit-area");
+                hitPath.dataset.segmentId = segment.id;
+
+                workspace.appendChild(hitPath);
+                shape.handles.push(hitPath);
+            });
 
             shape.svgAnchors.forEach(anchor => {
                 const x = anchor.x + (shape.offsetX || 0);
@@ -2902,6 +2942,24 @@
         const hitArea = event.target.closest(".edit-hit-area");
         const basicHit = event.target.closest(".basic-hit-area");
         const vertexHit = event.target.closest(".path-vertex-hit-area");
+        const svgSegmentHit = event.target.closest(".svg-segment-hit-area");
+
+        // Individual imported SVG segment selection
+        if (svgSegmentHit) {
+            const shape = shapes.find(s =>
+                s.type === "path" &&
+                s.handles?.includes(svgSegmentHit)
+            );
+
+            if (!shape) return;
+
+            shape.selectedSegmentId = svgSegmentHit.dataset.segmentId;
+
+            selectShape(shape);
+            updatePathHandles(shape);
+
+            return;
+        }
 
         // 1. Path Vertex Handle Drag
         if (vertexHit) {
