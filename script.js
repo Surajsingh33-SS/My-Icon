@@ -2390,6 +2390,14 @@
 
         if (shape.type === "circle") {
             makeHandle(shape.cx + shape.radius, shape.cy, "radius");
+
+        } else if (shape.type === "ellipse") {
+            // Horizontal radius handle
+            makeHandle(shape.cx + shape.rx, shape.cy, "rx");
+
+            // Vertical radius handle
+            makeHandle(shape.cx, shape.cy + shape.ry, "ry");
+
         } else if (shape.type === "rectangle") {
             const x = shape.x;
             const y = shape.y;
@@ -2938,6 +2946,14 @@
     function getAlignmentBounds(shape) {
         if (shape.type === "circle") {
             return { left: shape.cx - shape.radius, right: shape.cx + shape.radius, top: shape.cy - shape.radius, bottom: shape.cy + shape.radius };
+        }
+        if (shape.type === "ellipse") {
+            return {
+                left: shape.cx - shape.rx,
+                right: shape.cx + shape.rx,
+                top: shape.cy - shape.ry,
+                bottom: shape.cy + shape.ry
+            };
         }
         if (shape.type === "rectangle") {
             return { left: shape.x, right: shape.x + shape.width, top: shape.y, bottom: shape.y + shape.height };
@@ -3621,6 +3637,20 @@
                 const dist = Math.hypot(position.x - shape.cx, position.y - shape.cy);
                 shape.radius = Math.max(0.2, Math.min(artboardSize, dist));
                 updateBasicShape(shape);
+            } else if (shape.type === "ellipse") {
+                if (dragging.action === "rx") {
+                    shape.rx = Math.max(
+                        0.2,
+                        Math.abs(position.x - shape.cx)
+                    );
+                } else if (dragging.action === "ry") {
+                    shape.ry = Math.max(
+                        0.2,
+                        Math.abs(position.y - shape.cy)
+                    );
+                }
+
+                updateBasicShape(shape);
             } else if (shape.type === "rectangle") {
                 const dx = position.x - dragging.startX;
                 const dy = position.y - dragging.startY;
@@ -3979,7 +4009,11 @@
         }
 
         const strokeWidth = shape.type === "line" ? shape.width : shape.strokeWidth;
-        const isFillable = shape.type === "circle" || shape.type === "rectangle" || shape.type === "path";
+        const isFillable =
+            shape.type === "circle" ||
+            shape.type === "ellipse" ||
+            shape.type === "rectangle" ||
+            shape.type === "path";
 
         let html = `
             <div class="property-group">
@@ -4120,6 +4154,13 @@
             html += createMeasurementInput("Center Y", shape.cy, "cy");
             html += createMeasurementInput("Radius", shape.radius, "radius");
             html += createMeasurementInput("Diameter", shape.radius * 2, "diameter", false);
+        } else if (shape.type === "ellipse") {
+            html += createMeasurementInput("Center X", shape.cx, "cx");
+            html += createMeasurementInput("Center Y", shape.cy, "cy");
+            html += createMeasurementInput("Radius X", shape.rx, "rx");
+            html += createMeasurementInput("Radius Y", shape.ry, "ry");
+            html += createMeasurementInput("Width", shape.rx * 2, "ellipse-width", false);
+            html += createMeasurementInput("Height", shape.ry * 2, "ellipse-height", false);
         } else if (shape.type === "rectangle") {
             html += createMeasurementInput("X", shape.x, "x");
             html += createMeasurementInput("Y", shape.y, "y");
@@ -4167,6 +4208,14 @@
             if (key === "cy") shape.cy = val;
             if (key === "radius") shape.radius = Math.max(0.2, val);
             updateBasicShape(shape);
+        } else if (shape.type === "ellipse") {
+            if (key === "cx") shape.cx = val;
+            if (key === "cy") shape.cy = val;
+            if (key === "rx") shape.rx = Math.max(0.2, val);
+            if (key === "ry") shape.ry = Math.max(0.2, val);
+
+            updateBasicShape(shape);
+            updateMeasurementPanel();
         } else if (shape.type === "rectangle") {
             if (key === "x") shape.x = val;
             if (key === "y") shape.y = val;
@@ -4496,7 +4545,11 @@
             if (data.type === "line") {
                 data.x1 += COPY_OFFSET; data.x2 += COPY_OFFSET;
                 data.y1 += COPY_OFFSET; data.y2 += COPY_OFFSET;
-            } else if (data.type === "curve" || data.type === "circle") {
+                        } else if (
+                data.type === "curve" ||
+                data.type === "circle" ||
+                data.type === "ellipse"
+            ) {
                 data.cx += COPY_OFFSET; data.cy += COPY_OFFSET;
             } else if (data.type === "rectangle") {
                 data.x += COPY_OFFSET; data.y += COPY_OFFSET;
@@ -4696,6 +4749,10 @@
                 }
             } else if (shape.type === "circle") {
                 artwork.push(`    <circle cx="${formatSVGNumber(shape.cx)}" cy="${formatSVGNumber(shape.cy)}" r="${formatSVGNumber(shape.radius)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`);
+            } else if (shape.type === "ellipse") {
+                artwork.push(
+                    `    <ellipse cx="${formatSVGNumber(shape.cx)}" cy="${formatSVGNumber(shape.cy)}" rx="${formatSVGNumber(shape.rx)}" ry="${formatSVGNumber(shape.ry)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`
+                );
             } else if (shape.type === "rectangle") {
                 artwork.push(`    <rect x="${formatSVGNumber(shape.x)}" y="${formatSVGNumber(shape.y)}" width="${formatSVGNumber(shape.width)}" height="${formatSVGNumber(shape.height)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`);
             }
@@ -6491,7 +6548,11 @@
             if (moved.type === "line") {
                 moved.x1 += COPY_OFFSET; moved.x2 += COPY_OFFSET;
                 moved.y1 += COPY_OFFSET; moved.y2 += COPY_OFFSET;
-            } else if (moved.type === "curve" || moved.type === "circle") {
+                       } else if (
+                moved.type === "curve" ||
+                moved.type === "circle" ||
+                moved.type === "ellipse"
+            ) {
                 moved.cx += COPY_OFFSET; moved.cy += COPY_OFFSET;
             } else if (moved.type === "rectangle") {
                 moved.x += COPY_OFFSET; moved.y += COPY_OFFSET;
