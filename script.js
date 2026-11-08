@@ -273,6 +273,7 @@
         line: ["#60A5FA", "#22D3EE", "#818CF8", "#A78BFA"],
         curve: ["#E879F9", "#F472B6", "#C084FC", "#FB7185"],
         circle: ["#4ADE80", "#2DD4BF", "#A3E635", "#34D399"],
+        ellipse: ["#38BDF8", "#0EA5E9", "#06B6D4", "#67E8F9"],
         rectangle: ["#FBBF24", "#FB923C", "#F97316", "#F87171"],
         path: ["#A78BFA", "#60A5FA", "#34D399", "#F472B6"]
     };
@@ -281,6 +282,7 @@
         line: 0,
         curve: 0,
         circle: 0,
+        ellipse: 0,
         rectangle: 0,
         path: 0
     };
@@ -1427,6 +1429,8 @@
             createLine(position.x, position.y);
         } else if (type === "curve") {
             createCurve(position.x, position.y);
+        } else if (type === "ellipse-arc") {
+            createEllipseArc(position.x, position.y);
         } else {
             createOtherShape(type, position.x, position.y);
         }
@@ -1463,7 +1467,11 @@
                     if (data.type === "line") {
                         data.x1 = artboardSize - data.x1;
                         data.x2 = artboardSize - data.x2;
-                    } else if (data.type === "curve" || data.type === "circle") {
+                    } else if (
+                        data.type === "curve" ||
+                        data.type === "circle" ||
+                        data.type === "ellipse"
+                    ) {
                         data.cx = artboardSize - data.cx;
                         if (data.type === "curve") {
                             data.startAngle = Math.PI - data.startAngle;
@@ -1517,6 +1525,9 @@
         }
         if (shape.type === "curve") {
             return [shape.element, shape.guideBg, shape.guide, shape.hitPath, shape.horizontalGuide, shape.angleGuide].filter(Boolean);
+        }
+        if (shape.type === "ellipse-arc") {
+            return [shape.element, shape.hitPath].filter(Boolean);
         }
         if (shape.type === "path") {
             return [shape.element, shape.strokeElement].filter(Boolean);
@@ -1797,6 +1808,88 @@
         applyLiveSymmetry(shape);
 
         return shape;
+    }
+
+
+    function createEllipseArc(x, y) {
+        const color = getNextColor("curve");
+
+        const element = document.createElementNS(SVG_NS, "path");
+        const hitPath = document.createElementNS(SVG_NS, "path");
+
+        const shape = {
+            type: "ellipse-arc",
+            name: "Ellipse Arc",
+
+            cx: x,
+            cy: y,
+
+            rx: 3,
+            ry: 2,
+
+            startAngle: Math.PI,
+            endAngle: 0,
+
+            color,
+            strokeWidth: 2,
+            fill: "none",
+
+            hidden: false,
+            locked: false,
+
+            element,
+            hitPath,
+            handles: []
+        };
+
+        element.setAttribute("fill", "none");
+        element.setAttribute("stroke", color);
+        element.setAttribute("stroke-width", "2");
+        element.setAttribute("stroke-linecap", "round");
+        element.setAttribute("pointer-events", "none");
+
+        hitPath.setAttribute("fill", "none");
+        hitPath.setAttribute("stroke", "transparent");
+        hitPath.setAttribute("stroke-width", "3");
+        hitPath.setAttribute("stroke-linecap", "round");
+        hitPath.setAttribute("pointer-events", "stroke");
+        hitPath.classList.add("ellipse-arc-hit-area");
+
+        hitPath.style.cursor = "move";
+
+        workspace.appendChild(element);
+        workspace.appendChild(hitPath);
+
+        shapes.push(shape);
+
+        updateEllipseArc(shape);
+        selectShape(shape);
+
+        return shape;
+    }
+
+    function updateEllipseArc(shape) {
+        const startX = shape.cx + shape.rx * Math.cos(shape.startAngle);
+        const startY = shape.cy + shape.ry * Math.sin(shape.startAngle);
+
+        const endX = shape.cx + shape.rx * Math.cos(shape.endAngle);
+        const endY = shape.cy + shape.ry * Math.sin(shape.endAngle);
+
+        let delta = shape.endAngle - shape.startAngle;
+
+        while (delta < 0) delta += Math.PI * 2;
+        while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+
+        const largeArc = delta > Math.PI ? 1 : 0;
+
+        const d = `M ${startX} ${startY} A ${shape.rx} ${shape.ry} 0 ${largeArc} 1 ${endX} ${endY}`;
+
+        shape.element.setAttribute("d", d);
+        shape.hitPath.setAttribute("d", d);
+        shape.element.setAttribute("stroke", shape.color);
+        shape.element.setAttribute("stroke-width", shape.strokeWidth);
+
+        updateSVGSource();
     }
 
     function createOtherShape(type, x, y) {
@@ -3316,6 +3409,9 @@
             if (item.type === "curve") {
                 return item.hitPath === event.target || item.element === event.target;
             }
+            if (item.type === "ellipse-arc") {
+                return item.hitPath === event.target || item.element === event.target;
+            }
             return false;
         });
 
@@ -3705,6 +3801,10 @@
                     item.cx = Math.max(0, Math.min(artboardSize, item.cx + dx));
                     item.cy = Math.max(0, Math.min(artboardSize, item.cy + dy));
                     updateCurve(item);
+                } else if (item.type === "ellipse-arc") {
+                    item.cx = Math.max(0, Math.min(artboardSize, item.cx + dx));
+                    item.cy = Math.max(0, Math.min(artboardSize, item.cy + dy));
+                    updateEllipseArc(item);
                 } else if (item.type === "circle") {
                     item.cx = Math.max(0, Math.min(artboardSize, item.cx + dx));
                     item.cy = Math.max(0, Math.min(artboardSize, item.cy + dy));
@@ -4020,7 +4120,7 @@
                 <h4>Stroke</h4>
                 <div class="property-field">
                     <span>Color</span>
-                    <input type="color" data-style="stroke-color" value="${shape.color}">
+                    <input type="color" data-style="stroke-color" value="${shape.color || "#ffffff"}">
                 </div>
                 <div class="property-field">
                     <span>Width</span>
@@ -4545,7 +4645,7 @@
             if (data.type === "line") {
                 data.x1 += COPY_OFFSET; data.x2 += COPY_OFFSET;
                 data.y1 += COPY_OFFSET; data.y2 += COPY_OFFSET;
-                        } else if (
+            } else if (
                 data.type === "curve" ||
                 data.type === "circle" ||
                 data.type === "ellipse"
@@ -6548,7 +6648,7 @@
             if (moved.type === "line") {
                 moved.x1 += COPY_OFFSET; moved.x2 += COPY_OFFSET;
                 moved.y1 += COPY_OFFSET; moved.y2 += COPY_OFFSET;
-                       } else if (
+            } else if (
                 moved.type === "curve" ||
                 moved.type === "circle" ||
                 moved.type === "ellipse"
