@@ -3,7 +3,7 @@
  * ICON MAKER PRO — CORE JAVASCRIPT APPLICATION
  * Advanced 24×24 Vector Drawing Engine, Multi-Project Manager & Studio UI
  * ============================================================================
- */ 
+ */
 
 (function () {
     "use strict";
@@ -2360,79 +2360,81 @@
     }
 
     // Path Vertex Handles (Allows Direct Vertex Editing on Canvas)
-    
-function updatePathHandles(shape) {
-    shape.handles?.forEach(h => h.remove());
-    shape.handles = [];
 
-    if (shape.type !== "path" || selectedShape !== shape) return;
+    function updatePathHandles(shape) {
+        shape.handles?.forEach(h => h.remove());
+        shape.handles = [];
 
-    // Imported SVG path handles
-    if (Array.isArray(shape.svgEditableSegments)) {
-        shape.svgEditableSegments.forEach((segment, index) => {
-            // Move commands only establish starting positions
-            if (segment.type === "move" || segment.type === "close") return;
+        if (shape.type !== "path" || selectedShape !== shape) return;
 
+        // Imported SVG path: render one handle per unique anchor.
+        if (Array.isArray(shape.svgEditableSegments)) {
+            shape.svgAnchors ||= buildSVGAnchorMap(shape.svgEditableSegments);
+
+            shape.svgAnchors.forEach(anchor => {
+                const x = anchor.x + (shape.offsetX || 0);
+                const y = anchor.y + (shape.offsetY || 0);
+
+                const hit = document.createElementNS(SVG_NS, "circle");
+                hit.setAttribute("cx", x);
+                hit.setAttribute("cy", y);
+                hit.setAttribute("r", "0.8");
+                hit.setAttribute("fill", "transparent");
+                hit.setAttribute("pointer-events", "all");
+                hit.classList.add("svg-anchor-hit-area");
+                hit.dataset.anchorId = anchor.id;
+
+                const visible = document.createElementNS(SVG_NS, "circle");
+                visible.setAttribute("cx", x);
+                visible.setAttribute("cy", y);
+                visible.setAttribute("r", "0.28");
+                visible.setAttribute("fill", "#818CF8");
+                visible.setAttribute("stroke", "#FFFFFF");
+                visible.setAttribute("stroke-width", "0.08");
+                visible.setAttribute("pointer-events", "none");
+
+                workspace.appendChild(visible);
+                workspace.appendChild(hit);
+
+                shape.handles.push(visible, hit);
+            });
+
+            return;
+        }
+
+        // Existing point-based path handles
+        function makeVertexHandle(pt, vertexIndex, holeIndex = -1) {
             const hit = document.createElementNS(SVG_NS, "circle");
-            hit.setAttribute("cx", segment.x + (shape.offsetX || 0));
-            hit.setAttribute("cy", segment.y + (shape.offsetY || 0));
-            hit.setAttribute("r", "0.8");
+            hit.setAttribute("cx", pt.x);
+            hit.setAttribute("cy", pt.y);
+            hit.setAttribute("r", "0.75");
             hit.setAttribute("fill", "transparent");
             hit.setAttribute("pointer-events", "all");
-            hit.classList.add("svg-segment-hit-area");
-            hit.dataset.segmentIndex = index;
+            hit.classList.add("path-vertex-hit-area");
+            hit.dataset.vertexIndex = vertexIndex;
+            hit.dataset.holeIndex = holeIndex;
 
             const visible = document.createElementNS(SVG_NS, "circle");
-            visible.setAttribute("cx", segment.x + (shape.offsetX || 0));
-            visible.setAttribute("cy", segment.y + (shape.offsetY || 0));
-            visible.setAttribute("r", "0.28");
-            visible.setAttribute("fill", "#818CF8");
+            visible.setAttribute("cx", pt.x);
+            visible.setAttribute("cy", pt.y);
+            visible.setAttribute("r", "0.26");
+            visible.setAttribute("fill", holeIndex === -1 ? "#818CF8" : "#F472B6");
             visible.setAttribute("stroke", "#FFFFFF");
             visible.setAttribute("stroke-width", "0.08");
             visible.setAttribute("pointer-events", "none");
 
             workspace.appendChild(visible);
             workspace.appendChild(hit);
-
             shape.handles.push(visible, hit);
+        }
+
+        shape.points.forEach((pt, idx) => makeVertexHandle(pt, idx, -1));
+
+        (shape.holes || []).forEach((hole, hIdx) => {
+            const pts = Array.isArray(hole) ? hole : hole.points;
+            pts.forEach((pt, pIdx) => makeVertexHandle(pt, pIdx, hIdx));
         });
-
-        return;
     }
-
-    // Existing point-based path handles
-    function makeVertexHandle(pt, vertexIndex, holeIndex = -1) {
-        const hit = document.createElementNS(SVG_NS, "circle");
-        hit.setAttribute("cx", pt.x);
-        hit.setAttribute("cy", pt.y);
-        hit.setAttribute("r", "0.75");
-        hit.setAttribute("fill", "transparent");
-        hit.setAttribute("pointer-events", "all");
-        hit.classList.add("path-vertex-hit-area");
-        hit.dataset.vertexIndex = vertexIndex;
-        hit.dataset.holeIndex = holeIndex;
-
-        const visible = document.createElementNS(SVG_NS, "circle");
-        visible.setAttribute("cx", pt.x);
-        visible.setAttribute("cy", pt.y);
-        visible.setAttribute("r", "0.26");
-        visible.setAttribute("fill", holeIndex === -1 ? "#818CF8" : "#F472B6");
-        visible.setAttribute("stroke", "#FFFFFF");
-        visible.setAttribute("stroke-width", "0.08");
-        visible.setAttribute("pointer-events", "none");
-
-        workspace.appendChild(visible);
-        workspace.appendChild(hit);
-        shape.handles.push(visible, hit);
-    }
-
-    shape.points.forEach((pt, idx) => makeVertexHandle(pt, idx, -1));
-
-    (shape.holes || []).forEach((hole, hIdx) => {
-        const pts = Array.isArray(hole) ? hole : hole.points;
-        pts.forEach((pt, pIdx) => makeVertexHandle(pt, pIdx, hIdx));
-    });
-}
 
 
     // Updates Geometry for Line, Curve, Basic
@@ -4389,481 +4391,532 @@ function updatePathHandles(shape) {
         if (!svgCode) return;
         svgCode.value = generateSVG();
     }
-    
-function parseSVGPathSegments(d) {
-    if (typeof d !== "string") {
-        throw new Error("SVG path data must be a string.");
-    }
 
-    // Tokenize SVG commands and numbers, including scientific notation.
-    const tokenRegex =
-        /[a-zA-Z]|[-+]?(?:\d*\.)?\d+(?:[eE][-+]?\d+)?/g;
-
-    const tokens = [];
-    let match;
-    let lastIndex = 0;
-
-    while ((match = tokenRegex.exec(d)) !== null) {
-        const skipped = d.slice(lastIndex, match.index);
-
-        // Only SVG separators are allowed between tokens.
-        if (!/^[\s,]*$/.test(skipped)) {
-            throw new Error(
-                `Invalid SVG path data near: "${skipped}"`
-            );
+    function parseSVGPathSegments(d) {
+        if (typeof d !== "string") {
+            throw new Error("SVG path data must be a string.");
         }
 
-        tokens.push(match[0]);
-        lastIndex = tokenRegex.lastIndex;
-    }
+        // Tokenize SVG commands and numbers, including scientific notation.
+        const tokenRegex =
+            /[a-zA-Z]|[-+]?(?:\d*\.)?\d+(?:[eE][-+]?\d+)?/g;
 
-    if (!/^[\s,]*$/.test(d.slice(lastIndex))) {
-        throw new Error("Invalid characters at the end of SVG path data.");
-    }
+        const tokens = [];
+        let match;
+        let lastIndex = 0;
 
-    const segments = [];
+        while ((match = tokenRegex.exec(d)) !== null) {
+            const skipped = d.slice(lastIndex, match.index);
 
-    let i = 0;
-    let command = null;
-
-    let x = 0;
-    let y = 0;
-
-    let startX = 0;
-    let startY = 0;
-
-    let segmentCounter = 0;
-    let anchorCounter = 0;
-    let subpathCounter = 0;
-
-    let currentAnchorId = null;
-    let subpathStartAnchorId = null;
-    let currentSubpathId = null;
-
-    let previousControl = null;
-    let previousCurveType = null;
-
-    const isCommand = token => /^[a-zA-Z]$/.test(token);
-
-    function readNumber() {
-        if (i >= tokens.length || isCommand(tokens[i])) {
-            throw new Error(
-                `Not enough parameters for SVG command "${command}".`
-            );
-        }
-
-        const value = Number(tokens[i++]);
-
-        if (!Number.isFinite(value)) {
-            throw new Error("Invalid number in SVG path data.");
-        }
-
-        return value;
-    }
-
-    function hasNumbers() {
-        return i < tokens.length && !isCommand(tokens[i]);
-    }
-
-    function createAnchorId() {
-        return `anchor-${++anchorCounter}`;
-    }
-
-    function createSegment(type, data, startId, endId) {
-        return {
-            id: `segment-${++segmentCounter}`,
-            type,
-            command,
-            subpathId: currentSubpathId,
-
-            startAnchorId: startId,
-            endAnchorId: endId,
-
-            ...data
-        };
-    }
-
-    function resetCurveControl() {
-        previousControl = null;
-        previousCurveType = null;
-    }
-
-    while (i < tokens.length) {
-        if (isCommand(tokens[i])) {
-            command = tokens[i++];
-        } else if (!command) {
-            throw new Error("SVG path must begin with a command.");
-        }
-
-        const relative = command === command.toLowerCase();
-        const type = command.toUpperCase();
-
-        if (!"MLHVCSQTAZ".includes(type)) {
-            throw new Error(`Unsupported SVG path command: "${command}".`);
-        }
-
-        // Close the current subpath.
-        if (type === "Z") {
-            if (!currentAnchorId || !subpathStartAnchorId) {
-                throw new Error("Close command has no active subpath.");
+            // Only SVG separators are allowed between tokens.
+            if (!/^[\s,]*$/.test(skipped)) {
+                throw new Error(
+                    `Invalid SVG path data near: "${skipped}"`
+                );
             }
 
-            segments.push(
-                createSegment(
-                    "close",
-                    {
-                        x1: x,
-                        y1: y,
-                        x: startX,
-                        y: startY,
-                        startX,
-                        startY
-                    },
-                    currentAnchorId,
-                    subpathStartAnchorId
-                )
-            );
-
-            x = startX;
-            y = startY;
-            currentAnchorId = subpathStartAnchorId;
-
-            resetCurveControl();
-
-            // Z cannot repeat without another command.
-            command = null;
-            continue;
+            tokens.push(match[0]);
+            lastIndex = tokenRegex.lastIndex;
         }
 
-        if (!hasNumbers()) {
-            throw new Error(
-                `SVG command "${command}" is missing its parameters.`
-            );
+        if (!/^[\s,]*$/.test(d.slice(lastIndex))) {
+            throw new Error("Invalid characters at the end of SVG path data.");
         }
 
-        const ox = x;
-        const oy = y;
+        const segments = [];
 
-        let segment;
-        let nx;
-        let ny;
+        let i = 0;
+        let command = null;
 
-        // Move and line commands.
-        if (type === "M" || type === "L" || type === "T") {
-            nx = readNumber();
-            ny = readNumber();
+        let x = 0;
+        let y = 0;
 
-            if (relative) {
-                nx += ox;
-                ny += oy;
+        let startX = 0;
+        let startY = 0;
+
+        let segmentCounter = 0;
+        let anchorCounter = 0;
+        let subpathCounter = 0;
+
+        let currentAnchorId = null;
+        let subpathStartAnchorId = null;
+        let currentSubpathId = null;
+
+        let previousControl = null;
+        let previousCurveType = null;
+
+        const isCommand = token => /^[a-zA-Z]$/.test(token);
+
+        function readNumber() {
+            if (i >= tokens.length || isCommand(tokens[i])) {
+                throw new Error(
+                    `Not enough parameters for SVG command "${command}".`
+                );
             }
 
-            if (type === "M") {
-                currentSubpathId = `subpath-${++subpathCounter}`;
+            const value = Number(tokens[i++]);
+
+            if (!Number.isFinite(value)) {
+                throw new Error("Invalid number in SVG path data.");
+            }
+
+            return value;
+        }
+
+        function hasNumbers() {
+            return i < tokens.length && !isCommand(tokens[i]);
+        }
+
+        function createAnchorId() {
+            return `anchor-${++anchorCounter}`;
+        }
+
+        function createSegment(type, data, startId, endId) {
+            return {
+                id: `segment-${++segmentCounter}`,
+                type,
+                command,
+                subpathId: currentSubpathId,
+
+                startAnchorId: startId,
+                endAnchorId: endId,
+
+                ...data
+            };
+        }
+
+        function resetCurveControl() {
+            previousControl = null;
+            previousCurveType = null;
+        }
+
+        while (i < tokens.length) {
+            if (isCommand(tokens[i])) {
+                command = tokens[i++];
+            } else if (!command) {
+                throw new Error("SVG path must begin with a command.");
+            }
+
+            const relative = command === command.toLowerCase();
+            const type = command.toUpperCase();
+
+            if (!"MLHVCSQTAZ".includes(type)) {
+                throw new Error(`Unsupported SVG path command: "${command}".`);
+            }
+
+            // Close the current subpath.
+            if (type === "Z") {
+                if (!currentAnchorId || !subpathStartAnchorId) {
+                    throw new Error("Close command has no active subpath.");
+                }
+
+                segments.push(
+                    createSegment(
+                        "close",
+                        {
+                            x1: x,
+                            y1: y,
+                            x: startX,
+                            y: startY,
+                            startX,
+                            startY
+                        },
+                        currentAnchorId,
+                        subpathStartAnchorId
+                    )
+                );
+
+                x = startX;
+                y = startY;
+                currentAnchorId = subpathStartAnchorId;
+
+                resetCurveControl();
+
+                // Z cannot repeat without another command.
+                command = null;
+                continue;
+            }
+
+            if (!hasNumbers()) {
+                throw new Error(
+                    `SVG command "${command}" is missing its parameters.`
+                );
+            }
+
+            const ox = x;
+            const oy = y;
+
+            let segment;
+            let nx;
+            let ny;
+
+            // Move and line commands.
+            if (type === "M" || type === "L" || type === "T") {
+                nx = readNumber();
+                ny = readNumber();
+
+                if (relative) {
+                    nx += ox;
+                    ny += oy;
+                }
+
+                if (type === "M") {
+                    currentSubpathId = `subpath-${++subpathCounter}`;
+
+                    const newAnchorId = createAnchorId();
+
+                    segment = createSegment(
+                        "move",
+                        {
+                            x1: ox,
+                            y1: oy,
+                            x: nx,
+                            y: ny
+                        },
+                        null,
+                        newAnchorId
+                    );
+
+                    startX = nx;
+                    startY = ny;
+
+                    currentAnchorId = newAnchorId;
+                    subpathStartAnchorId = newAnchorId;
+
+                    // Following coordinate pairs after M become L.
+                    command = relative ? "l" : "L";
+
+                    resetCurveControl();
+                } else {
+                    const newAnchorId = createAnchorId();
+
+                    if (type === "T") {
+                        const canReflect =
+                            previousCurveType === "quadratic";
+
+                        const cx = canReflect && previousControl
+                            ? 2 * ox - previousControl.x
+                            : ox;
+
+                        const cy = canReflect && previousControl
+                            ? 2 * oy - previousControl.y
+                            : oy;
+
+                        segment = createSegment(
+                            "smooth-quadratic",
+                            {
+                                x1: ox,
+                                y1: oy,
+                                cx,
+                                cy,
+                                x: nx,
+                                y: ny
+                            },
+                            currentAnchorId,
+                            newAnchorId
+                        );
+
+                        previousControl = { x: cx, y: cy };
+                        previousCurveType = "quadratic";
+                    } else {
+                        segment = createSegment(
+                            "line",
+                            {
+                                x1: ox,
+                                y1: oy,
+                                x: nx,
+                                y: ny
+                            },
+                            currentAnchorId,
+                            newAnchorId
+                        );
+
+                        resetCurveControl();
+                    }
+
+                    currentAnchorId = newAnchorId;
+                }
+
+                x = nx;
+                y = ny;
+            }
+
+            // Horizontal and vertical lines.
+            else if (type === "H" || type === "V") {
+                const value = readNumber();
+
+                nx = type === "H"
+                    ? (relative ? ox + value : value)
+                    : ox;
+
+                ny = type === "V"
+                    ? (relative ? oy + value : value)
+                    : oy;
 
                 const newAnchorId = createAnchorId();
 
                 segment = createSegment(
-                    "move",
+                    "line",
                     {
                         x1: ox,
                         y1: oy,
                         x: nx,
                         y: ny
                     },
-                    null,
+                    currentAnchorId,
                     newAnchorId
                 );
 
-                startX = nx;
-                startY = ny;
-
+                x = nx;
+                y = ny;
                 currentAnchorId = newAnchorId;
-                subpathStartAnchorId = newAnchorId;
-
-                // Following coordinate pairs after M become L.
-                command = relative ? "l" : "L";
 
                 resetCurveControl();
-            } else {
-                const newAnchorId = createAnchorId();
+            }
 
-                if (type === "T") {
-                    const canReflect =
-                        previousCurveType === "quadratic";
+            // Cubic Bezier curves.
+            else if (type === "C") {
+                let cx1 = readNumber();
+                let cy1 = readNumber();
+                let cx2 = readNumber();
+                let cy2 = readNumber();
 
-                    const cx = canReflect && previousControl
-                        ? 2 * ox - previousControl.x
-                        : ox;
+                nx = readNumber();
+                ny = readNumber();
 
-                    const cy = canReflect && previousControl
-                        ? 2 * oy - previousControl.y
-                        : oy;
-
-                    segment = createSegment(
-                        "smooth-quadratic",
-                        {
-                            x1: ox,
-                            y1: oy,
-                            cx,
-                            cy,
-                            x: nx,
-                            y: ny
-                        },
-                        currentAnchorId,
-                        newAnchorId
-                    );
-
-                    previousControl = { x: cx, y: cy };
-                    previousCurveType = "quadratic";
-                } else {
-                    segment = createSegment(
-                        "line",
-                        {
-                            x1: ox,
-                            y1: oy,
-                            x: nx,
-                            y: ny
-                        },
-                        currentAnchorId,
-                        newAnchorId
-                    );
-
-                    resetCurveControl();
+                if (relative) {
+                    cx1 += ox;
+                    cy1 += oy;
+                    cx2 += ox;
+                    cy2 += oy;
+                    nx += ox;
+                    ny += oy;
                 }
 
+                const newAnchorId = createAnchorId();
+
+                segment = createSegment(
+                    "cubic",
+                    {
+                        x1: ox,
+                        y1: oy,
+                        cx1,
+                        cy1,
+                        cx2,
+                        cy2,
+                        x: nx,
+                        y: ny
+                    },
+                    currentAnchorId,
+                    newAnchorId
+                );
+
+                previousControl = { x: cx2, y: cy2 };
+                previousCurveType = "cubic";
+
+                x = nx;
+                y = ny;
                 currentAnchorId = newAnchorId;
             }
 
-            x = nx;
-            y = ny;
-        }
+            // Smooth cubic Bezier curves.
+            else if (type === "S") {
+                let cx2 = readNumber();
+                let cy2 = readNumber();
 
-        // Horizontal and vertical lines.
-        else if (type === "H" || type === "V") {
-            const value = readNumber();
+                nx = readNumber();
+                ny = readNumber();
 
-            nx = type === "H"
-                ? (relative ? ox + value : value)
-                : ox;
+                if (relative) {
+                    cx2 += ox;
+                    cy2 += oy;
+                    nx += ox;
+                    ny += oy;
+                }
 
-            ny = type === "V"
-                ? (relative ? oy + value : value)
-                : oy;
+                const canReflect =
+                    previousCurveType === "cubic";
 
-            const newAnchorId = createAnchorId();
+                const cx1 = canReflect && previousControl
+                    ? 2 * ox - previousControl.x
+                    : ox;
 
-            segment = createSegment(
-                "line",
-                {
-                    x1: ox,
-                    y1: oy,
-                    x: nx,
-                    y: ny
-                },
-                currentAnchorId,
-                newAnchorId
-            );
+                const cy1 = canReflect && previousControl
+                    ? 2 * oy - previousControl.y
+                    : oy;
 
-            x = nx;
-            y = ny;
-            currentAnchorId = newAnchorId;
+                const newAnchorId = createAnchorId();
 
-            resetCurveControl();
-        }
+                segment = createSegment(
+                    "smooth-cubic",
+                    {
+                        x1: ox,
+                        y1: oy,
+                        cx1,
+                        cy1,
+                        cx2,
+                        cy2,
+                        x: nx,
+                        y: ny
+                    },
+                    currentAnchorId,
+                    newAnchorId
+                );
 
-        // Cubic Bezier curves.
-        else if (type === "C") {
-            let cx1 = readNumber();
-            let cy1 = readNumber();
-            let cx2 = readNumber();
-            let cy2 = readNumber();
+                previousControl = { x: cx2, y: cy2 };
+                previousCurveType = "cubic";
 
-            nx = readNumber();
-            ny = readNumber();
-
-            if (relative) {
-                cx1 += ox;
-                cy1 += oy;
-                cx2 += ox;
-                cy2 += oy;
-                nx += ox;
-                ny += oy;
+                x = nx;
+                y = ny;
+                currentAnchorId = newAnchorId;
             }
 
-            const newAnchorId = createAnchorId();
+            // Quadratic Bezier curves.
+            else if (type === "Q") {
+                let cx = readNumber();
+                let cy = readNumber();
 
-            segment = createSegment(
-                "cubic",
-                {
-                    x1: ox,
-                    y1: oy,
-                    cx1,
-                    cy1,
-                    cx2,
-                    cy2,
-                    x: nx,
-                    y: ny
-                },
-                currentAnchorId,
-                newAnchorId
-            );
+                nx = readNumber();
+                ny = readNumber();
 
-            previousControl = { x: cx2, y: cy2 };
-            previousCurveType = "cubic";
+                if (relative) {
+                    cx += ox;
+                    cy += oy;
+                    nx += ox;
+                    ny += oy;
+                }
 
-            x = nx;
-            y = ny;
-            currentAnchorId = newAnchorId;
-        }
+                const newAnchorId = createAnchorId();
 
-        // Smooth cubic Bezier curves.
-        else if (type === "S") {
-            let cx2 = readNumber();
-            let cy2 = readNumber();
+                segment = createSegment(
+                    "quadratic",
+                    {
+                        x1: ox,
+                        y1: oy,
+                        cx,
+                        cy,
+                        x: nx,
+                        y: ny
+                    },
+                    currentAnchorId,
+                    newAnchorId
+                );
 
-            nx = readNumber();
-            ny = readNumber();
+                previousControl = { x: cx, y: cy };
+                previousCurveType = "quadratic";
 
-            if (relative) {
-                cx2 += ox;
-                cy2 += oy;
-                nx += ox;
-                ny += oy;
+                x = nx;
+                y = ny;
+                currentAnchorId = newAnchorId;
             }
 
-            const canReflect =
-                previousCurveType === "cubic";
+            // Elliptical arc segments.
+            else if (type === "A") {
+                const rx = readNumber();
+                const ry = readNumber();
+                const rotation = readNumber();
+                const largeArc = readNumber();
+                const sweep = readNumber();
 
-            const cx1 = canReflect && previousControl
-                ? 2 * ox - previousControl.x
-                : ox;
+                nx = readNumber();
+                ny = readNumber();
 
-            const cy1 = canReflect && previousControl
-                ? 2 * oy - previousControl.y
-                : oy;
+                if (relative) {
+                    nx += ox;
+                    ny += oy;
+                }
 
-            const newAnchorId = createAnchorId();
+                if (
+                    (largeArc !== 0 && largeArc !== 1) ||
+                    (sweep !== 0 && sweep !== 1)
+                ) {
+                    throw new Error("Invalid SVG arc flags.");
+                }
 
-            segment = createSegment(
-                "smooth-cubic",
-                {
-                    x1: ox,
-                    y1: oy,
-                    cx1,
-                    cy1,
-                    cx2,
-                    cy2,
-                    x: nx,
-                    y: ny
-                },
-                currentAnchorId,
-                newAnchorId
-            );
+                const newAnchorId = createAnchorId();
 
-            previousControl = { x: cx2, y: cy2 };
-            previousCurveType = "cubic";
+                segment = createSegment(
+                    "arc",
+                    {
+                        x1: ox,
+                        y1: oy,
+                        rx: Math.abs(rx),
+                        ry: Math.abs(ry),
+                        rotation,
+                        largeArc,
+                        sweep,
+                        x: nx,
+                        y: ny
+                    },
+                    currentAnchorId,
+                    newAnchorId
+                );
 
-            x = nx;
-            y = ny;
-            currentAnchorId = newAnchorId;
-        }
+                x = nx;
+                y = ny;
+                currentAnchorId = newAnchorId;
 
-        // Quadratic Bezier curves.
-        else if (type === "Q") {
-            let cx = readNumber();
-            let cy = readNumber();
-
-            nx = readNumber();
-            ny = readNumber();
-
-            if (relative) {
-                cx += ox;
-                cy += oy;
-                nx += ox;
-                ny += oy;
+                resetCurveControl();
             }
 
-            const newAnchorId = createAnchorId();
-
-            segment = createSegment(
-                "quadratic",
-                {
-                    x1: ox,
-                    y1: oy,
-                    cx,
-                    cy,
-                    x: nx,
-                    y: ny
-                },
-                currentAnchorId,
-                newAnchorId
-            );
-
-            previousControl = { x: cx, y: cy };
-            previousCurveType = "quadratic";
-
-            x = nx;
-            y = ny;
-            currentAnchorId = newAnchorId;
-        }
-
-        // Elliptical arc segments.
-        else if (type === "A") {
-            const rx = readNumber();
-            const ry = readNumber();
-            const rotation = readNumber();
-            const largeArc = readNumber();
-            const sweep = readNumber();
-
-            nx = readNumber();
-            ny = readNumber();
-
-            if (relative) {
-                nx += ox;
-                ny += oy;
+            if (segment) {
+                segments.push(segment);
             }
-
-            if (
-                (largeArc !== 0 && largeArc !== 1) ||
-                (sweep !== 0 && sweep !== 1)
-            ) {
-                throw new Error("Invalid SVG arc flags.");
-            }
-
-            const newAnchorId = createAnchorId();
-
-            segment = createSegment(
-                "arc",
-                {
-                    x1: ox,
-                    y1: oy,
-                    rx: Math.abs(rx),
-                    ry: Math.abs(ry),
-                    rotation,
-                    largeArc,
-                    sweep,
-                    x: nx,
-                    y: ny
-                },
-                currentAnchorId,
-                newAnchorId
-            );
-
-            x = nx;
-            y = ny;
-            currentAnchorId = newAnchorId;
-
-            resetCurveControl();
         }
 
-        if (segment) {
-            segments.push(segment);
-        }
+        return segments;
     }
+    function buildSVGAnchorMap(segments) {
+        const anchorMap = new Map();
 
-    return segments;
-}
+        function addAnchor(anchorId, x, y, segmentId, role) {
+            if (!anchorId) return;
+
+            if (!anchorMap.has(anchorId)) {
+                anchorMap.set(anchorId, {
+                    id: anchorId,
+                    x,
+                    y,
+                    connectedSegments: []
+                });
+            }
+
+            const anchor = anchorMap.get(anchorId);
+
+            if (!anchor.connectedSegments.some(item => item.segmentId === segmentId && item.role === role)) {
+                anchor.connectedSegments.push({
+                    segmentId,
+                    role
+                });
+            }
+        }
+
+        segments.forEach(segment => {
+            // A segment's starting anchor.
+            if (segment.startAnchorId) {
+                addAnchor(
+                    segment.startAnchorId,
+                    segment.x1,
+                    segment.y1,
+                    segment.id,
+                    "start"
+                );
+            }
+
+            // A segment's ending anchor.
+            if (segment.endAnchorId) {
+                addAnchor(
+                    segment.endAnchorId,
+                    segment.x,
+                    segment.y,
+                    segment.id,
+                    "end"
+                );
+            }
+        });
+
+        return Array.from(anchorMap.values());
+    }
 
     // Bug Fix: Enhanced SVG Source Parser that accepts arbitrary paths and large arcs
     function readSVGSource() {
@@ -4930,6 +4983,7 @@ function parseSVGPathSegments(d) {
 
                         // Individual editable SVG segments
                         svgEditableSegments: parseSVGPathSegments(d),
+                        svgAnchors: buildSVGAnchorMap(parseSVGPathSegments(d)),
 
                         points: [],
                         holes: [],
