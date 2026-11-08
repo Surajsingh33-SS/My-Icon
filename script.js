@@ -1327,6 +1327,22 @@
             dropPreview.setAttribute("cy", y);
             dropPreview.setAttribute("r", "2.5");
             dropPreview.setAttribute("fill", "none");
+        } else if (draggingTool === "ellipse") {
+            dropPreview = document.createElementNS(SVG_NS, "ellipse");
+            dropPreview.setAttribute("cx", x);
+            dropPreview.setAttribute("cy", y);
+            dropPreview.setAttribute("rx", "3");
+            dropPreview.setAttribute("ry", "2");
+            dropPreview.setAttribute("fill", "none");
+        } else if (draggingTool === "ellipse-arc") {
+            dropPreview = document.createElementNS(SVG_NS, "path");
+
+            dropPreview.setAttribute(
+                "d",
+                `M ${x - 3} ${y} A 3 2 0 0 1 ${x + 3} ${y}`
+            );
+
+            dropPreview.setAttribute("fill", "none");
         } else if (draggingTool === "rectangle") {
             dropPreview = document.createElementNS(SVG_NS, "rect");
             dropPreview.setAttribute("x", Math.max(0, x - 2.5));
@@ -3078,6 +3094,7 @@
         const svgSegmentHit = event.target.closest(".svg-segment-hit-area");
 
         // Individual imported SVG segment selection
+        // Individual imported SVG segment selection
         if (svgSegmentHit) {
             const shape = shapes.find(s =>
                 s.type === "path" &&
@@ -3087,24 +3104,36 @@
             if (!shape) return;
 
             const segmentId = svgSegmentHit.dataset.segmentId;
+
             const segment = shape.svgEditableSegments.find(
                 item => item.id === segmentId
             );
 
             if (!segment) return;
 
+            // Remember which segment is selected.
             shape.selectedSegmentId = segmentId;
 
-            const canDrag = [
+            // Select the shape. This rebuilds its handles.
+            selectShape(shape);
+
+            // Find the newly created hit area for the same segment.
+            const newHitArea = shape.handles.find(handle =>
+                handle.classList?.contains("svg-segment-hit-area") &&
+                handle.dataset.segmentId === segmentId
+            );
+
+            if (!newHitArea) return;
+
+            // Start dragging after the handles have been rebuilt.
+            if ([
                 "line",
                 "close",
                 "cubic",
                 "smooth-cubic",
                 "quadratic",
                 "smooth-quadratic"
-            ].includes(segment.type);
-
-            if (canDrag) {
+            ].includes(segment.type)) {
                 dragging = {
                     shape,
                     type: "svg-segment",
@@ -3115,13 +3144,6 @@
                         shape.svgEditableSegments
                     )
                 };
-            }
-
-            selectShape(shape);
-
-            // Keep pointer tracking even after selection rebuilds the handles.
-            if (event.button === 0 && workspace.setPointerCapture) {
-                workspace.setPointerCapture(event.pointerId);
             }
 
             return;
@@ -3264,7 +3286,12 @@
         // 5. Shape Body Selection & Move
         const clickedShape = shapes.find(item => {
             if (item.hidden) return false;
-            if (item.type === "circle" || item.type === "rectangle" || item.type === "path") {
+            if (
+                item.type === "circle" ||
+                item.type === "ellipse" ||
+                item.type === "rectangle" ||
+                item.type === "path"
+            ) {
                 return item.element === event.target || item.strokeElement === event.target;
             }
             if (item.type === "line") {
@@ -3649,6 +3676,10 @@
                     item.cy = Math.max(0, Math.min(artboardSize, item.cy + dy));
                     updateCurve(item);
                 } else if (item.type === "circle") {
+                    item.cx = Math.max(0, Math.min(artboardSize, item.cx + dx));
+                    item.cy = Math.max(0, Math.min(artboardSize, item.cy + dy));
+                    updateBasicShape(item);
+                } else if (item.type === "ellipse") {
                     item.cx = Math.max(0, Math.min(artboardSize, item.cx + dx));
                     item.cy = Math.max(0, Math.min(artboardSize, item.cy + dy));
                     updateBasicShape(item);
