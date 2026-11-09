@@ -220,6 +220,7 @@
     // 2. STATE MANAGEMENT
     // ========================================================================
     let shapes = [];
+    let connections = [];
     let pathDrawing = null;
     let selectedShape = null;
     let selectedShapes = [];
@@ -548,6 +549,7 @@
                 showGridHighlight: gridHighlightToggle?.checked ?? false,
                 pathStyle: pathStyleToggle?.checked ? "curve" : "straight"
             },
+            connections: structuredClone(connections),
             shapes: shapes.map(shape => {
                 const data = {};
                 Object.keys(shape).forEach(key => {
@@ -771,12 +773,15 @@
             });
 
             shapes = [];
+            connections = Array.isArray(projectData.connections)
+    ? structuredClone(projectData.connections)
+    : [];
             selectedShape = null;
             selectedShapes = [];
 
             // Reconstruct shape objects and SVG elements
             projectData.shapes.forEach(data => {
-                const shape = createShapeFromCopy(data);
+                const shape = createShapeFromCopy(data, true);
                 if (shape) {
                     getShapeElements(shape).forEach(el => {
                         el.style.visibility = shape.hidden ? "hidden" : "visible";
@@ -824,6 +829,7 @@
                 });
                 return { shape, data };
             }),
+            connections: structuredClone(connections),
             selectedShape,
             selectedShapes: [...selectedShapes]
         };
@@ -831,6 +837,7 @@
 
     function getHistoryKey(snapshot) {
         return JSON.stringify({
+            connections: snapshot.connections,
             shapes: snapshot.shapes.map(item => item.data),
             selectedShape: snapshot.shapes.findIndex(item => item.shape === snapshot.selectedShape),
             selectedShapes: snapshot.selectedShapes.map(shape => snapshot.shapes.findIndex(item => item.shape === shape))
@@ -922,6 +929,8 @@
             }
         });
 
+        // Restore persistent handle connections.
+connections = structuredClone(snapshot.connections || []);
         // 6. Restore geometry updates
         shapes.forEach(shape => {
             if (shape.type === "line") updateLine(shape);
@@ -941,6 +950,7 @@
         renderLayers();
         updateSVGSource();
         bringHandlesToFront();
+        refreshConnectionHandles();
     }
 
     function undoAction() {
@@ -2327,7 +2337,7 @@
         shape.handles?.forEach(handle => handle.remove());
         shape.handles = [];
 
-        if (selectedShape !== shape) return;
+        if (selectedShape !== shape && !isShapeConnected(shape)) return;
 
         function makeHandle(x, y, action, color) {
             const hit = document.createElementNS(SVG_NS, "circle");
@@ -2410,11 +2420,15 @@
     function selectShape(shape, additive = false) {
         const oldPrimary = selectedShape;
 
-        // Remove old primary shape handles
-        if (oldPrimary && oldPrimary !== shape) {
-            oldPrimary.handles?.forEach(h => h.remove());
-            oldPrimary.handles = [];
-        }
+        // Keep handles if the old shape has a persistent connection.
+if (
+    oldPrimary &&
+    oldPrimary !== shape &&
+    !isShapeConnected(oldPrimary)
+) {
+    oldPrimary.handles?.forEach(h => h.remove());
+    oldPrimary.handles = [];
+}
 
         if (!additive) {
             selectedShapes = shape ? [shape] : [];
@@ -2448,6 +2462,7 @@
         updatePropertiesPanel();
         renderLayers();
         bringHandlesToFront();
+        refreshConnectionHandles();
     }
 
     function bringHandlesToFront() {
@@ -2536,7 +2551,10 @@
     function updateCurveHandles(shape) {
         shape.handles?.forEach(el => el.remove());
         shape.handles = [];
-        if (shape.type !== "curve" || selectedShape !== shape) return;
+        if (
+    shape.type !== "curve" ||
+    (selectedShape !== shape && !isShapeConnected(shape))
+) return;
 
         function makeHandle(x, y, action, color, radius = 0.32) {
             const hoverBg = document.createElementNS(SVG_NS, "circle");
@@ -2656,7 +2674,7 @@
     function updateBasicShapeHandles(shape) {
         shape.handles?.forEach(h => h.remove());
         shape.handles = [];
-        if (selectedShape !== shape) return;
+        if (selectedShape !== shape && !isShapeConnected(shape)) return;
 
         function makeHandle(x, y, action) {
             const hit = document.createElementNS(SVG_NS, "circle");
@@ -2823,7 +2841,10 @@
         shape.handles?.forEach(h => h.remove());
         shape.handles = [];
 
-        if (shape.type !== "path" || selectedShape !== shape) return;
+        if (
+    shape.type !== "path" ||
+    (selectedShape !== shape && !isShapeConnected(shape))
+) return;
 
         // Imported SVG path: render one handle per unique anchor.
         if (Array.isArray(shape.svgEditableSegments)) {
@@ -3306,6 +3327,303 @@
 
     let activeSnapTargetVisual = null;
 
+    // =====================================
+// PERSISTENT HANDLE CONNECTIONS
+// =====================================
+
+function ensureShapeId(shape) {
+    if (!shape.id) {
+        shape.id = crypto.randomUUID();
+    }
+
+    return shape.id;
+}
+
+function isShapeConnected(shape) {
+    if (!shape?.id) return false;
+
+    return connections.some(connection =>
+        connection.a.shapeId === shape.id ||
+        connection.b.shapeId === shape.id
+    );
+}
+
+function isHandleConnected(ref) {
+    return connections.some(connection =>
+        (
+            connection.a.shapeId === ref.shapeId &&
+            connection.a.handle === ref.handle
+        ) ||
+        (
+            connection.b.shapeId === ref.shapeId &&
+            connection.b.handle === ref.handle
+        )
+    );
+}
+
+function removeConnectionForHandle(ref) {
+    const previousLength = connections.length;
+
+    connections = connections.filter(connection =>
+        !(
+            connection.a.shapeId === ref.shapeId &&
+            connection.a.handle === ref.handle
+        ) &&
+        !(
+            connection.b.shapeId === ref.shapeId &&
+            connection.b.handle === ref.handle
+        )
+    );
+
+    if (connections.length !== previousLength) {
+        refreshConnectionHandles();
+    }
+}
+
+function prepareHandleDrag(shape, handle) {
+    const ref = {
+        shapeId: ensureShapeId(shape),
+        handle
+    };
+
+    // Moving a connected handle starts by disconnecting it.
+    // It can connect to another handle when released.
+    removeConnectionForHandle(ref);
+
+    if (dragging) {
+        dragging.sourceHandle = ref;
+    }
+}
+
+function addHandleConnection(refA, refB) {
+    if (!refA || !refB) return;
+
+    // A handle cannot connect to itself.
+    if (
+        refA.shapeId === refB.shapeId &&
+        refA.handle === refB.handle
+    ) {
+        return;
+    }
+
+    // One-to-one rule:
+    // Remove any previous connection belonging to either handle.
+    removeConnectionForHandle(refA);
+    removeConnectionForHandle(refB);
+
+    connections.push({
+        a: { ...refA },
+        b: { ...refB }
+    });
+
+    refreshConnectionHandles();
+}
+
+function refreshConnectionHandles() {
+    // Keep actual SVG handles available for connected shapes,
+    // even when those shapes are no longer selected.
+    shapes.forEach(shape => {
+        if (!isShapeConnected(shape)) {
+            if (shape !== selectedShape) {
+                shape.handles?.forEach(handle => handle.remove());
+                shape.handles = [];
+            }
+
+            return;
+        }
+
+        if (!shape.hidden && !shape.locked && !shape.handles?.length) {
+            createHandlesForShape(shape);
+        }
+    });
+
+    // Restore each visible handle's original colour first.
+    shapes.forEach(shape => {
+        shape.handles?.forEach(handle => {
+            if (
+                handle.tagName?.toLowerCase() === "circle" &&
+                handle.hasAttribute("stroke") &&
+                handle.dataset.originalFill !== undefined
+            ) {
+                handle.setAttribute("fill", handle.dataset.originalFill);
+            }
+        });
+    });
+
+    // Then colour both ends of every connection red.
+    connections.forEach(connection => {
+        const pairs = [connection.a, connection.b];
+
+        pairs.forEach(ref => {
+            const shape = shapes.find(item => item.id === ref.shapeId);
+            if (!shape || shape.hidden || shape.locked) return;
+
+            const visibleHandle = findVisibleSnapHandle({
+                shape,
+                end: ref.handle
+            });
+
+            if (!visibleHandle) return;
+
+            if (visibleHandle.dataset.originalFill === undefined) {
+                visibleHandle.dataset.originalFill =
+                    visibleHandle.getAttribute("fill") || "#10131a";
+            }
+
+            visibleHandle.setAttribute("fill", "#EF4444");
+        });
+    });
+
+    bringHandlesToFront();
+}// =====================================
+// PERSISTENT HANDLE CONNECTIONS
+// =====================================
+
+function ensureShapeId(shape) {
+    if (!shape.id) {
+        shape.id = crypto.randomUUID();
+    }
+
+    return shape.id;
+}
+
+function isShapeConnected(shape) {
+    if (!shape?.id) return false;
+
+    return connections.some(connection =>
+        connection.a.shapeId === shape.id ||
+        connection.b.shapeId === shape.id
+    );
+}
+
+function isHandleConnected(ref) {
+    return connections.some(connection =>
+        (
+            connection.a.shapeId === ref.shapeId &&
+            connection.a.handle === ref.handle
+        ) ||
+        (
+            connection.b.shapeId === ref.shapeId &&
+            connection.b.handle === ref.handle
+        )
+    );
+}
+
+function removeConnectionForHandle(ref) {
+    const previousLength = connections.length;
+
+    connections = connections.filter(connection =>
+        !(
+            connection.a.shapeId === ref.shapeId &&
+            connection.a.handle === ref.handle
+        ) &&
+        !(
+            connection.b.shapeId === ref.shapeId &&
+            connection.b.handle === ref.handle
+        )
+    );
+
+    if (connections.length !== previousLength) {
+        refreshConnectionHandles();
+    }
+}
+
+function prepareHandleDrag(shape, handle) {
+    const ref = {
+        shapeId: ensureShapeId(shape),
+        handle
+    };
+
+    // Moving a connected handle starts by disconnecting it.
+    // It can connect to another handle when released.
+    removeConnectionForHandle(ref);
+
+    if (dragging) {
+        dragging.sourceHandle = ref;
+    }
+}
+
+function addHandleConnection(refA, refB) {
+    if (!refA || !refB) return;
+
+    // A handle cannot connect to itself.
+    if (
+        refA.shapeId === refB.shapeId &&
+        refA.handle === refB.handle
+    ) {
+        return;
+    }
+
+    // One-to-one rule:
+    // Remove any previous connection belonging to either handle.
+    removeConnectionForHandle(refA);
+    removeConnectionForHandle(refB);
+
+    connections.push({
+        a: { ...refA },
+        b: { ...refB }
+    });
+
+    refreshConnectionHandles();
+}
+
+function refreshConnectionHandles() {
+    // Keep actual SVG handles available for connected shapes,
+    // even when those shapes are no longer selected.
+    shapes.forEach(shape => {
+        if (!isShapeConnected(shape)) {
+            if (shape !== selectedShape) {
+                shape.handles?.forEach(handle => handle.remove());
+                shape.handles = [];
+            }
+
+            return;
+        }
+
+        if (!shape.hidden && !shape.locked && !shape.handles?.length) {
+            createHandlesForShape(shape);
+        }
+    });
+
+    // Restore each visible handle's original colour first.
+    shapes.forEach(shape => {
+        shape.handles?.forEach(handle => {
+            if (
+                handle.tagName?.toLowerCase() === "circle" &&
+                handle.hasAttribute("stroke") &&
+                handle.dataset.originalFill !== undefined
+            ) {
+                handle.setAttribute("fill", handle.dataset.originalFill);
+            }
+        });
+    });
+
+    // Then colour both ends of every connection red.
+    connections.forEach(connection => {
+        const pairs = [connection.a, connection.b];
+
+        pairs.forEach(ref => {
+            const shape = shapes.find(item => item.id === ref.shapeId);
+            if (!shape || shape.hidden || shape.locked) return;
+
+            const visibleHandle = findVisibleSnapHandle({
+                shape,
+                end: ref.handle
+            });
+
+            if (!visibleHandle) return;
+
+            if (visibleHandle.dataset.originalFill === undefined) {
+                visibleHandle.dataset.originalFill =
+                    visibleHandle.getAttribute("fill") || "#10131a";
+            }
+
+            visibleHandle.setAttribute("fill", "#EF4444");
+        });
+    });
+
+    bringHandlesToFront();
+}
     function findVisibleSnapHandle(target) {
         const { shape, end } = target;
 
@@ -3762,11 +4080,18 @@
             const hIdx = Number(vertexHit.dataset.holeIndex);
 
             dragging = {
-                shape,
-                type: "path-vertex",
-                vertexIndex: vIdx,
-                holeIndex: hIdx
-            };
+    shape,
+    type: "path-vertex",
+    vertexIndex: vIdx,
+    holeIndex: hIdx
+};
+
+prepareHandleDrag(
+    shape,
+    hIdx === -1
+        ? `v_${vIdx}`
+        : `h_${hIdx}_${vIdx}`
+);
             return;
         }
 
@@ -3794,6 +4119,7 @@
                 initialRadius: shape.radius,
                 initialCornerRadius: shape.cornerRadius || 0
             };
+            prepareHandleDrag(shape, basicHit.dataset.action);
             // Show helper guides
             shape.horizontalGuide.style.display = "block";
             shape.verticalGuide.style.display = "block";
@@ -3860,6 +4186,7 @@
 
                 snappedTo: null
             };
+            prepareHandleDrag(shape, action);
             // Show all curve helper guides
             shape.circumferenceGuide.style.display = "block";
             shape.horizontalGuide.style.display = "block";
@@ -3885,10 +4212,13 @@
             selectShape(shape);
 
             dragging = {
-                shape,
-                type: "ellipse-arc-handle",
-                action
-            };
+    shape,
+    type: "ellipse-arc-handle",
+    action,
+    snappedTo: null
+};
+
+prepareHandleDrag(shape, action);
 
             return;
         }
@@ -3904,6 +4234,7 @@
                 end: hitArea.dataset.end,
                 snappedTo: null
             };
+            prepareHandleDrag(shape, hitArea.dataset.end);
             return;
         }
 
@@ -4174,9 +4505,9 @@
             if (action === "start") {
 
                 const angle = Math.atan2(
-                    snappedPosition.y - shape.cy,
-                    snappedPosition.x - shape.cx
-                );
+    snappedPosition.y - shape.cy,
+    snappedPosition.x - shape.cx
+);
 
                 shape.startAngle = snapAngle(angle);
             }
@@ -4201,9 +4532,9 @@
             ) {
 
                 const currentAngle = Math.atan2(
-                    position.y - dragging.pivot.y,
-                    position.x - dragging.pivot.x
-                );
+    snappedPosition.y - dragging.pivot.y,
+    snappedPosition.x - dragging.pivot.x
+);
 
                 let rotation =
                     currentAngle - dragging.initialCursorAngle;
@@ -4240,7 +4571,7 @@
             // GREEN: Change radius vertically
             else if (action === "radius") {
 
-                const movement = dragging.startY - position.y;
+                const movement = dragging.startY - snappedPosition.y;
                 const newRadius = dragging.startRadius + movement;
 
                 shape.radius = Math.max(
@@ -4267,33 +4598,33 @@
                 event.shiftKey
             );
 
-            if (action === "start" || action === "end") {
+           if (action === "start" || action === "end") {
 
-                const angle = Math.atan2(
-                    (position.y - shape.cy) / shape.ry,
-                    (position.x - shape.cx) / shape.rx
-                );
+    const angle = Math.atan2(
+        (snappedPosition.y - shape.cy) / shape.ry,
+        (snappedPosition.x - shape.cx) / shape.rx
+    );
 
-                if (action === "start") {
-                    shape.startAngle = snapAngle(angle);
-                } else {
-                    shape.endAngle = snapAngle(angle);
-                }
+    if (action === "start") {
+        shape.startAngle = snapAngle(angle);
+    } else {
+        shape.endAngle = snapAngle(angle);
+    }
 
-            } else if (action === "rx") {
+} else if (action === "rx") {
 
-                shape.rx = Math.max(
-                    0.2,
-                    Math.abs(position.x - shape.cx)
-                );
+    shape.rx = Math.max(
+        0.2,
+        Math.abs(snappedPosition.x - shape.cx)
+    );
 
-            } else if (action === "ry") {
+} else if (action === "ry") {
 
-                shape.ry = Math.max(
-                    0.2,
-                    Math.abs(position.y - shape.cy)
-                );
-            }
+    shape.ry = Math.max(
+        0.2,
+        Math.abs(snappedPosition.y - shape.cy)
+    );
+}
 
             updateEllipseArc(shape);
             return;
@@ -4307,33 +4638,41 @@
                 event.shiftKey
             );
             if (shape.type === "circle") {
-                const dist = Math.hypot(position.x - shape.cx, position.y - shape.cy);
-                shape.radius = Math.max(0.2, Math.min(artboardSize, dist));
-                updateBasicShape(shape);
-            } else if (shape.type === "ellipse") {
-                if (dragging.action === "rx") {
-                    shape.rx = Math.max(
-                        0.2,
-                        Math.abs(position.x - shape.cx)
-                    );
-                } else if (dragging.action === "ry") {
-                    shape.ry = Math.max(
-                        0.2,
-                        Math.abs(position.y - shape.cy)
-                    );
-                }
+    const dist = Math.hypot(
+        snappedPosition.x - shape.cx,
+        snappedPosition.y - shape.cy
+    );
+
+    shape.radius = Math.max(0.2, Math.min(artboardSize, dist));
+    updateBasicShape(shape);
+
+} else if (shape.type === "ellipse") {
+    if (dragging.action === "rx") {
+        shape.rx = Math.max(
+            0.2,
+            Math.abs(snappedPosition.x - shape.cx)
+        );
+
+    } else if (dragging.action === "ry") {
+        shape.ry = Math.max(
+            0.2,
+            Math.abs(snappedPosition.y - shape.cy)
+        );
+    }
+
+    updateBasicShape(shape);
 
                 updateBasicShape(shape);
             } else if (shape.type === "rectangle") {
-                const dx = position.x - dragging.startX;
-                const dy = position.y - dragging.startY;
+                const dx = snappedPosition.x - dragging.startX;
+const dy = snappedPosition.y - dragging.startY;
                 const action = dragging.action;
                 if (dragging.action === "corner-radius") {
                     shape.cornerRadius = Math.max(
                         0,
                         Math.min(
                             Math.min(shape.width, shape.height) / 2,
-                            position.x - shape.x
+                            snappedPosition.x - shape.x
                         )
                     );
 
@@ -4440,7 +4779,30 @@
             endpointSnapIndicator.style.display = "none";
         }
 
-        if (!dragging) return;
+        if (!dragging) {
+    hideSnapTarget();
+    return;
+}
+
+// Keep a reference before clearing the active drag.
+const completedDrag = dragging;
+
+// Remove the temporary snap preview.
+hideSnapTarget();
+
+// If the dragged handle was released on another handle,
+// create a persistent connection between the two.
+if (completedDrag.sourceHandle && completedDrag.snappedTo) {
+    const targetRef = {
+        shapeId: ensureShapeId(completedDrag.snappedTo.shape),
+        handle: completedDrag.snappedTo.end
+    };
+
+    addHandleConnection(
+        completedDrag.sourceHandle,
+        targetRef
+    );
+}
 
         if (dragging.shape?.type === "curve") {
             const shape = dragging.shape;
@@ -4464,10 +4826,12 @@
             dragging.shape.horizontalGuide.style.display = "none";
             dragging.shape.verticalGuide.style.display = "none";
         }
-        hideAlignmentGuides();
-        dragging = null;
+hideAlignmentGuides();
+dragging = null;
 
-        updateMeasurementPanel();
+refreshConnectionHandles();
+
+updateMeasurementPanel();
         updatePropertiesPanel();
         commitHistoryAction();
     }
@@ -5338,7 +5702,7 @@
         showToast("Duplicated selection", "success");
     }
 
-    function createShapeFromCopy(data) {
+    function createShapeFromCopy(data, preserveId = false) {
         let shape;
 
         if (data.type === "line") {
@@ -5380,6 +5744,11 @@
             updatePathShape(shape);
         }
 
+        if (shape) {
+    shape.id = preserveId && data.id
+        ? data.id
+        : crypto.randomUUID();
+}
         return shape;
     }
 
