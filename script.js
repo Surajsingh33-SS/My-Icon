@@ -3171,53 +3171,129 @@
     // 12. SNAPPING & ALIGNMENT GUIDES
     // ========================================================================
     function getShapeEndpoints(shape) {
-        if (!shape) return [];
-        if (shape.type === "line") {
-            return [
-                { x: shape.x1, y: shape.y1, shape, end: "start" },
-                { x: shape.x2, y: shape.y2, shape, end: "end" }
-            ];
+    if (!shape || shape.hidden || shape.locked) return [];
+
+    const handles = [];
+
+    function add(x, y, end) {
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+            handles.push({ x, y, shape, end });
         }
-        if (shape.type === "curve") {
-            return [
-                { x: shape.cx + shape.radius * Math.cos(shape.startAngle), y: shape.cy + shape.radius * Math.sin(shape.startAngle), shape, end: "start" },
-                { x: shape.cx + shape.radius * Math.cos(shape.endAngle), y: shape.cy + shape.radius * Math.sin(shape.endAngle), shape, end: "end" },
-                { x: shape.cx, y: shape.cy, shape, end: "center" }
-            ];
-        }
-        if (shape.type === "circle") {
-            return [
-                { x: shape.cx, y: shape.cy, shape, end: "center" },
-                { x: shape.cx, y: shape.cy - shape.radius, shape, end: "top" },
-                { x: shape.cx, y: shape.cy + shape.radius, shape, end: "bottom" },
-                { x: shape.cx - shape.radius, y: shape.cy, shape, end: "left" },
-                { x: shape.cx + shape.radius, y: shape.cy, shape, end: "right" }
-            ];
-        }
-        if (shape.type === "rectangle") {
-            return [
-                { x: shape.x, y: shape.y, shape, end: "nw" },
-                { x: shape.x + shape.width, y: shape.y, shape, end: "ne" },
-                { x: shape.x, y: shape.y + shape.height, shape, end: "sw" },
-                { x: shape.x + shape.width, y: shape.y + shape.height, shape, end: "se" },
-                { x: shape.x + shape.width / 2, y: shape.y + shape.height / 2, shape, end: "center" }
-            ];
-        }
-        if (shape.type === "path") {
-            const endpoints = [];
-            (shape.points || []).forEach((pt, idx) => {
-                endpoints.push({ x: pt.x, y: pt.y, shape, end: `v_${idx}` });
-            });
-            (shape.holes || []).forEach((hole, hIdx) => {
-                const pts = Array.isArray(hole) ? hole : hole.points;
-                (pts || []).forEach((pt, pIdx) => {
-                    endpoints.push({ x: pt.x, y: pt.y, shape, end: `h_${hIdx}_${pIdx}` });
-                });
-            });
-            return endpoints;
-        }
-        return [];
     }
+
+    // LINE
+    if (shape.type === "line") {
+        add(shape.x1, shape.y1, "start");
+        add(shape.x2, shape.y2, "end");
+    }
+
+    // CIRCULAR CURVE
+    else if (shape.type === "curve") {
+        const delta = ((shape.endAngle - shape.startAngle) + Math.PI * 2)
+            % (Math.PI * 2);
+
+        add(
+            shape.cx + shape.radius * Math.cos(shape.startAngle),
+            shape.cy + shape.radius * Math.sin(shape.startAngle),
+            "start"
+        );
+
+        add(
+            shape.cx + shape.radius * Math.cos(shape.endAngle),
+            shape.cy + shape.radius * Math.sin(shape.endAngle),
+            "end"
+        );
+
+        // Rotation handles
+        add(
+            shape.cx + shape.radius * Math.cos(shape.startAngle + delta * 0.75),
+            shape.cy + shape.radius * Math.sin(shape.startAngle + delta * 0.75),
+            "rotate-a"
+        );
+
+        add(
+            shape.cx + shape.radius * Math.cos(shape.startAngle + delta * 0.25),
+            shape.cy + shape.radius * Math.sin(shape.startAngle + delta * 0.25),
+            "rotate-b"
+        );
+
+        // Radius handle
+        add(shape.cx, shape.cy, "radius");
+    }
+
+    // CIRCLE
+    else if (shape.type === "circle") {
+        add(shape.cx + shape.radius, shape.cy, "radius");
+    }
+
+    // ELLIPSE
+    else if (shape.type === "ellipse") {
+        add(shape.cx + shape.rx, shape.cy, "rx");
+        add(shape.cx, shape.cy + shape.ry, "ry");
+    }
+
+    // ELLIPSE ARC
+    else if (shape.type === "ellipse-arc") {
+        add(
+            shape.cx + shape.rx * Math.cos(shape.startAngle),
+            shape.cy + shape.ry * Math.sin(shape.startAngle),
+            "start"
+        );
+
+        add(
+            shape.cx + shape.rx * Math.cos(shape.endAngle),
+            shape.cy + shape.ry * Math.sin(shape.endAngle),
+            "end"
+        );
+
+        add(shape.cx, shape.cy - shape.ry, "rx");
+        add(shape.cx, shape.cy + shape.ry, "ry");
+    }
+
+    // RECTANGLE
+    else if (shape.type === "rectangle") {
+        const x = shape.x;
+        const y = shape.y;
+        const w = shape.width;
+        const h = shape.height;
+
+        add(x, y, "nw");
+        add(x + w / 2, y, "n");
+        add(x + w, y, "ne");
+
+        add(x + (shape.cornerRadius || 0), y, "corner-radius");
+
+        add(x + w, y + h / 2, "e");
+        add(x + w, y + h, "se");
+        add(x + w / 2, y + h, "s");
+        add(x, y + h, "sw");
+        add(x, y + h / 2, "w");
+    }
+
+    // NORMAL PATH + IMPORTED SVG PATH
+    else if (shape.type === "path") {
+        // Normal editable path vertices
+        (shape.points || []).forEach((point, index) => {
+            add(point.x, point.y, `v_${index}`);
+        });
+
+        // Hole vertices
+        (shape.holes || []).forEach((hole, holeIndex) => {
+            const points = Array.isArray(hole) ? hole : hole.points;
+
+            (points || []).forEach((point, pointIndex) => {
+                add(point.x, point.y, `h_${holeIndex}_${pointIndex}`);
+            });
+        });
+
+        // Imported SVG editable anchors
+        (shape.svgAnchors || []).forEach(anchor => {
+            add(anchor.x, anchor.y, `svg_${anchor.id}`);
+        });
+    }
+
+    return handles;
+}
 
     function getSnappedPoint(x, y, currentShape, shiftKey = false) {
         if (shiftKey) {
