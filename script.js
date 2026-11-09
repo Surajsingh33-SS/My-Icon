@@ -774,8 +774,8 @@
 
             shapes = [];
             connections = Array.isArray(projectData.connections)
-    ? structuredClone(projectData.connections)
-    : [];
+                ? structuredClone(projectData.connections)
+                : [];
             selectedShape = null;
             selectedShapes = [];
 
@@ -930,7 +930,7 @@
         });
 
         // Restore persistent handle connections.
-connections = structuredClone(snapshot.connections || []);
+        connections = structuredClone(snapshot.connections || []);
         // 6. Restore geometry updates
         shapes.forEach(shape => {
             if (shape.type === "line") updateLine(shape);
@@ -2421,14 +2421,14 @@ connections = structuredClone(snapshot.connections || []);
         const oldPrimary = selectedShape;
 
         // Keep handles if the old shape has a persistent connection.
-if (
-    oldPrimary &&
-    oldPrimary !== shape &&
-    !isShapeConnected(oldPrimary)
-) {
-    oldPrimary.handles?.forEach(h => h.remove());
-    oldPrimary.handles = [];
-}
+        if (
+            oldPrimary &&
+            oldPrimary !== shape &&
+            !isShapeConnected(oldPrimary)
+        ) {
+            oldPrimary.handles?.forEach(h => h.remove());
+            oldPrimary.handles = [];
+        }
 
         if (!additive) {
             selectedShapes = shape ? [shape] : [];
@@ -2552,9 +2552,9 @@ if (
         shape.handles?.forEach(el => el.remove());
         shape.handles = [];
         if (
-    shape.type !== "curve" ||
-    (selectedShape !== shape && !isShapeConnected(shape))
-) return;
+            shape.type !== "curve" ||
+            (selectedShape !== shape && !isShapeConnected(shape))
+        ) return;
 
         function makeHandle(x, y, action, color, radius = 0.32) {
             const hoverBg = document.createElementNS(SVG_NS, "circle");
@@ -2842,9 +2842,9 @@ if (
         shape.handles = [];
 
         if (
-    shape.type !== "path" ||
-    (selectedShape !== shape && !isShapeConnected(shape))
-) return;
+            shape.type !== "path" ||
+            (selectedShape !== shape && !isShapeConnected(shape))
+        ) return;
 
         // Imported SVG path: render one handle per unique anchor.
         if (Array.isArray(shape.svgEditableSegments)) {
@@ -3328,302 +3328,302 @@ if (
     let activeSnapTargetVisual = null;
 
     // =====================================
-// PERSISTENT HANDLE CONNECTIONS
-// =====================================
+    // PERSISTENT HANDLE CONNECTIONS
+    // =====================================
 
-function ensureShapeId(shape) {
-    if (!shape.id) {
-        shape.id = crypto.randomUUID();
+    function ensureShapeId(shape) {
+        if (!shape.id) {
+            shape.id = crypto.randomUUID();
+        }
+
+        return shape.id;
     }
 
-    return shape.id;
-}
+    function isShapeConnected(shape) {
+        if (!shape?.id) return false;
 
-function isShapeConnected(shape) {
-    if (!shape?.id) return false;
-
-    return connections.some(connection =>
-        connection.a.shapeId === shape.id ||
-        connection.b.shapeId === shape.id
-    );
-}
-
-function isHandleConnected(ref) {
-    return connections.some(connection =>
-        (
-            connection.a.shapeId === ref.shapeId &&
-            connection.a.handle === ref.handle
-        ) ||
-        (
-            connection.b.shapeId === ref.shapeId &&
-            connection.b.handle === ref.handle
-        )
-    );
-}
-
-function removeConnectionForHandle(ref) {
-    const previousLength = connections.length;
-
-    connections = connections.filter(connection =>
-        !(
-            connection.a.shapeId === ref.shapeId &&
-            connection.a.handle === ref.handle
-        ) &&
-        !(
-            connection.b.shapeId === ref.shapeId &&
-            connection.b.handle === ref.handle
-        )
-    );
-
-    if (connections.length !== previousLength) {
-        refreshConnectionHandles();
-    }
-}
-
-function prepareHandleDrag(shape, handle) {
-    const ref = {
-        shapeId: ensureShapeId(shape),
-        handle
-    };
-
-    // Moving a connected handle starts by disconnecting it.
-    // It can connect to another handle when released.
-    removeConnectionForHandle(ref);
-
-    if (dragging) {
-        dragging.sourceHandle = ref;
-    }
-}
-
-function addHandleConnection(refA, refB) {
-    if (!refA || !refB) return;
-
-    // A handle cannot connect to itself.
-    if (
-        refA.shapeId === refB.shapeId &&
-        refA.handle === refB.handle
-    ) {
-        return;
+        return connections.some(connection =>
+            connection.a.shapeId === shape.id ||
+            connection.b.shapeId === shape.id
+        );
     }
 
-    // One-to-one rule:
-    // Remove any previous connection belonging to either handle.
-    removeConnectionForHandle(refA);
-    removeConnectionForHandle(refB);
+    function isHandleConnected(ref) {
+        return connections.some(connection =>
+            (
+                connection.a.shapeId === ref.shapeId &&
+                connection.a.handle === ref.handle
+            ) ||
+            (
+                connection.b.shapeId === ref.shapeId &&
+                connection.b.handle === ref.handle
+            )
+        );
+    }
 
-    connections.push({
-        a: { ...refA },
-        b: { ...refB }
-    });
+    function removeConnectionForHandle(ref) {
+        const previousLength = connections.length;
 
-    refreshConnectionHandles();
-}
+        connections = connections.filter(connection =>
+            !(
+                connection.a.shapeId === ref.shapeId &&
+                connection.a.handle === ref.handle
+            ) &&
+            !(
+                connection.b.shapeId === ref.shapeId &&
+                connection.b.handle === ref.handle
+            )
+        );
 
-function refreshConnectionHandles() {
-    // Keep actual SVG handles available for connected shapes,
-    // even when those shapes are no longer selected.
-    shapes.forEach(shape => {
-        if (!isShapeConnected(shape)) {
-            if (shape !== selectedShape) {
-                shape.handles?.forEach(handle => handle.remove());
-                shape.handles = [];
-            }
+        if (connections.length !== previousLength) {
+            refreshConnectionHandles();
+        }
+    }
 
+    function prepareHandleDrag(shape, handle) {
+        const ref = {
+            shapeId: ensureShapeId(shape),
+            handle
+        };
+
+        // Moving a connected handle starts by disconnecting it.
+        // It can connect to another handle when released.
+        removeConnectionForHandle(ref);
+
+        if (dragging) {
+            dragging.sourceHandle = ref;
+        }
+    }
+
+    function addHandleConnection(refA, refB) {
+        if (!refA || !refB) return;
+
+        // A handle cannot connect to itself.
+        if (
+            refA.shapeId === refB.shapeId &&
+            refA.handle === refB.handle
+        ) {
             return;
         }
 
-        if (!shape.hidden && !shape.locked && !shape.handles?.length) {
-            createHandlesForShape(shape);
-        }
-    });
+        // One-to-one rule:
+        // Remove any previous connection belonging to either handle.
+        removeConnectionForHandle(refA);
+        removeConnectionForHandle(refB);
 
-    // Restore each visible handle's original colour first.
-    shapes.forEach(shape => {
-        shape.handles?.forEach(handle => {
-            if (
-                handle.tagName?.toLowerCase() === "circle" &&
-                handle.hasAttribute("stroke") &&
-                handle.dataset.originalFill !== undefined
-            ) {
-                handle.setAttribute("fill", handle.dataset.originalFill);
-            }
+        connections.push({
+            a: { ...refA },
+            b: { ...refB }
         });
-    });
 
-    // Then colour both ends of every connection red.
-    connections.forEach(connection => {
-        const pairs = [connection.a, connection.b];
-
-        pairs.forEach(ref => {
-            const shape = shapes.find(item => item.id === ref.shapeId);
-            if (!shape || shape.hidden || shape.locked) return;
-
-            const visibleHandle = findVisibleSnapHandle({
-                shape,
-                end: ref.handle
-            });
-
-            if (!visibleHandle) return;
-
-            if (visibleHandle.dataset.originalFill === undefined) {
-                visibleHandle.dataset.originalFill =
-                    visibleHandle.getAttribute("fill") || "#10131a";
-            }
-
-            visibleHandle.setAttribute("fill", "#EF4444");
-        });
-    });
-
-    bringHandlesToFront();
-}// =====================================
-// PERSISTENT HANDLE CONNECTIONS
-// =====================================
-
-function ensureShapeId(shape) {
-    if (!shape.id) {
-        shape.id = crypto.randomUUID();
-    }
-
-    return shape.id;
-}
-
-function isShapeConnected(shape) {
-    if (!shape?.id) return false;
-
-    return connections.some(connection =>
-        connection.a.shapeId === shape.id ||
-        connection.b.shapeId === shape.id
-    );
-}
-
-function isHandleConnected(ref) {
-    return connections.some(connection =>
-        (
-            connection.a.shapeId === ref.shapeId &&
-            connection.a.handle === ref.handle
-        ) ||
-        (
-            connection.b.shapeId === ref.shapeId &&
-            connection.b.handle === ref.handle
-        )
-    );
-}
-
-function removeConnectionForHandle(ref) {
-    const previousLength = connections.length;
-
-    connections = connections.filter(connection =>
-        !(
-            connection.a.shapeId === ref.shapeId &&
-            connection.a.handle === ref.handle
-        ) &&
-        !(
-            connection.b.shapeId === ref.shapeId &&
-            connection.b.handle === ref.handle
-        )
-    );
-
-    if (connections.length !== previousLength) {
         refreshConnectionHandles();
     }
-}
 
-function prepareHandleDrag(shape, handle) {
-    const ref = {
-        shapeId: ensureShapeId(shape),
-        handle
-    };
+    function refreshConnectionHandles() {
+        // Keep actual SVG handles available for connected shapes,
+        // even when those shapes are no longer selected.
+        shapes.forEach(shape => {
+            if (!isShapeConnected(shape)) {
+                if (shape !== selectedShape) {
+                    shape.handles?.forEach(handle => handle.remove());
+                    shape.handles = [];
+                }
 
-    // Moving a connected handle starts by disconnecting it.
-    // It can connect to another handle when released.
-    removeConnectionForHandle(ref);
-
-    if (dragging) {
-        dragging.sourceHandle = ref;
-    }
-}
-
-function addHandleConnection(refA, refB) {
-    if (!refA || !refB) return;
-
-    // A handle cannot connect to itself.
-    if (
-        refA.shapeId === refB.shapeId &&
-        refA.handle === refB.handle
-    ) {
-        return;
-    }
-
-    // One-to-one rule:
-    // Remove any previous connection belonging to either handle.
-    removeConnectionForHandle(refA);
-    removeConnectionForHandle(refB);
-
-    connections.push({
-        a: { ...refA },
-        b: { ...refB }
-    });
-
-    refreshConnectionHandles();
-}
-
-function refreshConnectionHandles() {
-    // Keep actual SVG handles available for connected shapes,
-    // even when those shapes are no longer selected.
-    shapes.forEach(shape => {
-        if (!isShapeConnected(shape)) {
-            if (shape !== selectedShape) {
-                shape.handles?.forEach(handle => handle.remove());
-                shape.handles = [];
+                return;
             }
 
+            if (!shape.hidden && !shape.locked && !shape.handles?.length) {
+                createHandlesForShape(shape);
+            }
+        });
+
+        // Restore each visible handle's original colour first.
+        shapes.forEach(shape => {
+            shape.handles?.forEach(handle => {
+                if (
+                    handle.tagName?.toLowerCase() === "circle" &&
+                    handle.hasAttribute("stroke") &&
+                    handle.dataset.originalFill !== undefined
+                ) {
+                    handle.setAttribute("fill", handle.dataset.originalFill);
+                }
+            });
+        });
+
+        // Then colour both ends of every connection red.
+        connections.forEach(connection => {
+            const pairs = [connection.a, connection.b];
+
+            pairs.forEach(ref => {
+                const shape = shapes.find(item => item.id === ref.shapeId);
+                if (!shape || shape.hidden || shape.locked) return;
+
+                const visibleHandle = findVisibleSnapHandle({
+                    shape,
+                    end: ref.handle
+                });
+
+                if (!visibleHandle) return;
+
+                if (visibleHandle.dataset.originalFill === undefined) {
+                    visibleHandle.dataset.originalFill =
+                        visibleHandle.getAttribute("fill") || "#10131a";
+                }
+
+                visibleHandle.setAttribute("fill", "#EF4444");
+            });
+        });
+
+        bringHandlesToFront();
+    }// =====================================
+    // PERSISTENT HANDLE CONNECTIONS
+    // =====================================
+
+    function ensureShapeId(shape) {
+        if (!shape.id) {
+            shape.id = crypto.randomUUID();
+        }
+
+        return shape.id;
+    }
+
+    function isShapeConnected(shape) {
+        if (!shape?.id) return false;
+
+        return connections.some(connection =>
+            connection.a.shapeId === shape.id ||
+            connection.b.shapeId === shape.id
+        );
+    }
+
+    function isHandleConnected(ref) {
+        return connections.some(connection =>
+            (
+                connection.a.shapeId === ref.shapeId &&
+                connection.a.handle === ref.handle
+            ) ||
+            (
+                connection.b.shapeId === ref.shapeId &&
+                connection.b.handle === ref.handle
+            )
+        );
+    }
+
+    function removeConnectionForHandle(ref) {
+        const previousLength = connections.length;
+
+        connections = connections.filter(connection =>
+            !(
+                connection.a.shapeId === ref.shapeId &&
+                connection.a.handle === ref.handle
+            ) &&
+            !(
+                connection.b.shapeId === ref.shapeId &&
+                connection.b.handle === ref.handle
+            )
+        );
+
+        if (connections.length !== previousLength) {
+            refreshConnectionHandles();
+        }
+    }
+
+    function prepareHandleDrag(shape, handle) {
+        const ref = {
+            shapeId: ensureShapeId(shape),
+            handle
+        };
+
+        // Moving a connected handle starts by disconnecting it.
+        // It can connect to another handle when released.
+        removeConnectionForHandle(ref);
+
+        if (dragging) {
+            dragging.sourceHandle = ref;
+        }
+    }
+
+    function addHandleConnection(refA, refB) {
+        if (!refA || !refB) return;
+
+        // A handle cannot connect to itself.
+        if (
+            refA.shapeId === refB.shapeId &&
+            refA.handle === refB.handle
+        ) {
             return;
         }
 
-        if (!shape.hidden && !shape.locked && !shape.handles?.length) {
-            createHandlesForShape(shape);
-        }
-    });
+        // One-to-one rule:
+        // Remove any previous connection belonging to either handle.
+        removeConnectionForHandle(refA);
+        removeConnectionForHandle(refB);
 
-    // Restore each visible handle's original colour first.
-    shapes.forEach(shape => {
-        shape.handles?.forEach(handle => {
-            if (
-                handle.tagName?.toLowerCase() === "circle" &&
-                handle.hasAttribute("stroke") &&
-                handle.dataset.originalFill !== undefined
-            ) {
-                handle.setAttribute("fill", handle.dataset.originalFill);
+        connections.push({
+            a: { ...refA },
+            b: { ...refB }
+        });
+
+        refreshConnectionHandles();
+    }
+
+    function refreshConnectionHandles() {
+        // Keep actual SVG handles available for connected shapes,
+        // even when those shapes are no longer selected.
+        shapes.forEach(shape => {
+            if (!isShapeConnected(shape)) {
+                if (shape !== selectedShape) {
+                    shape.handles?.forEach(handle => handle.remove());
+                    shape.handles = [];
+                }
+
+                return;
+            }
+
+            if (!shape.hidden && !shape.locked && !shape.handles?.length) {
+                createHandlesForShape(shape);
             }
         });
-    });
 
-    // Then colour both ends of every connection red.
-    connections.forEach(connection => {
-        const pairs = [connection.a, connection.b];
-
-        pairs.forEach(ref => {
-            const shape = shapes.find(item => item.id === ref.shapeId);
-            if (!shape || shape.hidden || shape.locked) return;
-
-            const visibleHandle = findVisibleSnapHandle({
-                shape,
-                end: ref.handle
+        // Restore each visible handle's original colour first.
+        shapes.forEach(shape => {
+            shape.handles?.forEach(handle => {
+                if (
+                    handle.tagName?.toLowerCase() === "circle" &&
+                    handle.hasAttribute("stroke") &&
+                    handle.dataset.originalFill !== undefined
+                ) {
+                    handle.setAttribute("fill", handle.dataset.originalFill);
+                }
             });
-
-            if (!visibleHandle) return;
-
-            if (visibleHandle.dataset.originalFill === undefined) {
-                visibleHandle.dataset.originalFill =
-                    visibleHandle.getAttribute("fill") || "#10131a";
-            }
-
-            visibleHandle.setAttribute("fill", "#EF4444");
         });
-    });
 
-    bringHandlesToFront();
-}
+        // Then colour both ends of every connection red.
+        connections.forEach(connection => {
+            const pairs = [connection.a, connection.b];
+
+            pairs.forEach(ref => {
+                const shape = shapes.find(item => item.id === ref.shapeId);
+                if (!shape || shape.hidden || shape.locked) return;
+
+                const visibleHandle = findVisibleSnapHandle({
+                    shape,
+                    end: ref.handle
+                });
+
+                if (!visibleHandle) return;
+
+                if (visibleHandle.dataset.originalFill === undefined) {
+                    visibleHandle.dataset.originalFill =
+                        visibleHandle.getAttribute("fill") || "#10131a";
+                }
+
+                visibleHandle.setAttribute("fill", "#EF4444");
+            });
+        });
+
+        bringHandlesToFront();
+    }
     function findVisibleSnapHandle(target) {
         const { shape, end } = target;
 
@@ -3755,8 +3755,8 @@ function refreshConnectionHandles() {
             return { x, y };
         }
 
-        const snapDistance = 0.55;
-        const releaseDistance = 0.65;
+        const snapDistance = 0.35;
+        const releaseDistance = 0.45;
 
         if (dragging?.snappedTo) {
             const target = getShapeEndpoints(dragging.snappedTo.shape).find(pt => pt.end === dragging.snappedTo.end);
@@ -4080,18 +4080,18 @@ function refreshConnectionHandles() {
             const hIdx = Number(vertexHit.dataset.holeIndex);
 
             dragging = {
-    shape,
-    type: "path-vertex",
-    vertexIndex: vIdx,
-    holeIndex: hIdx
-};
+                shape,
+                type: "path-vertex",
+                vertexIndex: vIdx,
+                holeIndex: hIdx
+            };
 
-prepareHandleDrag(
-    shape,
-    hIdx === -1
-        ? `v_${vIdx}`
-        : `h_${hIdx}_${vIdx}`
-);
+            prepareHandleDrag(
+                shape,
+                hIdx === -1
+                    ? `v_${vIdx}`
+                    : `h_${hIdx}_${vIdx}`
+            );
             return;
         }
 
@@ -4212,13 +4212,13 @@ prepareHandleDrag(
             selectShape(shape);
 
             dragging = {
-    shape,
-    type: "ellipse-arc-handle",
-    action,
-    snappedTo: null
-};
+                shape,
+                type: "ellipse-arc-handle",
+                action,
+                snappedTo: null
+            };
 
-prepareHandleDrag(shape, action);
+            prepareHandleDrag(shape, action);
 
             return;
         }
@@ -4505,9 +4505,9 @@ prepareHandleDrag(shape, action);
             if (action === "start") {
 
                 const angle = Math.atan2(
-    snappedPosition.y - shape.cy,
-    snappedPosition.x - shape.cx
-);
+                    snappedPosition.y - shape.cy,
+                    snappedPosition.x - shape.cx
+                );
 
                 shape.startAngle = snapAngle(angle);
             }
@@ -4532,9 +4532,9 @@ prepareHandleDrag(shape, action);
             ) {
 
                 const currentAngle = Math.atan2(
-    snappedPosition.y - dragging.pivot.y,
-    snappedPosition.x - dragging.pivot.x
-);
+                    snappedPosition.y - dragging.pivot.y,
+                    snappedPosition.x - dragging.pivot.x
+                );
 
                 let rotation =
                     currentAngle - dragging.initialCursorAngle;
@@ -4598,33 +4598,33 @@ prepareHandleDrag(shape, action);
                 event.shiftKey
             );
 
-           if (action === "start" || action === "end") {
+            if (action === "start" || action === "end") {
 
-    const angle = Math.atan2(
-        (snappedPosition.y - shape.cy) / shape.ry,
-        (snappedPosition.x - shape.cx) / shape.rx
-    );
+                const angle = Math.atan2(
+                    (snappedPosition.y - shape.cy) / shape.ry,
+                    (snappedPosition.x - shape.cx) / shape.rx
+                );
 
-    if (action === "start") {
-        shape.startAngle = snapAngle(angle);
-    } else {
-        shape.endAngle = snapAngle(angle);
-    }
+                if (action === "start") {
+                    shape.startAngle = snapAngle(angle);
+                } else {
+                    shape.endAngle = snapAngle(angle);
+                }
 
-} else if (action === "rx") {
+            } else if (action === "rx") {
 
-    shape.rx = Math.max(
-        0.2,
-        Math.abs(snappedPosition.x - shape.cx)
-    );
+                shape.rx = Math.max(
+                    0.2,
+                    Math.abs(snappedPosition.x - shape.cx)
+                );
 
-} else if (action === "ry") {
+            } else if (action === "ry") {
 
-    shape.ry = Math.max(
-        0.2,
-        Math.abs(snappedPosition.y - shape.cy)
-    );
-}
+                shape.ry = Math.max(
+                    0.2,
+                    Math.abs(snappedPosition.y - shape.cy)
+                );
+            }
 
             updateEllipseArc(shape);
             return;
@@ -4638,34 +4638,34 @@ prepareHandleDrag(shape, action);
                 event.shiftKey
             );
             if (shape.type === "circle") {
-    const dist = Math.hypot(
-        snappedPosition.x - shape.cx,
-        snappedPosition.y - shape.cy
-    );
+                const dist = Math.hypot(
+                    snappedPosition.x - shape.cx,
+                    snappedPosition.y - shape.cy
+                );
 
-    shape.radius = Math.max(0.2, Math.min(artboardSize, dist));
-    updateBasicShape(shape);
+                shape.radius = Math.max(0.2, Math.min(artboardSize, dist));
+                updateBasicShape(shape);
 
-} else if (shape.type === "ellipse") {
-    if (dragging.action === "rx") {
-        shape.rx = Math.max(
-            0.2,
-            Math.abs(snappedPosition.x - shape.cx)
-        );
+            } else if (shape.type === "ellipse") {
+                if (dragging.action === "rx") {
+                    shape.rx = Math.max(
+                        0.2,
+                        Math.abs(snappedPosition.x - shape.cx)
+                    );
 
-    } else if (dragging.action === "ry") {
-        shape.ry = Math.max(
-            0.2,
-            Math.abs(snappedPosition.y - shape.cy)
-        );
-    }
+                } else if (dragging.action === "ry") {
+                    shape.ry = Math.max(
+                        0.2,
+                        Math.abs(snappedPosition.y - shape.cy)
+                    );
+                }
 
-    updateBasicShape(shape);
+                updateBasicShape(shape);
 
                 updateBasicShape(shape);
             } else if (shape.type === "rectangle") {
                 const dx = snappedPosition.x - dragging.startX;
-const dy = snappedPosition.y - dragging.startY;
+                const dy = snappedPosition.y - dragging.startY;
                 const action = dragging.action;
                 if (dragging.action === "corner-radius") {
                     shape.cornerRadius = Math.max(
@@ -4699,12 +4699,112 @@ const dy = snappedPosition.y - dragging.startY;
 
         // Whole Shape Body Drag (Multi-selection group move, preserving artboardSize)
         if (dragging.type === "body") {
-            const dx = position.x - dragging.previousX;
-            const dy = position.y - dragging.previousY;
+
+            let dx = position.x - dragging.previousX;
+            let dy = position.y - dragging.previousY;
+
             dragging.previousX = position.x;
             dragging.previousY = position.y;
 
             const targets = selectedShapes.length ? selectedShapes : [shape];
+            const movingShapes = new Set(targets);
+
+            let closestSource = null;
+            let closestTarget = null;
+            let closestDist = Infinity;
+
+            // Shift temporarily disables snapping.
+            if (!event.shiftKey) {
+                // Keep the previous snap briefly while the pointer moves away.
+                if (dragging.sourceHandle && dragging.snappedTo) {
+                    const sourceShape = shapes.find(
+                        item => item.id === dragging.sourceHandle.shapeId
+                    );
+
+                    const source = getShapeEndpoints(sourceShape).find(
+                        item => item.end === dragging.sourceHandle.handle
+                    );
+
+                    const target = getShapeEndpoints(dragging.snappedTo.shape).find(
+                        item => item.end === dragging.snappedTo.end
+                    );
+
+                    if (source && target) {
+                        const distance = Math.hypot(
+                            position.x - dragging.snapPointerX,
+                            position.y - dragging.snapPointerY
+                        );
+
+                        if (distance <= 0.8) {
+                            closestSource = source;
+                            closestTarget = target;
+                        }
+                    }
+                }
+
+                // Find the nearest pair of handles.
+                if (!closestTarget) {
+                    let bestDistance = 0.55;
+
+                    for (const movingShape of targets) {
+                        for (const source of getShapeEndpoints(movingShape)) {
+                            for (const stationaryShape of shapes) {
+                                if (movingShapes.has(stationaryShape)) continue;
+
+                                for (const target of getShapeEndpoints(stationaryShape)) {
+                                    const distance = Math.hypot(
+                                        source.x + dx - target.x,
+                                        source.y + dy - target.y
+                                    );
+
+                                    if (distance < bestDistance) {
+                                        bestDistance = distance;
+                                        closestSource = source;
+                                        closestTarget = target;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (closestSource && closestTarget) {
+                // Correct the movement so both handles meet exactly.
+                dx += closestTarget.x - (closestSource.x + dx);
+                dy += closestTarget.y - (closestSource.y + dy);
+
+                dragging.sourceHandle = {
+                    shapeId: ensureShapeId(closestSource.shape),
+                    handle: closestSource.end
+                };
+
+                if (!dragging.snappedTo) {
+                    dragging.snapPointerX = position.x;
+                    dragging.snapPointerY = position.y;
+                }
+                dragging.snappedTo = {
+                    shape: closestTarget.shape,
+                    end: closestTarget.end
+                };
+
+                showSnapTarget(closestTarget);
+
+                if (endpointSnapIndicator) {
+                    endpointSnapIndicator.setAttribute("cx", closestTarget.x);
+                    endpointSnapIndicator.setAttribute("cy", closestTarget.y);
+                    endpointSnapIndicator.style.display = "block";
+                }
+            } else {
+                dragging.snapPointerX = null;
+                dragging.snapPointerY = null;
+                hideSnapTarget();
+
+                if (endpointSnapIndicator) {
+                    endpointSnapIndicator.style.display = "none";
+                }
+            }
+
 
             targets.forEach(item => {
                 if (item.type === "line") {
@@ -4780,29 +4880,29 @@ const dy = snappedPosition.y - dragging.startY;
         }
 
         if (!dragging) {
-    hideSnapTarget();
-    return;
-}
+            hideSnapTarget();
+            return;
+        }
 
-// Keep a reference before clearing the active drag.
-const completedDrag = dragging;
+        // Keep a reference before clearing the active drag.
+        const completedDrag = dragging;
 
-// Remove the temporary snap preview.
-hideSnapTarget();
+        // Remove the temporary snap preview.
+        hideSnapTarget();
 
-// If the dragged handle was released on another handle,
-// create a persistent connection between the two.
-if (completedDrag.sourceHandle && completedDrag.snappedTo) {
-    const targetRef = {
-        shapeId: ensureShapeId(completedDrag.snappedTo.shape),
-        handle: completedDrag.snappedTo.end
-    };
+        // If the dragged handle was released on another handle,
+        // create a persistent connection between the two.
+        if (completedDrag.sourceHandle && completedDrag.snappedTo) {
+            const targetRef = {
+                shapeId: ensureShapeId(completedDrag.snappedTo.shape),
+                handle: completedDrag.snappedTo.end
+            };
 
-    addHandleConnection(
-        completedDrag.sourceHandle,
-        targetRef
-    );
-}
+            addHandleConnection(
+                completedDrag.sourceHandle,
+                targetRef
+            );
+        }
 
         if (dragging.shape?.type === "curve") {
             const shape = dragging.shape;
@@ -4826,12 +4926,12 @@ if (completedDrag.sourceHandle && completedDrag.snappedTo) {
             dragging.shape.horizontalGuide.style.display = "none";
             dragging.shape.verticalGuide.style.display = "none";
         }
-hideAlignmentGuides();
-dragging = null;
+        hideAlignmentGuides();
+        dragging = null;
 
-refreshConnectionHandles();
+        refreshConnectionHandles();
 
-updateMeasurementPanel();
+        updateMeasurementPanel();
         updatePropertiesPanel();
         commitHistoryAction();
     }
@@ -5745,10 +5845,10 @@ updateMeasurementPanel();
         }
 
         if (shape) {
-    shape.id = preserveId && data.id
-        ? data.id
-        : crypto.randomUUID();
-}
+            shape.id = preserveId && data.id
+                ? data.id
+                : crypto.randomUUID();
+        }
         return shape;
     }
 
