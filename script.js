@@ -1889,6 +1889,9 @@
         shape.element.setAttribute("stroke", shape.color);
         shape.element.setAttribute("stroke-width", shape.strokeWidth);
 
+        if (selectedShape === shape) {
+            updateEllipseArcHandles(shape);
+        }
         updateSVGSource();
     }
 
@@ -2188,6 +2191,69 @@
     // ========================================================================
     // 11. SHAPE HANDLES & INTERACTIVE SELECTION
     // ========================================================================
+    function updateEllipseArcHandles(shape) {
+        shape.handles?.forEach(handle => handle.remove());
+        shape.handles = [];
+
+        if (selectedShape !== shape) return;
+
+        function makeHandle(x, y, action, color) {
+            const hit = document.createElementNS(SVG_NS, "circle");
+            hit.setAttribute("cx", x);
+            hit.setAttribute("cy", y);
+            hit.setAttribute("r", "0.85");
+            hit.setAttribute("fill", "transparent");
+            hit.setAttribute("pointer-events", "all");
+            hit.classList.add("ellipse-arc-handle-hit");
+            hit.dataset.action = action;
+
+            const visible = document.createElementNS(SVG_NS, "circle");
+            visible.setAttribute("cx", x);
+            visible.setAttribute("cy", y);
+            visible.setAttribute("r", "0.32");
+            visible.setAttribute("fill", color);
+            visible.setAttribute("stroke", "#FFFFFF");
+            visible.setAttribute("stroke-width", "0.1");
+            visible.setAttribute("pointer-events", "none");
+
+            workspace.appendChild(visible);
+            workspace.appendChild(hit);
+
+            shape.handles.push(visible, hit);
+        }
+
+        // Start endpoint
+        makeHandle(
+            shape.cx + shape.rx * Math.cos(shape.startAngle),
+            shape.cy + shape.ry * Math.sin(shape.startAngle),
+            "start",
+            "#60A5FA"
+        );
+
+        // End endpoint
+        makeHandle(
+            shape.cx + shape.rx * Math.cos(shape.endAngle),
+            shape.cy + shape.ry * Math.sin(shape.endAngle),
+            "end",
+            "#60A5FA"
+        );
+
+        // Horizontal radius
+        makeHandle(
+            shape.cx + shape.rx,
+            shape.cy,
+            "rx",
+            "#10B981"
+        );
+
+        // Vertical radius
+        makeHandle(
+            shape.cx,
+            shape.cy + shape.ry,
+            "ry",
+            "#10B981"
+        );
+    }
     function createHandlesForShape(shape) {
         if (!shape || shape.hidden || shape.locked) return;
 
@@ -2195,6 +2261,8 @@
             updateHandles(shape);
         } else if (shape.type === "curve") {
             updateCurveHandles(shape);
+        } else if (shape.type === "ellipse-arc") {
+            updateEllipseArcHandles(shape);
         } else if (
             shape.type === "circle" ||
             shape.type === "ellipse" ||
@@ -3197,6 +3265,7 @@
         }
 
         const curveHit = event.target.closest(".curve-hit-area");
+        const ellipseArcHit = event.target.closest(".ellipse-arc-handle-hit");
         const hitArea = event.target.closest(".edit-hit-area");
         const basicHit = event.target.closest(".basic-hit-area");
         const vertexHit = event.target.closest(".path-vertex-hit-area");
@@ -3377,6 +3446,27 @@
             return;
         }
 
+        // Ellipse Arc Handle
+        if (ellipseArcHit) {
+            const shape = shapes.find(s =>
+                s.type === "ellipse-arc" &&
+                s.handles?.includes(ellipseArcHit)
+            );
+
+            if (!shape) return;
+
+            const action = ellipseArcHit.dataset.action;
+
+            selectShape(shape);
+
+            dragging = {
+                shape,
+                type: "ellipse-arc-handle",
+                action
+            };
+
+            return;
+        }
         // 4. Line Endpoint Handle
         if (hitArea) {
             const shape = shapes.find(s => s.type === "line" && s.handles?.includes(hitArea));
@@ -3727,6 +3817,42 @@
             return;
         }
 
+        // Ellipse Arc Handle Movement
+        if (dragging.type === "ellipse-arc-handle") {
+
+            const action = dragging.action;
+
+            if (action === "start" || action === "end") {
+
+                const angle = Math.atan2(
+                    (position.y - shape.cy) / shape.ry,
+                    (position.x - shape.cx) / shape.rx
+                );
+
+                if (action === "start") {
+                    shape.startAngle = snapAngle(angle);
+                } else {
+                    shape.endAngle = snapAngle(angle);
+                }
+
+            } else if (action === "rx") {
+
+                shape.rx = Math.max(
+                    0.2,
+                    Math.abs(position.x - shape.cx)
+                );
+
+            } else if (action === "ry") {
+
+                shape.ry = Math.max(
+                    0.2,
+                    Math.abs(position.y - shape.cy)
+                );
+            }
+
+            updateEllipseArc(shape);
+            return;
+        }
         // Basic Shape Handle Resize (Circle / Rect)
         if (dragging.type === "basic-handle") {
             if (shape.type === "circle") {
@@ -4249,6 +4375,23 @@
             html += createMeasurementInput("Radius", shape.radius, "radius");
             html += createMeasurementInput("Start (°)", shape.startAngle * (180 / Math.PI), "startDeg");
             html += createMeasurementInput("End (°)", shape.endAngle * (180 / Math.PI), "endDeg");
+        } else if (shape.type === "ellipse-arc") {
+            html += createMeasurementInput("Center X", shape.cx, "cx");
+            html += createMeasurementInput("Center Y", shape.cy, "cy");
+            html += createMeasurementInput("Radius X", shape.rx, "rx");
+            html += createMeasurementInput("Radius Y", shape.ry, "ry");
+
+            html += createMeasurementInput(
+                "Start (°)",
+                shape.startAngle * (180 / Math.PI),
+                "startDeg"
+            );
+
+            html += createMeasurementInput(
+                "End (°)",
+                shape.endAngle * (180 / Math.PI),
+                "endDeg"
+            );
         } else if (shape.type === "circle") {
             html += createMeasurementInput("Center X", shape.cx, "cx");
             html += createMeasurementInput("Center Y", shape.cy, "cy");
@@ -4303,6 +4446,24 @@
             if (key === "startDeg") shape.startAngle = val * (Math.PI / 180);
             if (key === "endDeg") shape.endAngle = val * (Math.PI / 180);
             updateCurve(shape);
+        } else if (shape.type === "ellipse-arc") {
+
+            if (key === "cx") shape.cx = val;
+            if (key === "cy") shape.cy = val;
+
+            if (key === "rx") shape.rx = Math.max(0.2, val);
+            if (key === "ry") shape.ry = Math.max(0.2, val);
+
+            if (key === "startDeg") {
+                shape.startAngle = val * (Math.PI / 180);
+            }
+
+            if (key === "endDeg") {
+                shape.endAngle = val * (Math.PI / 180);
+            }
+
+            updateEllipseArc(shape);
+            updateMeasurementPanel();
         } else if (shape.type === "circle") {
             if (key === "cx") shape.cx = val;
             if (key === "cy") shape.cy = val;

@@ -2812,14 +2812,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     z-index: 26;
 }
 
-/* View Controls Toggle */
-.view-controls-toggle {
-    position: relative;
-    top: 34px;
-    left: 280px;
-    flex-shrink: 0;
-}
-
 /* Floating Controls */
 .floating-view-controls {
     position: static;
@@ -2841,7 +2833,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .view-controls-toggle {
     width: 34px;
     height: 34px;
-
+    position: relative;
+    top: 34px;
+    left: 265px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
