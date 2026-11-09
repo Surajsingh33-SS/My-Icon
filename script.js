@@ -3171,129 +3171,129 @@
     // 12. SNAPPING & ALIGNMENT GUIDES
     // ========================================================================
     function getShapeEndpoints(shape) {
-    if (!shape || shape.hidden || shape.locked) return [];
+        if (!shape || shape.hidden || shape.locked) return [];
 
-    const handles = [];
+        const handles = [];
 
-    function add(x, y, end) {
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-            handles.push({ x, y, shape, end });
+        function add(x, y, end) {
+            if (Number.isFinite(x) && Number.isFinite(y)) {
+                handles.push({ x, y, shape, end });
+            }
         }
-    }
 
-    // LINE
-    if (shape.type === "line") {
-        add(shape.x1, shape.y1, "start");
-        add(shape.x2, shape.y2, "end");
-    }
+        // LINE
+        if (shape.type === "line") {
+            add(shape.x1, shape.y1, "start");
+            add(shape.x2, shape.y2, "end");
+        }
 
-    // CIRCULAR CURVE
-    else if (shape.type === "curve") {
-        const delta = ((shape.endAngle - shape.startAngle) + Math.PI * 2)
-            % (Math.PI * 2);
+        // CIRCULAR CURVE
+        else if (shape.type === "curve") {
+            const delta = ((shape.endAngle - shape.startAngle) + Math.PI * 2)
+                % (Math.PI * 2);
 
-        add(
-            shape.cx + shape.radius * Math.cos(shape.startAngle),
-            shape.cy + shape.radius * Math.sin(shape.startAngle),
-            "start"
-        );
+            add(
+                shape.cx + shape.radius * Math.cos(shape.startAngle),
+                shape.cy + shape.radius * Math.sin(shape.startAngle),
+                "start"
+            );
 
-        add(
-            shape.cx + shape.radius * Math.cos(shape.endAngle),
-            shape.cy + shape.radius * Math.sin(shape.endAngle),
-            "end"
-        );
+            add(
+                shape.cx + shape.radius * Math.cos(shape.endAngle),
+                shape.cy + shape.radius * Math.sin(shape.endAngle),
+                "end"
+            );
 
-        // Rotation handles
-        add(
-            shape.cx + shape.radius * Math.cos(shape.startAngle + delta * 0.75),
-            shape.cy + shape.radius * Math.sin(shape.startAngle + delta * 0.75),
-            "rotate-a"
-        );
+            // Rotation handles
+            add(
+                shape.cx + shape.radius * Math.cos(shape.startAngle + delta * 0.75),
+                shape.cy + shape.radius * Math.sin(shape.startAngle + delta * 0.75),
+                "rotate-a"
+            );
 
-        add(
-            shape.cx + shape.radius * Math.cos(shape.startAngle + delta * 0.25),
-            shape.cy + shape.radius * Math.sin(shape.startAngle + delta * 0.25),
-            "rotate-b"
-        );
+            add(
+                shape.cx + shape.radius * Math.cos(shape.startAngle + delta * 0.25),
+                shape.cy + shape.radius * Math.sin(shape.startAngle + delta * 0.25),
+                "rotate-b"
+            );
 
-        // Radius handle
-        add(shape.cx, shape.cy, "radius");
-    }
+            // Radius handle
+            add(shape.cx, shape.cy, "radius");
+        }
 
-    // CIRCLE
-    else if (shape.type === "circle") {
-        add(shape.cx + shape.radius, shape.cy, "radius");
-    }
+        // CIRCLE
+        else if (shape.type === "circle") {
+            add(shape.cx + shape.radius, shape.cy, "radius");
+        }
 
-    // ELLIPSE
-    else if (shape.type === "ellipse") {
-        add(shape.cx + shape.rx, shape.cy, "rx");
-        add(shape.cx, shape.cy + shape.ry, "ry");
-    }
+        // ELLIPSE
+        else if (shape.type === "ellipse") {
+            add(shape.cx + shape.rx, shape.cy, "rx");
+            add(shape.cx, shape.cy + shape.ry, "ry");
+        }
 
-    // ELLIPSE ARC
-    else if (shape.type === "ellipse-arc") {
-        add(
-            shape.cx + shape.rx * Math.cos(shape.startAngle),
-            shape.cy + shape.ry * Math.sin(shape.startAngle),
-            "start"
-        );
+        // ELLIPSE ARC
+        else if (shape.type === "ellipse-arc") {
+            add(
+                shape.cx + shape.rx * Math.cos(shape.startAngle),
+                shape.cy + shape.ry * Math.sin(shape.startAngle),
+                "start"
+            );
 
-        add(
-            shape.cx + shape.rx * Math.cos(shape.endAngle),
-            shape.cy + shape.ry * Math.sin(shape.endAngle),
-            "end"
-        );
+            add(
+                shape.cx + shape.rx * Math.cos(shape.endAngle),
+                shape.cy + shape.ry * Math.sin(shape.endAngle),
+                "end"
+            );
 
-        add(shape.cx, shape.cy - shape.ry, "rx");
-        add(shape.cx, shape.cy + shape.ry, "ry");
-    }
+            add(shape.cx, shape.cy - shape.ry, "rx");
+            add(shape.cx, shape.cy + shape.ry, "ry");
+        }
 
-    // RECTANGLE
-    else if (shape.type === "rectangle") {
-        const x = shape.x;
-        const y = shape.y;
-        const w = shape.width;
-        const h = shape.height;
+        // RECTANGLE
+        else if (shape.type === "rectangle") {
+            const x = shape.x;
+            const y = shape.y;
+            const w = shape.width;
+            const h = shape.height;
 
-        add(x, y, "nw");
-        add(x + w / 2, y, "n");
-        add(x + w, y, "ne");
+            add(x, y, "nw");
+            add(x + w / 2, y, "n");
+            add(x + w, y, "ne");
 
-        add(x + (shape.cornerRadius || 0), y, "corner-radius");
+            add(x + (shape.cornerRadius || 0), y, "corner-radius");
 
-        add(x + w, y + h / 2, "e");
-        add(x + w, y + h, "se");
-        add(x + w / 2, y + h, "s");
-        add(x, y + h, "sw");
-        add(x, y + h / 2, "w");
-    }
+            add(x + w, y + h / 2, "e");
+            add(x + w, y + h, "se");
+            add(x + w / 2, y + h, "s");
+            add(x, y + h, "sw");
+            add(x, y + h / 2, "w");
+        }
 
-    // NORMAL PATH + IMPORTED SVG PATH
-    else if (shape.type === "path") {
-        // Normal editable path vertices
-        (shape.points || []).forEach((point, index) => {
-            add(point.x, point.y, `v_${index}`);
-        });
-
-        // Hole vertices
-        (shape.holes || []).forEach((hole, holeIndex) => {
-            const points = Array.isArray(hole) ? hole : hole.points;
-
-            (points || []).forEach((point, pointIndex) => {
-                add(point.x, point.y, `h_${holeIndex}_${pointIndex}`);
+        // NORMAL PATH + IMPORTED SVG PATH
+        else if (shape.type === "path") {
+            // Normal editable path vertices
+            (shape.points || []).forEach((point, index) => {
+                add(point.x, point.y, `v_${index}`);
             });
-        });
 
-        // Imported SVG editable anchors
-        (shape.svgAnchors || []).forEach(anchor => {
-            add(anchor.x, anchor.y, `svg_${anchor.id}`);
-        });
+            // Hole vertices
+            (shape.holes || []).forEach((hole, holeIndex) => {
+                const points = Array.isArray(hole) ? hole : hole.points;
+
+                (points || []).forEach((point, pointIndex) => {
+                    add(point.x, point.y, `h_${holeIndex}_${pointIndex}`);
+                });
+            });
+
+            // Imported SVG editable anchors
+            (shape.svgAnchors || []).forEach(anchor => {
+                add(anchor.x, anchor.y, `svg_${anchor.id}`);
+            });
+        }
+
+        return handles;
     }
-
-    return handles;
-}
 
     function getSnappedPoint(x, y, currentShape, shiftKey = false) {
         if (shiftKey) {
@@ -3951,8 +3951,16 @@
                     : shape.holes[dragging.holeIndex].points[dragging.vertexIndex]);
 
             if (targetPoint) {
-                targetPoint.x = Math.round(position.x * 10) / 10;
-                targetPoint.y = Math.round(position.y * 10) / 10;
+                const snapped = getSnappedPoint(
+                    position.x,
+                    position.y,
+                    shape,
+                    event.shiftKey
+                );
+
+                targetPoint.x = Math.round(snapped.x * 10) / 10;
+                targetPoint.y = Math.round(snapped.y * 10) / 10;
+
                 updatePathShape(shape);
             }
             return;
@@ -4012,13 +4020,19 @@
         if (dragging.type === "curve-handle") {
 
             const action = dragging.action;
+            const snappedPosition = getSnappedPoint(
+                position.x,
+                position.y,
+                shape,
+                event.shiftKey
+            );
 
             // BLUE A: Change start angle
             if (action === "start") {
 
                 const angle = Math.atan2(
-                    position.y - shape.cy,
-                    position.x - shape.cx
+                    snappedPosition.y - shape.cy,
+                    snappedPosition.x - shape.cx
                 );
 
                 shape.startAngle = snapAngle(angle);
@@ -4103,6 +4117,12 @@
         if (dragging.type === "ellipse-arc-handle") {
 
             const action = dragging.action;
+            const snappedPosition = getSnappedPoint(
+                position.x,
+                position.y,
+                shape,
+                event.shiftKey
+            );
 
             if (action === "start" || action === "end") {
 
@@ -4137,6 +4157,12 @@
         }
         // Basic Shape Handle Resize (Circle / Rect)
         if (dragging.type === "basic-handle") {
+            const snappedPosition = getSnappedPoint(
+                position.x,
+                position.y,
+                shape,
+                event.shiftKey
+            );
             if (shape.type === "circle") {
                 const dist = Math.hypot(position.x - shape.cx, position.y - shape.cy);
                 shape.radius = Math.max(0.2, Math.min(artboardSize, dist));
