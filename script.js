@@ -3295,8 +3295,43 @@
         return handles;
     }
 
+    // =====================================
+// RED SNAP TARGET HANDLE INDICATOR
+// =====================================
+
+let snapTargetMarker = null;
+
+function showSnapTarget(target) {
+    if (!target) return;
+
+    if (!snapTargetMarker) {
+        snapTargetMarker = document.createElementNS(SVG_NS, "circle");
+
+        snapTargetMarker.setAttribute("r", "0.38");
+        snapTargetMarker.setAttribute("fill", "#EF4444");
+        snapTargetMarker.setAttribute("stroke", "#FFFFFF");
+        snapTargetMarker.setAttribute("stroke-width", "0.12");
+        snapTargetMarker.setAttribute("pointer-events", "none");
+
+        workspace.appendChild(snapTargetMarker);
+    }
+
+    snapTargetMarker.setAttribute("cx", target.x);
+    snapTargetMarker.setAttribute("cy", target.y);
+    snapTargetMarker.style.display = "block";
+
+    workspace.appendChild(snapTargetMarker);
+}
+
+function hideSnapTarget() {
+    if (snapTargetMarker) {
+        snapTargetMarker.style.display = "none";
+    }
+}
+
     function getSnappedPoint(x, y, currentShape, shiftKey = false) {
         if (shiftKey) {
+            hideSnapTarget();
             if (endpointSnapIndicator) endpointSnapIndicator.style.display = "none";
             return { x, y };
         }
@@ -3307,6 +3342,7 @@
         if (dragging?.snappedTo) {
             const target = getShapeEndpoints(dragging.snappedTo.shape).find(pt => pt.end === dragging.snappedTo.end);
             if (target && Math.hypot(x - target.x, y - target.y) <= releaseDistance) {
+                showSnapTarget(target);
                 if (endpointSnapIndicator) {
                     endpointSnapIndicator.setAttribute("cx", target.x);
                     endpointSnapIndicator.setAttribute("cy", target.y);
@@ -3332,6 +3368,7 @@
         }
 
         if (closest) {
+            showSnapTarget(closest);
             dragging.snappedTo = { shape: closest.shape, end: closest.end };
             if (endpointSnapIndicator) {
                 endpointSnapIndicator.setAttribute("cx", closest.x);
