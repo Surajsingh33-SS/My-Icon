@@ -2344,6 +2344,7 @@
             visible.setAttribute("cy", y);
             visible.setAttribute("r", "0.32");
             visible.setAttribute("fill", color);
+            visible.dataset.action = action;
             visible.setAttribute("stroke", "#FFFFFF");
             visible.setAttribute("stroke-width", "0.1");
             visible.setAttribute("pointer-events", "none");
@@ -2672,6 +2673,7 @@
             visible.setAttribute("cy", y);
             visible.setAttribute("r", "0.32");
             visible.setAttribute("fill", "#10131a");
+            visible.dataset.action = action;
             visible.setAttribute("stroke", "#FFFFFF");
             visible.setAttribute("stroke-width", "0.1");
             visible.setAttribute("pointer-events", "none");
@@ -2874,6 +2876,7 @@
                 visible.setAttribute("cy", y);
                 visible.setAttribute("r", "0.28");
                 visible.setAttribute("fill", "#818CF8");
+                visible.dataset.anchorId = anchor.id;
                 visible.setAttribute("stroke", "#FFFFFF");
                 visible.setAttribute("stroke-width", "0.08");
                 visible.setAttribute("pointer-events", "none");
@@ -2904,6 +2907,8 @@
             visible.setAttribute("cy", pt.y);
             visible.setAttribute("r", "0.26");
             visible.setAttribute("fill", holeIndex === -1 ? "#818CF8" : "#F472B6");
+            visible.dataset.vertexIndex = vertexIndex;
+            visible.dataset.holeIndex = holeIndex;
             visible.setAttribute("stroke", "#FFFFFF");
             visible.setAttribute("stroke-width", "0.08");
             visible.setAttribute("pointer-events", "none");
@@ -3296,38 +3301,134 @@
     }
 
     // =====================================
-// RED SNAP TARGET HANDLE INDICATOR
-// =====================================
+    // SNAP TARGET HANDLE COLOUR
+    // =====================================
 
-let snapTargetMarker = null;
+    let activeSnapTargetVisual = null;
 
-function showSnapTarget(target) {
-    if (!target) return;
+    function findVisibleSnapHandle(target) {
+        const { shape, end } = target;
 
-    if (!snapTargetMarker) {
-        snapTargetMarker = document.createElementNS(SVG_NS, "circle");
+        return shape.handles?.find(handle => {
+            if (
+                handle.tagName?.toLowerCase() !== "circle" ||
+                !handle.hasAttribute("stroke")
+            ) {
+                return false;
+            }
 
-        snapTargetMarker.setAttribute("r", "0.38");
-        snapTargetMarker.setAttribute("fill", "#EF4444");
-        snapTargetMarker.setAttribute("stroke", "#FFFFFF");
-        snapTargetMarker.setAttribute("stroke-width", "0.12");
-        snapTargetMarker.setAttribute("pointer-events", "none");
+            if (
+                handle.dataset.end === end ||
+                handle.dataset.action === end
+            ) {
+                return true;
+            }
 
-        workspace.appendChild(snapTargetMarker);
+            if (end.startsWith("v_")) {
+                return handle.dataset.vertexIndex === end.slice(2) &&
+                    handle.dataset.holeIndex === "-1";
+            }
+
+            if (end.startsWith("h_")) {
+                const [, holeIndex, vertexIndex] = end.split("_");
+
+                return handle.dataset.vertexIndex === vertexIndex &&
+                    handle.dataset.holeIndex === holeIndex;
+            }
+
+            if (end.startsWith("svg_")) {
+                return handle.dataset.anchorId === end.slice(4);
+            }
+
+            return false;
+        });
     }
 
-    snapTargetMarker.setAttribute("cx", target.x);
-    snapTargetMarker.setAttribute("cy", target.y);
-    snapTargetMarker.style.display = "block";
+    function showSnapTarget(target) {
+        if (
+            activeSnapTargetVisual?.shape === target.shape &&
+            activeSnapTargetVisual?.end === target.end
+        ) {
+            return;
+        }
 
-    workspace.appendChild(snapTargetMarker);
-}
+        hideSnapTarget();
 
-function hideSnapTarget() {
-    if (snapTargetMarker) {
-        snapTargetMarker.style.display = "none";
+        const visibleHandle = findVisibleSnapHandle(target);
+
+        if (visibleHandle) {
+            const originalFill = visibleHandle.getAttribute("fill");
+
+            visibleHandle.setAttribute("fill", "#EF4444");
+
+            activeSnapTargetVisual = {
+                shape: target.shape,
+                end: target.end,
+                element: visibleHandle,
+                originalFill,
+                isTemporary: false
+            };
+
+            return;
+        }
+
+        // Render the target's actual handle when its shape is unselected.
+        const handle = document.createElementNS(SVG_NS, "circle");
+
+        let radius = 0.32;
+
+        if (target.shape.type === "path") {
+            radius = 0.26;
+        }
+
+        if (
+            target.shape.type === "path" &&
+            target.end.startsWith("svg_")
+        ) {
+            radius = 0.28;
+        }
+
+        if (
+            target.shape.type === "curve" &&
+            target.end === "radius"
+        ) {
+            radius = 0.36;
+        }
+
+        handle.setAttribute("cx", target.x);
+        handle.setAttribute("cy", target.y);
+        handle.setAttribute("r", radius);
+        handle.setAttribute("fill", "#EF4444");
+        handle.setAttribute("stroke", "#FFFFFF");
+        handle.setAttribute("stroke-width", "0.1");
+        handle.setAttribute("pointer-events", "none");
+
+        workspace.appendChild(handle);
+
+        activeSnapTargetVisual = {
+            shape: target.shape,
+            end: target.end,
+            element: handle,
+            isTemporary: true
+        };
     }
-}
+
+    function hideSnapTarget() {
+        if (!activeSnapTargetVisual) return;
+
+        const visual = activeSnapTargetVisual;
+
+        if (visual.isTemporary) {
+            visual.element.remove();
+        } else {
+            visual.element.setAttribute(
+                "fill",
+                visual.originalFill
+            );
+        }
+
+        activeSnapTargetVisual = null;
+    }
 
     function getSnappedPoint(x, y, currentShape, shiftKey = false) {
         if (shiftKey) {
@@ -3378,7 +3479,12 @@ function hideSnapTarget() {
             return { x: closest.x, y: closest.y };
         }
 
-        if (endpointSnapIndicator) endpointSnapIndicator.style.display = "none";
+        hideSnapTarget();
+
+        if (endpointSnapIndicator) {
+            endpointSnapIndicator.style.display = "none";
+        }
+
         return { x, y };
     }
 
