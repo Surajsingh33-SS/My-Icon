@@ -2773,15 +2773,17 @@
     }
 
 
+
     function serializeSVGSegments(segments) {
         const n = value => formatSVGNumber(value);
         const output = [];
 
         segments.forEach(segment => {
-            if (segment.type === "move") return;
-
-            // Every segment starts independently.
-            output.push(`M ${n(segment.x1)} ${n(segment.y1)}`);
+            // A move command starts a new subpath.
+            if (segment.type === "move") {
+                output.push(`M ${n(segment.x)} ${n(segment.y)}`);
+                return;
+            }
 
             switch (segment.type) {
                 case "line":
@@ -2814,14 +2816,14 @@
                     break;
 
                 case "close":
-                    // Preserve the closing edge as an independent line.
-                    output.push(`L ${n(segment.x)} ${n(segment.y)}`);
+                    output.push("Z");
                     break;
             }
         });
 
         return output.join(" ");
     }
+
 
     function createSVGSegmentHitPath(segment) {
         const d = `M ${segment.x1} ${segment.y1} ${segment.type === "arc"
@@ -2907,6 +2909,74 @@
 
                 shape.handles.push(visible, hit);
             });
+
+
+            // Draw Bézier control-point handles.
+            shape.svgEditableSegments.forEach(segment => {
+                const controls = [];
+
+                if (
+                    segment.type === "cubic" ||
+                    segment.type === "smooth-cubic"
+                ) {
+                    controls.push(
+                        { x: "cx1", y: "cy1", anchorX: "x1", anchorY: "y1" },
+                        { x: "cx2", y: "cy2", anchorX: "x", anchorY: "y" }
+                    );
+                } else if (
+                    segment.type === "quadratic" ||
+                    segment.type === "smooth-quadratic"
+                ) {
+                    controls.push(
+                        { x: "cx", y: "cy", anchorX: "x1", anchorY: "y1" }
+                    );
+                }
+
+                controls.forEach(control => {
+                    const cx = segment[control.x] + (shape.offsetX || 0);
+                    const cy = segment[control.y] + (shape.offsetY || 0);
+
+                    const ax = segment[control.anchorX] + (shape.offsetX || 0);
+                    const ay = segment[control.anchorY] + (shape.offsetY || 0);
+
+                    const guide = document.createElementNS(SVG_NS, "line");
+                    guide.setAttribute("x1", ax);
+                    guide.setAttribute("y1", ay);
+                    guide.setAttribute("x2", cx);
+                    guide.setAttribute("y2", cy);
+                    guide.setAttribute("stroke", "#64748B");
+                    guide.setAttribute("stroke-width", "0.08");
+                    guide.setAttribute("pointer-events", "none");
+
+                    const visible = document.createElementNS(SVG_NS, "circle");
+                    visible.setAttribute("cx", cx);
+                    visible.setAttribute("cy", cy);
+                    visible.setAttribute("r", "0.22");
+                    visible.setAttribute("fill", "#FBBF24");
+                    visible.setAttribute("stroke", "#FFFFFF");
+                    visible.setAttribute("stroke-width", "0.07");
+                    visible.setAttribute("pointer-events", "none");
+
+                    const hit = document.createElementNS(SVG_NS, "circle");
+                    hit.setAttribute("cx", cx);
+                    hit.setAttribute("cy", cy);
+                    hit.setAttribute("r", "0.75");
+                    hit.setAttribute("fill", "transparent");
+                    hit.setAttribute("pointer-events", "all");
+                    hit.classList.add("svg-control-hit-area");
+
+                    hit.dataset.segmentId = segment.id;
+                    hit.dataset.controlX = control.x;
+                    hit.dataset.controlY = control.y;
+
+                    workspace.appendChild(guide);
+                    workspace.appendChild(visible);
+                    workspace.appendChild(hit);
+
+                    shape.handles.push(guide, visible, hit);
+                });
+            });
+
 
             return;
         }
@@ -4013,6 +4083,8 @@
         const basicHit = event.target.closest(".basic-hit-area");
         const vertexHit = event.target.closest(".path-vertex-hit-area");
         const svgSegmentHit = event.target.closest(".svg-segment-hit-area");
+        const svgAnchorHit = event.target.closest(".svg-anchor-hit-area");
+        const svgControlHit = event.target.closest(".svg-control-hit-area");
 
         // Individual imported SVG segment selection
         // Individual imported SVG segment selection
@@ -4046,29 +4118,64 @@
 
             if (!newHitArea) return;
 
-            // Start dragging after the handles have been rebuilt.
-            if ([
-                "line",
-                "close",
-                "cubic",
-                "smooth-cubic",
-                "quadratic",
-                "smooth-quadratic"
-            ].includes(segment.type)) {
-                dragging = {
-                    shape,
-                    type: "svg-segment",
-                    segmentId,
-                    startX: pos.x,
-                    startY: pos.y,
-                    originalSegments: cloneSVGSegments(
-                        shape.svgEditableSegments
-                    )
-                };
-            }
+
 
             return;
         }
+
+
+        // Imported SVG control-point dragging
+        if (svgControlHit) {
+            const shape = shapes.find(s =>
+                s.type === "path" && s.handles?.includes(svgControlHit)
+            );
+
+            if (!shape) return;
+
+            selectShape(shape);
+
+            const segment = shape.svgEditableSegments.find(
+                item => item.id === svgControlHit.dataset.segmentId
+            );
+
+            if (!segment) return;
+
+            dragging = {
+                shape,
+                type: "svg-control",
+                segmentId: segment.id,
+                controlX: svgControlHit.dataset.controlX,
+                controlY: svgControlHit.dataset.controlY,
+                startX: pos.x,
+                startY: pos.y,
+                originalSegments: cloneSVGSegments(shape.svgEditableSegments)
+            };
+
+            return;
+        }
+
+        // Imported SVG connected-anchor dragging
+        if (svgAnchorHit) {
+            const shape = shapes.find(s =>
+                s.type === "path" && s.handles?.includes(svgAnchorHit)
+            );
+
+            if (!shape) return;
+
+            selectShape(shape);
+
+            dragging = {
+                shape,
+                type: "svg-anchor",
+                anchorId: svgAnchorHit.dataset.anchorId,
+                startX: pos.x,
+                startY: pos.y,
+                originalSegments: cloneSVGSegments(shape.svgEditableSegments)
+            };
+
+            return;
+        }
+
 
         // 1. Path Vertex Handle Drag
         if (vertexHit) {
@@ -4359,7 +4466,32 @@
 
         const shape = dragging.shape;
 
-        if (dragging.type === "svg-segment") {
+
+        // Move a connected anchor shared by neighbouring segments.
+        if (dragging.type === "svg-anchor") {
+            const dx = position.x - dragging.startX;
+            const dy = position.y - dragging.startY;
+
+            shape.svgEditableSegments = cloneSVGSegments(
+                dragging.originalSegments
+            );
+
+            moveSVGAnchor(shape, dragging.anchorId, dx, dy);
+
+            shape.svgAnchors = buildSVGAnchorMap(
+                shape.svgEditableSegments
+            );
+
+            shape.svgPathData = serializeSVGSegments(
+                shape.svgEditableSegments
+            );
+
+            updatePathShape(shape);
+            return;
+        }
+
+        // Move an individual Bézier control point.
+        if (dragging.type === "svg-control") {
             const dx = position.x - dragging.startX;
             const dy = position.y - dragging.startY;
 
@@ -4373,39 +4505,8 @@
 
             if (!segment) return;
 
-            // Detach this segment from its neighboring segments.
-            segment.startAnchorId = `${segment.id}-detached-start`;
-            segment.endAnchorId = `${segment.id}-detached-end`;
-
-            // Move the segment's endpoints.
-            segment.x1 += dx;
-            segment.y1 += dy;
-            segment.x += dx;
-            segment.y += dy;
-
-            // Move cubic curve control points.
-            if (
-                segment.type === "cubic" ||
-                segment.type === "smooth-cubic"
-            ) {
-                segment.cx1 += dx;
-                segment.cy1 += dy;
-                segment.cx2 += dx;
-                segment.cy2 += dy;
-            }
-
-            // Move quadratic curve control points.
-            else if (
-                segment.type === "quadratic" ||
-                segment.type === "smooth-quadratic"
-            ) {
-                segment.cx += dx;
-                segment.cy += dy;
-            }
-
-            shape.svgAnchors = buildSVGAnchorMap(
-                shape.svgEditableSegments
-            );
+            segment[dragging.controlX] += dx;
+            segment[dragging.controlY] += dy;
 
             shape.svgPathData = serializeSVGSegments(
                 shape.svgEditableSegments
@@ -4414,6 +4515,7 @@
             updatePathShape(shape);
             return;
         }
+
 
 
         // Path Vertex Move
@@ -4738,6 +4840,16 @@
                         if (distance <= 0.8) {
                             closestSource = source;
                             closestTarget = target;
+                        } else {
+                            dragging.releasedSnap = {
+                                sourceShapeId: dragging.sourceHandle.shapeId,
+                                sourceHandle: dragging.sourceHandle.handle,
+                                targetShapeId: ensureShapeId(dragging.snappedTo.shape),
+                                targetHandle: dragging.snappedTo.end
+                            };
+
+                            dragging.sourceHandle = null;
+                            dragging.snappedTo = null;
                         }
                     }
                 }
@@ -4752,6 +4864,25 @@
                                 if (movingShapes.has(stationaryShape)) continue;
 
                                 for (const target of getShapeEndpoints(stationaryShape)) {
+
+                                    // Prevent immediately reconnecting to the handle just released.
+                                    if (
+                                        dragging.releasedSnap &&
+                                        ensureShapeId(source.shape) === dragging.releasedSnap.sourceShapeId &&
+                                        source.end === dragging.releasedSnap.sourceHandle &&
+                                        ensureShapeId(target.shape) === dragging.releasedSnap.targetShapeId &&
+                                        target.end === dragging.releasedSnap.targetHandle
+                                    ) {
+                                        const separation = Math.hypot(
+                                            source.x + dx - target.x,
+                                            source.y + dy - target.y
+                                        );
+
+                                        if (separation <= 0.9) continue;
+
+                                        dragging.releasedSnap = null;
+                                    }
+
                                     const distance = Math.hypot(
                                         source.x + dx - target.x,
                                         source.y + dy - target.y
@@ -4805,13 +4936,47 @@
                 }
             }
 
+            // Keep lines inside the artboard without changing their length or direction.
+            let minAllowedDX = -Infinity;
+            let maxAllowedDX = Infinity;
+            let minAllowedDY = -Infinity;
+            let maxAllowedDY = Infinity;
+
+            targets.forEach(item => {
+                if (item.type !== "line") return;
+
+                const minX = Math.min(item.x1, item.x2);
+                const maxX = Math.max(item.x1, item.x2);
+                const minY = Math.min(item.y1, item.y2);
+                const maxY = Math.max(item.y1, item.y2);
+
+                minAllowedDX = Math.max(minAllowedDX, -minX);
+                maxAllowedDX = Math.min(maxAllowedDX, artboardSize - maxX);
+                minAllowedDY = Math.max(minAllowedDY, -minY);
+                maxAllowedDY = Math.min(maxAllowedDY, artboardSize - maxY);
+            });
+
+            const originalDX = dx;
+            const originalDY = dy;
+
+            dx = Math.max(minAllowedDX, Math.min(maxAllowedDX, dx));
+            dy = Math.max(minAllowedDY, Math.min(maxAllowedDY, dy));
+
+            // If the boundary prevented a snap, don't save a false connection.
+            if (dx !== originalDX || dy !== originalDY) {
+                dragging.sourceHandle = null;
+                dragging.snappedTo = null;
+                dragging.snapPointerX = null;
+                dragging.snapPointerY = null;
+                hideSnapTarget();
+            }
 
             targets.forEach(item => {
                 if (item.type === "line") {
-                    item.x1 = Math.max(0, Math.min(artboardSize, item.x1 + dx));
-                    item.y1 = Math.max(0, Math.min(artboardSize, item.y1 + dy));
-                    item.x2 = Math.max(0, Math.min(artboardSize, item.x2 + dx));
-                    item.y2 = Math.max(0, Math.min(artboardSize, item.y2 + dy));
+                    item.x1 += dx;
+                    item.y1 += dy;
+                    item.x2 += dx;
+                    item.y2 += dy;
                     updateLine(item);
                 } else if (item.type === "curve") {
                     item.cx = Math.max(0, Math.min(artboardSize, item.cx + dx));
@@ -6015,7 +6180,7 @@
                     `    <ellipse cx="${formatSVGNumber(shape.cx)}" cy="${formatSVGNumber(shape.cy)}" rx="${formatSVGNumber(shape.rx)}" ry="${formatSVGNumber(shape.ry)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`
                 );
             } else if (shape.type === "rectangle") {
-                artwork.push(`    <rect x="${formatSVGNumber(shape.x)}" y="${formatSVGNumber(shape.y)}" width="${formatSVGNumber(shape.width)}" height="${formatSVGNumber(shape.height)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`);
+                artwork.push(`    <rect x="${formatSVGNumber(shape.x)}" y="${formatSVGNumber(shape.y)}" width="${formatSVGNumber(shape.width)}" height="${formatSVGNumber(shape.height)}" rx="${formatSVGNumber(shape.cornerRadius || 0)}" ry="${formatSVGNumber(shape.cornerRadius || 0)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`);
             }
         });
 
@@ -6557,6 +6722,19 @@
         return Array.from(anchorMap.values());
     }
 
+    function getInheritedSVGAttribute(element, attribute, fallback) {
+        let current = element;
+
+        while (current && current.nodeType === 1) {
+            if (current.hasAttribute(attribute)) {
+                return current.getAttribute(attribute);
+            }
+
+            current = current.parentElement;
+        }
+
+        return fallback;
+    }
     // Bug Fix: Enhanced SVG Source Parser that accepts arbitrary paths and large arcs
     function readSVGSource() {
         const parser = new DOMParser();
@@ -6574,9 +6752,29 @@
 
         Array.from(root.children).forEach(el => {
             const tag = el.localName.toLowerCase();
-            const stroke = el.getAttribute("stroke") || "#FFFFFF";
-            const fill = el.getAttribute("fill") || "none";
-            const strokeWidth = Math.max(0.1, Math.min(5, Number(el.getAttribute("stroke-width")) || 2));
+            let stroke = getInheritedSVGAttribute(el, "stroke", "#FFFFFF");
+            let fill = getInheritedSVGAttribute(el, "fill", "none");
+
+            const strokeWidth = Math.max(
+                0.1,
+                Math.min(
+                    5,
+                    Number(getInheritedSVGAttribute(el, "stroke-width", "2")) || 2
+                )
+            );
+
+            // Resolve currentColor to a visible editor color.
+            if (stroke === "currentColor") {
+                stroke = getInheritedSVGAttribute(el, "color", "#FFFFFF");
+
+                if (stroke === "currentColor") stroke = "#FFFFFF";
+            }
+
+            if (fill === "currentColor") {
+                fill = getInheritedSVGAttribute(el, "color", "#FFFFFF");
+
+                if (fill === "currentColor") fill = "#FFFFFF";
+            }
 
             if (tag === "line") {
                 parsed.push({
