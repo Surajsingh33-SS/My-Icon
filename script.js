@@ -1527,7 +1527,11 @@
             return [shape.element, shape.guideBg, shape.guide, shape.hitPath, shape.horizontalGuide, shape.angleGuide].filter(Boolean);
         }
         if (shape.type === "ellipse-arc") {
-            return [shape.element, shape.hitPath].filter(Boolean);
+            return [
+                shape.element,
+                shape.hitPath,
+                ...(shape.helperGuides || [])
+            ].filter(Boolean);
         }
         if (shape.type === "path") {
             return [shape.element, shape.strokeElement].filter(Boolean);
@@ -1816,6 +1820,19 @@
 
         const element = document.createElementNS(SVG_NS, "path");
         const hitPath = document.createElementNS(SVG_NS, "path");
+        const centerHorizontalGuide = document.createElementNS(SVG_NS, "line");
+        const centerVerticalGuide = document.createElementNS(SVG_NS, "line");
+        const startRadialGuide = document.createElementNS(SVG_NS, "line");
+        const endRadialGuide = document.createElementNS(SVG_NS, "line");
+        const endpointChordGuide = document.createElementNS(SVG_NS, "line");
+
+        const helperGuides = [
+            centerHorizontalGuide,
+            centerVerticalGuide,
+            startRadialGuide,
+            endRadialGuide,
+            endpointChordGuide
+        ];
 
         const shape = {
             type: "ellipse-arc",
@@ -1838,9 +1855,33 @@
             locked: false,
 
             element,
+            helperGuides,
             hitPath,
             handles: []
         };
+
+        helperGuides.forEach(guide => {
+            guide.setAttribute("stroke", "#FBBF24");
+            guide.setAttribute("stroke-width", "0.12");
+            guide.setAttribute("stroke-dasharray", "0.4 0.3");
+            guide.setAttribute("fill", "none");
+            guide.setAttribute("pointer-events", "none");
+            guide.style.display = "none";
+        });
+        function showEllipseArcGuides() {
+            helperGuides.forEach(guide => {
+                guide.style.display = "block";
+            });
+        }
+
+        function hideEllipseArcGuides() {
+            helperGuides.forEach(guide => {
+                guide.style.display = "none";
+            });
+        }
+
+        hitPath.addEventListener("pointerenter", showEllipseArcGuides);
+        hitPath.addEventListener("pointerleave", hideEllipseArcGuides);
 
         element.setAttribute("fill", "none");
         element.setAttribute("stroke", color);
@@ -1857,6 +1898,9 @@
 
         hitPath.style.cursor = "move";
 
+        helperGuides.forEach(guide => {
+            workspace.appendChild(guide);
+        });
         workspace.appendChild(element);
         workspace.appendChild(hitPath);
 
@@ -1875,6 +1919,36 @@
         const endX = shape.cx + shape.rx * Math.cos(shape.endAngle);
         const endY = shape.cy + shape.ry * Math.sin(shape.endAngle);
 
+        // Centre horizontal line
+        shape.helperGuides[0].setAttribute("x1", 0);
+        shape.helperGuides[0].setAttribute("y1", shape.cy);
+        shape.helperGuides[0].setAttribute("x2", artboardSize);
+        shape.helperGuides[0].setAttribute("y2", shape.cy);
+
+        // Centre vertical line
+        shape.helperGuides[1].setAttribute("x1", shape.cx);
+        shape.helperGuides[1].setAttribute("y1", 0);
+        shape.helperGuides[1].setAttribute("x2", shape.cx);
+        shape.helperGuides[1].setAttribute("y2", artboardSize);
+
+        // Centre to start endpoint
+        shape.helperGuides[2].setAttribute("x1", shape.cx);
+        shape.helperGuides[2].setAttribute("y1", shape.cy);
+        shape.helperGuides[2].setAttribute("x2", startX);
+        shape.helperGuides[2].setAttribute("y2", startY);
+
+        // Centre to end endpoint
+        shape.helperGuides[3].setAttribute("x1", shape.cx);
+        shape.helperGuides[3].setAttribute("y1", shape.cy);
+        shape.helperGuides[3].setAttribute("x2", endX);
+        shape.helperGuides[3].setAttribute("y2", endY);
+
+        // Chord joining both endpoints
+        shape.helperGuides[4].setAttribute("x1", startX);
+        shape.helperGuides[4].setAttribute("y1", startY);
+        shape.helperGuides[4].setAttribute("x2", endX);
+        shape.helperGuides[4].setAttribute("y2", endY);
+
         let delta = shape.endAngle - shape.startAngle;
 
         while (delta < 0) delta += Math.PI * 2;
@@ -1891,7 +1965,16 @@
 
         if (selectedShape === shape) {
             updateEllipseArcHandles(shape);
+
+            // Keep helper guides visible while editing
+            if (dragging?.shape === shape &&
+                dragging.type === "ellipse-arc-handle") {
+                shape.helperGuides.forEach(guide => {
+                    guide.style.display = "block";
+                });
+            }
         }
+        bringShapeGuidesToFront(shape);
         updateSVGSource();
     }
 
@@ -2238,15 +2321,15 @@
             "#60A5FA"
         );
 
-        // Horizontal radius
+        // Horizontal radius — upper midpoint
         makeHandle(
-            shape.cx + shape.rx,
-            shape.cy,
+            shape.cx,
+            shape.cy - shape.ry,
             "rx",
             "#10B981"
         );
 
-        // Vertical radius
+        // Vertical radius — lower midpoint
         makeHandle(
             shape.cx,
             shape.cy + shape.ry,
@@ -2867,6 +2950,37 @@
         return Math.round(angle / step) * step;
     }
 
+    function bringShapeGuidesToFront(shape) {
+    if (!shape) return;
+
+    let guides = [];
+
+    if (shape.type === "curve") {
+        guides = [
+            shape.circumferenceGuide,
+            shape.horizontalGuide,
+            shape.verticalGuide,
+            shape.angleGuide,
+            shape.startRadialGuide,
+            shape.endRadialGuide
+        ];
+    } else if (
+        shape.type === "circle" ||
+        shape.type === "ellipse" ||
+        shape.type === "rectangle"
+    ) {
+        guides = [
+            shape.horizontalGuide,
+            shape.verticalGuide
+        ];
+    } else if (shape.type === "ellipse-arc") {
+        guides = shape.helperGuides || [];
+    }
+
+    guides.forEach(guide => {
+        if (guide) workspace.appendChild(guide);
+    });
+}
     function updateCurve(shape) {
         const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
         const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
@@ -2949,6 +3063,7 @@
             moveCurveHandles(shape);
         }
 
+        bringShapeGuidesToFront(shape);
         updateSVGSource();
     }
 
@@ -2999,6 +3114,7 @@
         if (selectedShape === shape && !shape.hidden && !shape.locked) {
             updateBasicShapeHandles(shape);
         }
+        bringShapeGuidesToFront(shape);
         updateSVGSource();
     }
 
@@ -4965,6 +5081,29 @@
 
                 const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} 1 ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
                 artwork.push(`    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`);
+                        } else if (shape.type === "ellipse-arc") {
+
+                const startX = shape.cx + shape.rx * Math.cos(shape.startAngle);
+                const startY = shape.cy + shape.ry * Math.sin(shape.startAngle);
+
+                const endX = shape.cx + shape.rx * Math.cos(shape.endAngle);
+                const endY = shape.cy + shape.ry * Math.sin(shape.endAngle);
+
+                let delta = shape.endAngle - shape.startAngle;
+
+                while (delta < 0) delta += Math.PI * 2;
+                while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+
+                const largeArc = delta > Math.PI ? 1 : 0;
+
+                const pathD =
+                    `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} ` +
+                    `A ${formatSVGNumber(shape.rx)} ${formatSVGNumber(shape.ry)} 0 ${largeArc} 1 ` +
+                    `${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
+
+                artwork.push(
+                    `    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`
+                );
             } else if (shape.type === "path") {
 
                 // Imported SVG path: preserve its original Bézier geometry
