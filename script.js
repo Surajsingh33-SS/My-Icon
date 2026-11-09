@@ -309,6 +309,9 @@
         "alignedGuide",
         "perpendicularGuide",
         "handles",
+        "handles",
+        "helperGuides",
+        "circumferenceGuide",
         "circumferenceGuide",
         "verticalGuide",
         "startRadialGuide",
@@ -1093,10 +1096,7 @@
         if (zoomLevelText) zoomLevelText.textContent = zoomText;
         if (floatZoomLevel) floatZoomLevel.textContent = zoomText;
 
-        // Toggle subtle dot matrix: show when zoom >= 200%, hide when < 200%
-        if (dotGridBg) {
-            dotGridBg.style.display = (zoomLevel >= 2 && currentGridDisplayMode === "full") ? "block" : "none";
-        }
+        updateGridZoomDetail();
     }
 
     function setArtboardSize(size, saveHistory = true) {
@@ -1116,8 +1116,34 @@
         // Update guidelines dimensions & center axes
         const minorRect = document.getElementById("minor-grid-rect");
         const majorRect = document.getElementById("major-grid-rect");
-        if (minorRect) { minorRect.setAttribute("width", size); minorRect.setAttribute("height", size); }
-        if (majorRect) { majorRect.setAttribute("width", size); majorRect.setAttribute("height", size); }
+
+        if (minorRect) {
+            minorRect.setAttribute("width", size);
+            minorRect.setAttribute("height", size);
+        }
+
+        if (majorRect) {
+            majorRect.setAttribute("width", size);
+            majorRect.setAttribute("height", size);
+        }
+
+        // Keep eight equal major-grid divisions on both artboard sizes.
+        const majorSpacing = size / 8;
+
+        const majorPattern = document.getElementById("major-grid");
+        const majorPatternPath = document.getElementById("major-grid-path");
+
+        if (majorPattern) {
+            majorPattern.setAttribute("width", majorSpacing);
+            majorPattern.setAttribute("height", majorSpacing);
+        }
+
+        if (majorPatternPath) {
+            majorPatternPath.setAttribute(
+                "d",
+                `M ${majorSpacing} 0 L 0 0 0 ${majorSpacing}`
+            );
+        }
 
         const half = size / 2;
         const vLine = document.getElementById("guide-vertical-center");
@@ -1204,10 +1230,33 @@
             if (hLine) hLine.style.display = "block";
             if (safeAreaRect) safeAreaRect.style.display = showSafeAreaCheckbox?.checked ? "block" : "none";
             if (coordinateLabels) coordinateLabels.style.display = showCoordinatesCheckbox?.checked ? "block" : "none";
-            if (dotGridBg) dotGridBg.style.display = zoomLevel >= 2 ? "block" : "none";
+            if (dotGridBg) dotGridBg.style.display = "none";
         }
+        updateGridZoomDetail();
     }
 
+    // Fine subdivisions are visual guides only.
+    // They do not change snapping or drawing coordinates.
+    function updateGridZoomDetail() {
+        const showFineGrid = currentGridDisplayMode === "full";
+
+        const halfGrid = document.getElementById("half-grid-rect");
+        const quarterGrid = document.getElementById("quarter-grid-rect");
+
+        if (halfGrid) {
+            halfGrid.style.display =
+                showFineGrid && zoomLevel >= 2 ? "block" : "none";
+        }
+
+        if (quarterGrid) {
+            quarterGrid.style.display =
+                showFineGrid && zoomLevel >= 3.25 ? "block" : "none";
+        }
+
+        if (dotGridBg) {
+            dotGridBg.style.display = "none";
+        }
+    }
     artboardSizeButtons.forEach(btn => {
         btn.addEventListener("click", () => {
             const size = Number(btn.dataset.size);
@@ -2951,36 +3000,36 @@
     }
 
     function bringShapeGuidesToFront(shape) {
-    if (!shape) return;
+        if (!shape) return;
 
-    let guides = [];
+        let guides = [];
 
-    if (shape.type === "curve") {
-        guides = [
-            shape.circumferenceGuide,
-            shape.horizontalGuide,
-            shape.verticalGuide,
-            shape.angleGuide,
-            shape.startRadialGuide,
-            shape.endRadialGuide
-        ];
-    } else if (
-        shape.type === "circle" ||
-        shape.type === "ellipse" ||
-        shape.type === "rectangle"
-    ) {
-        guides = [
-            shape.horizontalGuide,
-            shape.verticalGuide
-        ];
-    } else if (shape.type === "ellipse-arc") {
-        guides = shape.helperGuides || [];
+        if (shape.type === "curve") {
+            guides = [
+                shape.circumferenceGuide,
+                shape.horizontalGuide,
+                shape.verticalGuide,
+                shape.angleGuide,
+                shape.startRadialGuide,
+                shape.endRadialGuide
+            ];
+        } else if (
+            shape.type === "circle" ||
+            shape.type === "ellipse" ||
+            shape.type === "rectangle"
+        ) {
+            guides = [
+                shape.horizontalGuide,
+                shape.verticalGuide
+            ];
+        } else if (shape.type === "ellipse-arc") {
+            guides = shape.helperGuides || [];
+        }
+
+        guides.forEach(guide => {
+            if (guide) workspace.appendChild(guide);
+        });
     }
-
-    guides.forEach(guide => {
-        if (guide) workspace.appendChild(guide);
-    });
-}
     function updateCurve(shape) {
         const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
         const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
@@ -3232,6 +3281,14 @@
                 bottom: shape.cy + shape.ry
             };
         }
+        if (shape.type === "ellipse-arc") {
+            return {
+                left: shape.cx - shape.rx,
+                right: shape.cx + shape.rx,
+                top: shape.cy - shape.ry,
+                bottom: shape.cy + shape.ry
+            };
+        }
         if (shape.type === "rectangle") {
             return { left: shape.x, right: shape.x + shape.width, top: shape.y, bottom: shape.y + shape.height };
         }
@@ -3239,13 +3296,46 @@
             return { left: Math.min(shape.x1, shape.x2), right: Math.max(shape.x1, shape.x2), top: Math.min(shape.y1, shape.y2), bottom: Math.max(shape.y1, shape.y2) };
         }
         if (shape.type === "curve") {
-            const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
-            const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
-            const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
-            const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
-            const xs = [startX, endX, shape.cx];
-            const ys = [startY, endY, shape.cy];
-            return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) };
+            const { cx, cy, radius, startAngle, endAngle } = shape;
+
+            let delta = endAngle - startAngle;
+
+            while (delta < 0) delta += Math.PI * 2;
+            while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+
+            const angles = [startAngle, endAngle];
+
+            // Check whether an angle lies along the visible arc.
+            const isOnArc = angle => {
+                let difference = angle - startAngle;
+
+                while (difference < 0) difference += Math.PI * 2;
+                while (difference >= Math.PI * 2) difference -= Math.PI * 2;
+
+                return difference <= delta;
+            };
+
+            // Include the four possible extreme points.
+            [0, Math.PI / 2, Math.PI, Math.PI * 1.5].forEach(angle => {
+                if (isOnArc(angle)) {
+                    angles.push(angle);
+                }
+            });
+
+            const points = angles.map(angle => ({
+                x: cx + radius * Math.cos(angle),
+                y: cy + radius * Math.sin(angle)
+            }));
+
+            const xs = points.map(point => point.x);
+            const ys = points.map(point => point.y);
+
+            return {
+                left: Math.min(...xs),
+                right: Math.max(...xs),
+                top: Math.min(...ys),
+                bottom: Math.max(...ys)
+            };
         }
         if (shape.type === "path" && shape.points?.length) {
             const xs = shape.points.map(p => p.x);
@@ -4964,6 +5054,11 @@
             shape = shapes[shapes.length - 1];
             Object.assign(shape, data);
             updateCurve(shape);
+        } else if (data.type === "ellipse-arc") {
+            createEllipseArc(data.cx, data.cy);
+            shape = shapes[shapes.length - 1];
+            Object.assign(shape, data);
+            updateEllipseArc(shape);
         } else if (
             data.type === "circle" ||
             data.type === "ellipse" ||
@@ -5081,7 +5176,7 @@
 
                 const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} 1 ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
                 artwork.push(`    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`);
-                        } else if (shape.type === "ellipse-arc") {
+            } else if (shape.type === "ellipse-arc") {
 
                 const startX = shape.cx + shape.rx * Math.cos(shape.startAngle);
                 const startY = shape.cy + shape.ry * Math.sin(shape.startAngle);
@@ -5766,21 +5861,61 @@
                 const d = el.getAttribute("d") || "";
 
                 if (d.trim()) {
-                    parsed.push({
-                        type: "path",
-                        svgPathData: d,
+                    const segments = parseSVGPathSegments(d);
 
-                        // Individual editable SVG segments
-                        svgEditableSegments: parseSVGPathSegments(d),
-                        svgAnchors: buildSVGAnchorMap(parseSVGPathSegments(d)),
+                    // Recognize our native Curve and Ellipse Arc shapes.
+                    if (
+                        segments.length === 2 &&
+                        segments[0].type === "move" &&
+                        segments[1].type === "arc" &&
+                        segments[1].rotation === 0
+                    ) {
+                        const arc = segments[1];
 
-                        points: [],
-                        holes: [],
-                        curved: false,
-                        color: stroke,
-                        fill,
-                        strokeWidth
-                    });
+                        if (Math.abs(arc.rx - arc.ry) < 0.0001) {
+                            parsed.push({
+                                type: "importedArc",
+                                startX: arc.x1,
+                                startY: arc.y1,
+                                radius: arc.rx,
+                                phi: arc.rotation,
+                                largeArc: arc.largeArc,
+                                sweep: arc.sweep,
+                                endX: arc.x,
+                                endY: arc.y,
+                                color: stroke,
+                                strokeWidth
+                            });
+                        } else {
+                            parsed.push({
+                                type: "importedEllipseArc",
+                                startX: arc.x1,
+                                startY: arc.y1,
+                                rx: arc.rx,
+                                ry: arc.ry,
+                                phi: arc.rotation,
+                                largeArc: arc.largeArc,
+                                sweep: arc.sweep,
+                                endX: arc.x,
+                                endY: arc.y,
+                                color: stroke,
+                                strokeWidth
+                            });
+                        }
+                    } else {
+                        parsed.push({
+                            type: "path",
+                            svgPathData: d,
+                            svgEditableSegments: segments,
+                            svgAnchors: buildSVGAnchorMap(segments),
+                            points: [],
+                            holes: [],
+                            curved: false,
+                            color: stroke,
+                            fill,
+                            strokeWidth
+                        });
+                    }
                 } else {
                     // Arbitrary / Compound Path: split into subpaths
                     const subpathRegex = /M\s*([-\d.]+)[,\s]+([-\d.]+)([^M]*)/gi;
@@ -5857,6 +5992,31 @@
                 s.color = data.color;
                 s.strokeWidth = data.strokeWidth;
                 updateCurve(s);
+            } else if (data.type === "importedEllipseArc") {
+                const arc = arcEndpointToCenter(
+                    data.startX,
+                    data.startY,
+                    data.rx,
+                    data.ry,
+                    data.phi || 0,
+                    data.largeArc,
+                    data.sweep,
+                    data.endX,
+                    data.endY
+                );
+
+                createEllipseArc(arc.cx, arc.cy);
+
+                const s = shapes[shapes.length - 1];
+
+                s.rx = arc.rx;
+                s.ry = arc.ry;
+                s.startAngle = arc.startAngle;
+                s.endAngle = arc.endAngle;
+                s.color = data.color;
+                s.strokeWidth = data.strokeWidth;
+
+                updateEllipseArc(s);
 
             } else {
                 if (data.type === "path") {

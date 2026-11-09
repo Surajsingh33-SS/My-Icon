@@ -893,24 +893,35 @@
                             </pattern>
 
                             <pattern id="major-grid" width="3" height="3" patternUnits="userSpaceOnUse">
-                                <path d="M 3 0 L 0 0 0 3" fill="none" stroke="#91a9d5" stroke-width="0.065"
-                                    opacity="1" />
+                                <path id="major-grid-path" d="M 3 0 L 0 0 0 3" fill="none" stroke="#91a9d5"
+                                    stroke-width="0.065" opacity="1" />
                             </pattern>
 
-                            <!-- Subtle dot-matrix grid at high zoom (>= 200%) -->
-                            <pattern id="dot-grid" width="4" height="4" patternUnits="userSpaceOnUse">
-                                <circle cx="2" cy="2" r="0.14" fill="#64748b" opacity="0.6" />
+                            <!-- Half-unit grid: visible at 200% zoom -->
+                            <pattern id="half-grid" width="0.5" height="0.5" patternUnits="userSpaceOnUse">
+                                <path d="M 0.5 0 V 0.5 M 0 0.5 H 0.5" fill="none" stroke="#64748b" stroke-width="0.022"
+                                    opacity="0.55" />
+                            </pattern>
+
+                            <!-- Quarter-unit grid: visible at 325% zoom -->
+                            <pattern id="quarter-grid" width="0.25" height="0.25" patternUnits="userSpaceOnUse">
+                                <path d="M 0.25 0 V 0.25 M 0 0.25 H 0.25" fill="none" stroke="#64748b"
+                                    stroke-width="0.016" opacity="0.48" />
                             </pattern>
                         </defs>
 
-                        <!-- Subtle Dot Matrix (shown when zoomed >= 200%) -->
-                        <rect id="dot-grid-bg" width="100%" height="100%" fill="url(#dot-grid)" style="display: none;"
-                            pointer-events="none" />
-
                         <!-- WORKSPACE GUIDELINES -->
                         <g id="workspace-guidelines">
-                            <!-- Minor grid -->
+                            <!-- Base 1-unit grid -->
                             <rect id="minor-grid-rect" width="24" height="24" fill="url(#grid)" />
+
+                            <!-- Zoom-dependent visual subdivisions -->
+                            <rect id="half-grid-rect" width="24" height="24" fill="url(#half-grid)"
+                                style="display: none;" pointer-events="none" />
+
+                            <rect id="quarter-grid-rect" width="24" height="24" fill="url(#quarter-grid)"
+                                style="display: none;" pointer-events="none" />
+
                             <!-- Major grid -->
                             <rect id="major-grid-rect" width="24" height="24" fill="url(#major-grid)"
                                 pointer-events="none" />
