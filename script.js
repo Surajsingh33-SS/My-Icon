@@ -4574,7 +4574,7 @@
             html += createMeasurementInput("Y1", shape.y1, "y1");
             html += createMeasurementInput("X2", shape.x2, "x2");
             html += createMeasurementInput("Y2", shape.y2, "y2");
-            html += createMeasurementInput("Length", len, "length", false);
+            html += createMeasurementInput("Length", len, "length");
         } else if (shape.type === "curve") {
             html += createMeasurementInput("Center X", shape.cx, "cx");
             html += createMeasurementInput("Center Y", shape.cy, "cy");
@@ -4602,14 +4602,14 @@
             html += createMeasurementInput("Center X", shape.cx, "cx");
             html += createMeasurementInput("Center Y", shape.cy, "cy");
             html += createMeasurementInput("Radius", shape.radius, "radius");
-            html += createMeasurementInput("Diameter", shape.radius * 2, "diameter", false);
+            html += createMeasurementInput("Diameter", shape.radius * 2, "diameter");
         } else if (shape.type === "ellipse") {
             html += createMeasurementInput("Center X", shape.cx, "cx");
             html += createMeasurementInput("Center Y", shape.cy, "cy");
             html += createMeasurementInput("Radius X", shape.rx, "rx");
             html += createMeasurementInput("Radius Y", shape.ry, "ry");
-            html += createMeasurementInput("Width", shape.rx * 2, "ellipse-width", false);
-            html += createMeasurementInput("Height", shape.ry * 2, "ellipse-height", false);
+            html += createMeasurementInput("Width", shape.rx * 2, "ellipse-width");
+            html += createMeasurementInput("Height", shape.ry * 2, "ellipse-height");
         } else if (shape.type === "rectangle") {
             html += createMeasurementInput("X", shape.x, "x");
             html += createMeasurementInput("Y", shape.y, "y");
@@ -4630,11 +4630,14 @@
         measurementFields.innerHTML = html;
     }
 
-    measurementFields?.addEventListener("change", event => {
+    measurementFields?.addEventListener("input", event => {
         const input = event.target;
         const key = input.dataset.measurement;
         const val = Number(input.value);
-        if (!key || isNaN(val) || !selectedShape || selectedShape.locked || selectedShape.hidden) return;
+        if (input.value.trim() === "") return;
+
+        if (!key || !Number.isFinite(val) || !selectedShape ||
+            selectedShape.locked || selectedShape.hidden) return;
 
         beginHistoryAction();
         const shape = selectedShape;
@@ -4644,6 +4647,33 @@
             if (key === "y1") shape.y1 = val;
             if (key === "x2") shape.x2 = val;
             if (key === "y2") shape.y2 = val;
+
+            if (key === "length") {
+                const dx = shape.x2 - shape.x1;
+                const dy = shape.y2 - shape.y1;
+                const oldLength = Math.hypot(dx, dy);
+                const newLength = Math.max(0, val);
+
+                const midX = (shape.x1 + shape.x2) / 2;
+                const midY = (shape.y1 + shape.y2) / 2;
+
+                if (oldLength > 0.0001) {
+                    const scale = newLength / oldLength;
+
+                    const halfDX = (dx * scale) / 2;
+                    const halfDY = (dy * scale) / 2;
+
+                    shape.x1 = midX - halfDX;
+                    shape.y1 = midY - halfDY;
+                    shape.x2 = midX + halfDX;
+                    shape.y2 = midY + halfDY;
+                } else {
+                    // A zero-length line expands horizontally.
+                    shape.x1 = midX - newLength / 2;
+                    shape.x2 = midX + newLength / 2;
+                }
+            }
+
             updateLine(shape);
         } else if (shape.type === "curve") {
             if (key === "cx") shape.cx = val;
@@ -4669,20 +4699,38 @@
             }
 
             updateEllipseArc(shape);
-            updateMeasurementPanel();
+
         } else if (shape.type === "circle") {
             if (key === "cx") shape.cx = val;
             if (key === "cy") shape.cy = val;
-            if (key === "radius") shape.radius = Math.max(0.2, val);
+
+            if (key === "radius") {
+                shape.radius = Math.max(0.2, val);
+            }
+
+            if (key === "diameter") {
+                shape.radius = Math.max(0.2, val / 2);
+            }
+
             updateBasicShape(shape);
+
         } else if (shape.type === "ellipse") {
             if (key === "cx") shape.cx = val;
             if (key === "cy") shape.cy = val;
+
             if (key === "rx") shape.rx = Math.max(0.2, val);
             if (key === "ry") shape.ry = Math.max(0.2, val);
 
+            if (key === "ellipse-width") {
+                shape.rx = Math.max(0.2, val / 2);
+            }
+
+            if (key === "ellipse-height") {
+                shape.ry = Math.max(0.2, val / 2);
+            }
+
             updateBasicShape(shape);
-            updateMeasurementPanel();
+
         } else if (shape.type === "rectangle") {
             if (key === "x") shape.x = val;
             if (key === "y") shape.y = val;
@@ -4691,7 +4739,11 @@
             updateBasicShape(shape);
         }
 
+    });
+
+    measurementFields?.addEventListener("change", () => {
         commitHistoryAction();
+        updateMeasurementPanel();
     });
 
     // ========================================================================
