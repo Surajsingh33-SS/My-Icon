@@ -6336,100 +6336,100 @@
         }
 
         // Tokenize SVG commands and numbers.
-// Arc flags are read individually, even when written together as "01".
-const tokens = [];
+        // Arc flags are read individually, even when written together as "01".
+        const tokens = [];
 
-const numberRegex =
-    /^[+-]?(?:(?:\d+\.?\d*)|(?:\.\d+))(?:[eE][+-]?\d+)?/;
+        const numberRegex =
+            /^[+-]?(?:(?:\d+\.?\d*)|(?:\.\d+))(?:[eE][+-]?\d+)?/;
 
-const parameterCounts = {
-    M: 2,
-    L: 2,
-    H: 1,
-    V: 1,
-    C: 6,
-    S: 4,
-    Q: 4,
-    T: 2,
-    A: 7
-};
+        const parameterCounts = {
+            M: 2,
+            L: 2,
+            H: 1,
+            V: 1,
+            C: 6,
+            S: 4,
+            Q: 4,
+            T: 2,
+            A: 7
+        };
 
-let position = 0;
-let activeCommand = null;
-let parameterIndex = 0;
+        let position = 0;
+        let activeCommand = null;
+        let parameterIndex = 0;
 
-while (position < d.length) {
-    const char = d[position];
+        while (position < d.length) {
+            const char = d[position];
 
-    // Ignore SVG separators.
-    if (/[\s,]/.test(char)) {
-        position++;
-        continue;
-    }
+            // Ignore SVG separators.
+            if (/[\s,]/.test(char)) {
+                position++;
+                continue;
+            }
 
-    // Read an SVG command.
-    if (/[a-zA-Z]/.test(char)) {
-        activeCommand = char;
-        parameterIndex = 0;
+            // Read an SVG command.
+            if (/[a-zA-Z]/.test(char)) {
+                activeCommand = char;
+                parameterIndex = 0;
 
-        tokens.push(char);
-        position++;
+                tokens.push(char);
+                position++;
 
-        continue;
-    }
+                continue;
+            }
 
-    if (!activeCommand) {
-        throw new Error("SVG path must begin with a command.");
-    }
+            if (!activeCommand) {
+                throw new Error("SVG path must begin with a command.");
+            }
 
-    const commandType = activeCommand.toUpperCase();
+            const commandType = activeCommand.toUpperCase();
 
-    // Arc flags are single characters.
-    // This correctly separates adjacent flags such as "01".
-    if (
-        commandType === "A" &&
-        (parameterIndex === 3 || parameterIndex === 4)
-    ) {
-        if (char !== "0" && char !== "1") {
-            throw new Error("Invalid SVG arc flag.");
+            // Arc flags are single characters.
+            // This correctly separates adjacent flags such as "01".
+            if (
+                commandType === "A" &&
+                (parameterIndex === 3 || parameterIndex === 4)
+            ) {
+                if (char !== "0" && char !== "1") {
+                    throw new Error("Invalid SVG arc flag.");
+                }
+
+                tokens.push(char);
+                position++;
+            } else {
+                const remaining = d.slice(position);
+                const numberMatch = numberRegex.exec(remaining);
+
+                if (!numberMatch) {
+                    throw new Error(
+                        `Invalid SVG path data near: "${remaining.slice(0, 10)}"`
+                    );
+                }
+
+                tokens.push(numberMatch[0]);
+                position += numberMatch[0].length;
+            }
+
+            parameterIndex++;
+
+            const parameterCount = parameterCounts[commandType];
+
+            if (parameterCount && parameterIndex >= parameterCount) {
+                parameterIndex = 0;
+
+                // Additional coordinate pairs after M become L.
+                if (commandType === "M") {
+                    activeCommand =
+                        activeCommand === "m" ? "l" : "L";
+                }
+            }
+
+            // Close-path commands do not accept parameters.
+            if (commandType === "Z") {
+                activeCommand = null;
+                parameterIndex = 0;
+            }
         }
-
-        tokens.push(char);
-        position++;
-    } else {
-        const remaining = d.slice(position);
-        const numberMatch = numberRegex.exec(remaining);
-
-        if (!numberMatch) {
-            throw new Error(
-                `Invalid SVG path data near: "${remaining.slice(0, 10)}"`
-            );
-        }
-
-        tokens.push(numberMatch[0]);
-        position += numberMatch[0].length;
-    }
-
-    parameterIndex++;
-
-    const parameterCount = parameterCounts[commandType];
-
-    if (parameterCount && parameterIndex >= parameterCount) {
-        parameterIndex = 0;
-
-        // Additional coordinate pairs after M become L.
-        if (commandType === "M") {
-            activeCommand =
-                activeCommand === "m" ? "l" : "L";
-        }
-    }
-
-    // Close-path commands do not accept parameters.
-    if (commandType === "Z") {
-        activeCommand = null;
-        parameterIndex = 0;
-    }
-}
 
         const segments = [];
 
@@ -7349,17 +7349,152 @@ while (position < d.length) {
                     selectShape(firstImportedShape);
                 }
 
+
             } else if (data.type === "importedArcGroup") {
 
-                // KEEP YOUR EXISTING importedArcGroup CODE HERE
+                // Preserve the original fill separately when the SVG has one.
+                if (data.fill && data.fill !== "none") {
+                    createShapeFromCopy({
+                        type: "path",
+                        name: "SVG Compound Fill",
+                        svgPathData: data.originalPathData,
+                        points: [],
+                        holes: [],
+                        color: "none",
+                        fill: data.fill,
+                        strokeWidth: 0.1,
+                        hidden: false,
+                        locked: true,
+                        importedFillOnly: true
+                    });
+
+                    const fillShape = shapes[shapes.length - 1];
+                    fillShape.element.style.pointerEvents = "none";
+                }
+
+                let firstImportedCurve = null;
+
+                data.arcs.forEach(arcData => {
+                    const arc = arcEndpointToCenter(
+                        arcData.x1,
+                        arcData.y1,
+                        arcData.rx,
+                        arcData.ry,
+                        arcData.rotation || 0,
+                        arcData.largeArc,
+                        arcData.sweep,
+                        arcData.x,
+                        arcData.y
+                    );
+
+                    const isCircular =
+                        Math.abs(arc.rx - arc.ry) < 0.0001;
+
+                    if (isCircular) {
+                        createCurve(arc.cx, arc.cy);
+                    } else {
+                        createEllipseArc(arc.cx, arc.cy);
+                    }
+
+                    const shape = shapes[shapes.length - 1];
+                    const reverse = Number(arcData.sweep) === 0;
+
+                    shape.color = data.color;
+                    shape.strokeWidth = data.strokeWidth;
+                    shape.importedSVGSegment = true;
+
+                    if (isCircular) {
+                        shape.radius = arc.rx;
+
+                        shape.startAngle = reverse
+                            ? arc.endAngle
+                            : arc.startAngle;
+
+                        shape.endAngle = reverse
+                            ? arc.startAngle
+                            : arc.endAngle;
+
+                        updateCurve(shape);
+                    } else {
+                        shape.rx = arc.rx;
+                        shape.ry = arc.ry;
+
+                        shape.startAngle = reverse
+                            ? arc.endAngle
+                            : arc.startAngle;
+
+                        shape.endAngle = reverse
+                            ? arc.startAngle
+                            : arc.endAngle;
+
+                        updateEllipseArc(shape);
+                    }
+
+                    if (!firstImportedCurve) {
+                        firstImportedCurve = shape;
+                    }
+
+                    ensureShapeId(shape);
+                });
+
+                if (firstImportedCurve) {
+                    selectShape(firstImportedCurve);
+                }
 
             } else if (data.type === "importedArc") {
 
-                // KEEP YOUR EXISTING importedArc CODE HERE
+                const arc = arcEndpointToCenter(
+                    data.startX,
+                    data.startY,
+                    data.radius,
+                    data.radius,
+                    data.phi || 0,
+                    data.largeArc,
+                    data.sweep,
+                    data.endX,
+                    data.endY
+                );
+
+                createCurve(arc.cx, arc.cy);
+
+                const shape = shapes[shapes.length - 1];
+                const reverse = Number(data.sweep) === 0;
+
+                shape.radius = arc.rx;
+                shape.startAngle = reverse ? arc.endAngle : arc.startAngle;
+                shape.endAngle = reverse ? arc.startAngle : arc.endAngle;
+                shape.color = data.color;
+                shape.strokeWidth = data.strokeWidth;
+
+                updateCurve(shape);
 
             } else if (data.type === "importedEllipseArc") {
 
-                // KEEP YOUR EXISTING importedEllipseArc CODE HERE
+                const arc = arcEndpointToCenter(
+                    data.startX,
+                    data.startY,
+                    data.rx,
+                    data.ry,
+                    data.phi || 0,
+                    data.largeArc,
+                    data.sweep,
+                    data.endX,
+                    data.endY
+                );
+
+                createEllipseArc(arc.cx, arc.cy);
+
+                const shape = shapes[shapes.length - 1];
+                const reverse = Number(data.sweep) === 0;
+
+                shape.rx = arc.rx;
+                shape.ry = arc.ry;
+                shape.startAngle = reverse ? arc.endAngle : arc.startAngle;
+                shape.endAngle = reverse ? arc.startAngle : arc.endAngle;
+                shape.color = data.color;
+                shape.strokeWidth = data.strokeWidth;
+
+                updateEllipseArc(shape);
 
             } else {
 
