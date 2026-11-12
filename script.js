@@ -1589,115 +1589,153 @@
         };
     }
 
-   function getActiveSymmetryAxes() {
-    const axes = [];
+    function getActiveSymmetryAxes() {
+        const axes = [];
 
-    if (liveSymmetryV) {
-        axes.push({
-            type: "vertical",
-            x1: artboardSize / 2,
-            y1: 0,
-            x2: artboardSize / 2,
-            y2: artboardSize
-        });
-    }
-
-    if (liveSymmetryH) {
-        axes.push({
-            type: "horizontal",
-            x1: 0,
-            y1: artboardSize / 2,
-            x2: artboardSize,
-            y2: artboardSize / 2
-        });
-    }
-
-    customMirrorAxes.forEach(axis => {
-        if (axis.active !== false) {
+        if (liveSymmetryV) {
             axes.push({
-                type: "custom",
-                x1: axis.x1,
-                y1: axis.y1,
-                x2: axis.x2,
-                y2: axis.y2
+                type: "vertical",
+                x1: artboardSize / 2,
+                y1: 0,
+                x2: artboardSize / 2,
+                y2: artboardSize
             });
         }
-    });
 
-    return axes;
-}
+        if (liveSymmetryH) {
+            axes.push({
+                type: "horizontal",
+                x1: 0,
+                y1: artboardSize / 2,
+                x2: artboardSize,
+                y2: artboardSize / 2
+            });
+        }
 
-    
-function reflectShapeData(data, axis) {
-    const reflect = point =>
-        reflectSymmetryPoint(point.x, point.y, axis);
+        customMirrorAxes.forEach(axis => {
+            if (axis.active !== false) {
+                axes.push({
+                    type: "custom",
+                    x1: axis.x1,
+                    y1: axis.y1,
+                    x2: axis.x2,
+                    y2: axis.y2
+                });
+            }
+        });
 
-    const axisAngle = Math.atan2(
-        axis.y2 - axis.y1,
-        axis.x2 - axis.x1
-    );
-
-    if (data.type === "line") {
-        const p1 = reflect({ x: data.x1, y: data.y1 });
-        const p2 = reflect({ x: data.x2, y: data.y2 });
-
-        data.x1 = p1.x;
-        data.y1 = p1.y;
-        data.x2 = p2.x;
-        data.y2 = p2.y;
+        return axes;
     }
 
-    else if (
-        data.type === "circle" ||
-        data.type === "ellipse" ||
-        data.type === "curve" ||
-        data.type === "ellipse-arc"
-    ) {
-        const center = reflect({ x: data.cx, y: data.cy });
 
-        data.cx = center.x;
-        data.cy = center.y;
 
-        if (
-            data.type === "curve" ||
-            data.type === "ellipse-arc"
-        ) {
+    function reflectShapeData(data, axis) {
+        const reflect = (x, y) =>
+            reflectSymmetryPoint(x, y, axis);
+
+        const axisAngle = Math.atan2(
+            axis.y2 - axis.y1,
+            axis.x2 - axis.x1
+        );
+
+        if (data.type === "line") {
+            const p1 = reflect(data.x1, data.y1);
+            const p2 = reflect(data.x2, data.y2);
+
+            data.x1 = p1.x;
+            data.y1 = p1.y;
+            data.x2 = p2.x;
+            data.y2 = p2.y;
+        }
+
+        else if (data.type === "curve") {
+            const start = reflect(
+                data.cx + data.radius * Math.cos(data.startAngle),
+                data.cy + data.radius * Math.sin(data.startAngle)
+            );
+
+            const end = reflect(
+                data.cx + data.radius * Math.cos(data.endAngle),
+                data.cy + data.radius * Math.sin(data.endAngle)
+            );
+
+            const center = reflect(data.cx, data.cy);
+
+            data.cx = center.x;
+            data.cy = center.y;
+
+            data.startAngle = Math.atan2(
+                end.y - center.y,
+                end.x - center.x
+            );
+
+            data.endAngle = Math.atan2(
+                start.y - center.y,
+                start.x - center.x
+            );
+        }
+
+        else if (data.type === "ellipse-arc") {
             const oldStart = data.startAngle;
             const oldEnd = data.endAngle;
 
-            data.startAngle = 2 * axisAngle - oldEnd;
-            data.endAngle = 2 * axisAngle - oldStart;
+            const center = reflect(data.cx, data.cy);
+
+            data.cx = center.x;
+            data.cy = center.y;
+
+            data.rotation =
+                2 * axisAngle - (data.rotation || 0);
+
+            data.startAngle = -oldEnd;
+            data.endAngle = -oldStart;
+
+            data.sweepFlag = data.sweepFlag === 0 ? 1 : 0;
         }
+
+        else if (
+            data.type === "circle" ||
+            data.type === "ellipse"
+        ) {
+            const center = reflect(data.cx, data.cy);
+
+            data.cx = center.x;
+            data.cy = center.y;
+        }
+
+        else if (data.type === "rectangle") {
+            const center = reflect(
+                data.x + data.width / 2,
+                data.y + data.height / 2
+            );
+
+            data.x = center.x - data.width / 2;
+            data.y = center.y - data.height / 2;
+        }
+
+        else if (data.type === "path") {
+            data.points = (data.points || []).map(point =>
+                reflect(point.x, point.y)
+            );
+
+            data.holes = (data.holes || []).map(hole => {
+                const points = Array.isArray(hole)
+                    ? hole
+                    : hole.points;
+
+                const reflected = (points || []).map(point =>
+                    reflect(point.x, point.y)
+                );
+
+                return Array.isArray(hole)
+                    ? reflected
+                    : { ...hole, points: reflected };
+            });
+        }
+
+        return data;
     }
 
-    else if (data.type === "rectangle") {
-        const center = reflect({
-            x: data.x + data.width / 2,
-            y: data.y + data.height / 2
-        });
-
-        data.x = center.x - data.width / 2;
-        data.y = center.y - data.height / 2;
-    }
-
-    else if (data.type === "path") {
-        data.points = (data.points || []).map(reflect);
-
-        data.holes = (data.holes || []).map(hole => {
-            const points = Array.isArray(hole)
-                ? hole
-                : hole.points;
-
-            const reflected = (points || []).map(reflect);
-
-            return Array.isArray(hole)
-                ? reflected
-                : { ...hole, points: reflected };
-        });
-    }
-
-    return data;
-}
 
 
 
@@ -2177,6 +2215,8 @@ function reflectShapeData(data, axis) {
 
             startAngle: Math.PI,
             endAngle: 0,
+            rotation: 0,
+            sweepFlag: 1,
 
             color,
             strokeWidth: 2,
@@ -2242,43 +2282,58 @@ function reflectShapeData(data, axis) {
 
         return shape;
     }
+    function getEllipseArcPoint(shape, angle) {
+        const rotation = shape.rotation || 0;
 
+        const localX = shape.rx * Math.cos(angle);
+        const localY = shape.ry * Math.sin(angle);
+
+        return {
+            x: shape.cx +
+                localX * Math.cos(rotation) -
+                localY * Math.sin(rotation),
+
+            y: shape.cy +
+                localX * Math.sin(rotation) +
+                localY * Math.cos(rotation)
+        };
+    }
     function updateEllipseArc(shape) {
-        const startX = shape.cx + shape.rx * Math.cos(shape.startAngle);
-        const startY = shape.cy + shape.ry * Math.sin(shape.startAngle);
+        const start = getEllipseArcPoint(shape, shape.startAngle);
+        const end = getEllipseArcPoint(shape, shape.endAngle);
 
-        const endX = shape.cx + shape.rx * Math.cos(shape.endAngle);
-        const endY = shape.cy + shape.ry * Math.sin(shape.endAngle);
+        const rotationDegrees =
+            (shape.rotation || 0) * 180 / Math.PI;
 
-        // Centre horizontal line
+        // Centre horizontal guide
         shape.helperGuides[0].setAttribute("x1", 0);
         shape.helperGuides[0].setAttribute("y1", shape.cy);
         shape.helperGuides[0].setAttribute("x2", artboardSize);
         shape.helperGuides[0].setAttribute("y2", shape.cy);
 
-        // Centre vertical line
+        // Centre vertical guide
         shape.helperGuides[1].setAttribute("x1", shape.cx);
         shape.helperGuides[1].setAttribute("y1", 0);
         shape.helperGuides[1].setAttribute("x2", shape.cx);
         shape.helperGuides[1].setAttribute("y2", artboardSize);
 
-        // Centre to start endpoint
+        // Start radial guide
         shape.helperGuides[2].setAttribute("x1", shape.cx);
         shape.helperGuides[2].setAttribute("y1", shape.cy);
-        shape.helperGuides[2].setAttribute("x2", startX);
-        shape.helperGuides[2].setAttribute("y2", startY);
+        shape.helperGuides[2].setAttribute("x2", start.x);
+        shape.helperGuides[2].setAttribute("y2", start.y);
 
-        // Centre to end endpoint
+        // End radial guide
         shape.helperGuides[3].setAttribute("x1", shape.cx);
         shape.helperGuides[3].setAttribute("y1", shape.cy);
-        shape.helperGuides[3].setAttribute("x2", endX);
-        shape.helperGuides[3].setAttribute("y2", endY);
+        shape.helperGuides[3].setAttribute("x2", end.x);
+        shape.helperGuides[3].setAttribute("y2", end.y);
 
-        // Chord joining both endpoints
-        shape.helperGuides[4].setAttribute("x1", startX);
-        shape.helperGuides[4].setAttribute("y1", startY);
-        shape.helperGuides[4].setAttribute("x2", endX);
-        shape.helperGuides[4].setAttribute("y2", endY);
+        // Chord
+        shape.helperGuides[4].setAttribute("x1", start.x);
+        shape.helperGuides[4].setAttribute("y1", start.y);
+        shape.helperGuides[4].setAttribute("x2", end.x);
+        shape.helperGuides[4].setAttribute("y2", end.y);
 
         let delta = shape.endAngle - shape.startAngle;
 
@@ -2286,25 +2341,32 @@ function reflectShapeData(data, axis) {
         while (delta >= Math.PI * 2) delta -= Math.PI * 2;
 
         const largeArc = delta > Math.PI ? 1 : 0;
+        const sweep = shape.sweepFlag ?? 1;
 
-        const d = `M ${startX} ${startY} A ${shape.rx} ${shape.ry} 0 ${largeArc} 1 ${endX} ${endY}`;
+        const d =
+            `M ${start.x} ${start.y} ` +
+            `A ${shape.rx} ${shape.ry} ${rotationDegrees} ` +
+            `${largeArc} ${sweep} ${end.x} ${end.y}`;
 
         shape.element.setAttribute("d", d);
         shape.hitPath.setAttribute("d", d);
+
         shape.element.setAttribute("stroke", shape.color);
         shape.element.setAttribute("stroke-width", shape.strokeWidth);
 
         if (selectedShape === shape) {
             updateEllipseArcHandles(shape);
 
-            // Keep helper guides visible while editing
-            if (dragging?.shape === shape &&
-                dragging.type === "ellipse-arc-handle") {
+            if (
+                dragging?.shape === shape &&
+                dragging.type === "ellipse-arc-handle"
+            ) {
                 shape.helperGuides.forEach(guide => {
                     guide.style.display = "block";
                 });
             }
         }
+
         bringShapeGuidesToFront(shape);
         updateSVGSource();
         syncSymmetryGroup(shape);
@@ -2686,6 +2748,7 @@ function reflectShapeData(data, axis) {
 
         function makeHandle(x, y, action, color) {
             const hit = document.createElementNS(SVG_NS, "circle");
+
             hit.setAttribute("cx", x);
             hit.setAttribute("cy", y);
             hit.setAttribute("r", "0.85");
@@ -2695,6 +2758,7 @@ function reflectShapeData(data, axis) {
             hit.dataset.action = action;
 
             const visible = document.createElementNS(SVG_NS, "circle");
+
             visible.setAttribute("cx", x);
             visible.setAttribute("cy", y);
             visible.setAttribute("r", "0.32");
@@ -2710,37 +2774,17 @@ function reflectShapeData(data, axis) {
             shape.handles.push(visible, hit);
         }
 
-        // Start endpoint
-        makeHandle(
-            shape.cx + shape.rx * Math.cos(shape.startAngle),
-            shape.cy + shape.ry * Math.sin(shape.startAngle),
-            "start",
-            "#60A5FA"
-        );
+        const start = getEllipseArcPoint(shape, shape.startAngle);
+        const end = getEllipseArcPoint(shape, shape.endAngle);
 
-        // End endpoint
-        makeHandle(
-            shape.cx + shape.rx * Math.cos(shape.endAngle),
-            shape.cy + shape.ry * Math.sin(shape.endAngle),
-            "end",
-            "#60A5FA"
-        );
+        const rxHandle = getEllipseArcPoint(shape, 0);
+        const ryHandle = getEllipseArcPoint(shape, Math.PI / 2);
 
-        // Horizontal radius — upper midpoint
-        makeHandle(
-            shape.cx,
-            shape.cy - shape.ry,
-            "rx",
-            "#10B981"
-        );
+        makeHandle(start.x, start.y, "start", "#60A5FA");
+        makeHandle(end.x, end.y, "end", "#60A5FA");
 
-        // Vertical radius — lower midpoint
-        makeHandle(
-            shape.cx,
-            shape.cy + shape.ry,
-            "ry",
-            "#10B981"
-        );
+        makeHandle(rxHandle.x, rxHandle.y, "rx", "#10B981");
+        makeHandle(ryHandle.x, ryHandle.y, "ry", "#10B981");
     }
     function createHandlesForShape(shape) {
         if (!shape || shape.hidden || shape.locked) return;
@@ -5141,8 +5185,8 @@ function reflectShapeData(data, axis) {
 
         // Ellipse Arc Handle Movement
         if (dragging.type === "ellipse-arc-handle") {
-
             const action = dragging.action;
+
             const snappedPosition = getSnappedPoint(
                 position.x,
                 position.y,
@@ -5150,11 +5194,24 @@ function reflectShapeData(data, axis) {
                 event.shiftKey
             );
 
-            if (action === "start" || action === "end") {
+            const rotation = shape.rotation || 0;
 
+            const dx = snappedPosition.x - shape.cx;
+            const dy = snappedPosition.y - shape.cy;
+
+            // Convert pointer position into ellipse-local coordinates
+            const localX =
+                dx * Math.cos(rotation) +
+                dy * Math.sin(rotation);
+
+            const localY =
+                -dx * Math.sin(rotation) +
+                dy * Math.cos(rotation);
+
+            if (action === "start" || action === "end") {
                 const angle = Math.atan2(
-                    (snappedPosition.y - shape.cy) / shape.ry,
-                    (snappedPosition.x - shape.cx) / shape.rx
+                    localY / shape.ry,
+                    localX / shape.rx
                 );
 
                 if (action === "start") {
@@ -5164,18 +5221,10 @@ function reflectShapeData(data, axis) {
                 }
 
             } else if (action === "rx") {
-
-                shape.rx = Math.max(
-                    0.2,
-                    Math.abs(snappedPosition.x - shape.cx)
-                );
+                shape.rx = Math.max(0.2, Math.abs(localX));
 
             } else if (action === "ry") {
-
-                shape.ry = Math.max(
-                    0.2,
-                    Math.abs(snappedPosition.y - shape.cy)
-                );
+                shape.ry = Math.max(0.2, Math.abs(localY));
             }
 
             updateEllipseArc(shape);
@@ -6334,43 +6383,43 @@ function reflectShapeData(data, axis) {
         showToast(`Mirrored ${axis === "h" ? "horizontally" : "vertically"} across artboard`, "info");
     }
 
-   
-function mirrorAcrossCustomAxis() {
-    if (!customMirrorAxes.length) {
-        showToast("No custom mirror axis set.", "warning");
-        return;
+
+    function mirrorAcrossCustomAxis() {
+        if (!customMirrorAxes.length) {
+            showToast("No custom mirror axis set.", "warning");
+            return;
+        }
+
+        const axis = customMirrorAxes[customMirrorAxes.length - 1];
+
+        const targets = selectedShapes.length
+            ? selectedShapes
+            : (selectedShape ? [selectedShape] : []);
+
+        if (!targets.length) return;
+
+        beginHistoryAction();
+
+        targets.forEach(shape => {
+            const data = getShapeData(shape);
+
+            reflectShapeData(data, axis);
+
+            Object.assign(shape, data);
+
+            updateSymmetryMember(shape);
+        });
+
+        if (selectedShape) {
+            createHandlesForShape(selectedShape);
+        }
+
+        updateMeasurementPanel();
+        updatePropertiesPanel();
+        commitHistoryAction();
+
+        showToast("Mirrored across custom axis", "success");
     }
-
-    const axis = customMirrorAxes[customMirrorAxes.length - 1];
-
-    const targets = selectedShapes.length
-        ? selectedShapes
-        : (selectedShape ? [selectedShape] : []);
-
-    if (!targets.length) return;
-
-    beginHistoryAction();
-
-    targets.forEach(shape => {
-        const data = getShapeData(shape);
-
-        reflectShapeData(data, axis);
-
-        Object.assign(shape, data);
-
-        updateSymmetryMember(shape);
-    });
-
-    if (selectedShape) {
-        createHandlesForShape(selectedShape);
-    }
-
-    updateMeasurementPanel();
-    updatePropertiesPanel();
-    commitHistoryAction();
-
-    showToast("Mirrored across custom axis", "success");
-}
 
 
     function duplicateAndMirrorSelectedShapes() {
@@ -6599,12 +6648,8 @@ function mirrorAcrossCustomAxis() {
                 const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} 1 ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
                 artwork.push(`    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`);
             } else if (shape.type === "ellipse-arc") {
-
-                const startX = shape.cx + shape.rx * Math.cos(shape.startAngle);
-                const startY = shape.cy + shape.ry * Math.sin(shape.startAngle);
-
-                const endX = shape.cx + shape.rx * Math.cos(shape.endAngle);
-                const endY = shape.cy + shape.ry * Math.sin(shape.endAngle);
+                const start = getEllipseArcPoint(shape, shape.startAngle);
+                const end = getEllipseArcPoint(shape, shape.endAngle);
 
                 let delta = shape.endAngle - shape.startAngle;
 
@@ -6613,10 +6658,16 @@ function mirrorAcrossCustomAxis() {
 
                 const largeArc = delta > Math.PI ? 1 : 0;
 
+                const rotationDegrees =
+                    (shape.rotation || 0) * 180 / Math.PI;
+
+                const sweep = shape.sweepFlag ?? 1;
+
                 const pathD =
-                    `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} ` +
-                    `A ${formatSVGNumber(shape.rx)} ${formatSVGNumber(shape.ry)} 0 ${largeArc} 1 ` +
-                    `${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
+                    `M ${formatSVGNumber(start.x)} ${formatSVGNumber(start.y)} ` +
+                    `A ${formatSVGNumber(shape.rx)} ${formatSVGNumber(shape.ry)} ` +
+                    `${formatSVGNumber(rotationDegrees)} ${largeArc} ${sweep} ` +
+                    `${formatSVGNumber(end.x)} ${formatSVGNumber(end.y)}`;
 
                 artwork.push(
                     `    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`
