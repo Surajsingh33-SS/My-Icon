@@ -205,6 +205,7 @@
     const canvasContextMenu = document.getElementById("canvas-context-menu");
     const toastContainer = document.getElementById("toast-container");
     const transformToolbar = document.getElementById("transform-toolbar");
+    const clearCustomAxisBtn = document.getElementById("clear-custom-axis-btn");
 
     // Settings View Controls
 
@@ -1588,102 +1589,116 @@
         };
     }
 
-    function getActiveSymmetryAxes() {
-        const axes = [];
+   function getActiveSymmetryAxes() {
+    const axes = [];
 
-        if (liveSymmetryV) {
-            axes.push({
-                type: "vertical",
-                x1: artboardSize / 2,
-                y1: 0,
-                x2: artboardSize / 2,
-                y2: artboardSize
-            });
-        }
-
-        if (liveSymmetryH) {
-            axes.push({
-                type: "horizontal",
-                x1: 0,
-                y1: artboardSize / 2,
-                x2: artboardSize,
-                y2: artboardSize / 2
-            });
-        }
-
-        const customAxis = customMirrorAxes.find(axis => axis.active !== false);
-
-        if (customAxis) {
-            axes.push({
-                type: "custom",
-                x1: customAxis.x1,
-                y1: customAxis.y1,
-                x2: customAxis.x2,
-                y2: customAxis.y2
-            });
-        }
-
-        return axes;
+    if (liveSymmetryV) {
+        axes.push({
+            type: "vertical",
+            x1: artboardSize / 2,
+            y1: 0,
+            x2: artboardSize / 2,
+            y2: artboardSize
+        });
     }
 
-    function reflectShapeData(data, axis) {
-        const reflect = point =>
-            reflectSymmetryPoint(point.x, point.y, axis);
+    if (liveSymmetryH) {
+        axes.push({
+            type: "horizontal",
+            x1: 0,
+            y1: artboardSize / 2,
+            x2: artboardSize,
+            y2: artboardSize / 2
+        });
+    }
 
-        if (data.type === "line") {
-            const p1 = reflect({ x: data.x1, y: data.y1 });
-            const p2 = reflect({ x: data.x2, y: data.y2 });
-
-            data.x1 = p1.x;
-            data.y1 = p1.y;
-            data.x2 = p2.x;
-            data.y2 = p2.y;
+    customMirrorAxes.forEach(axis => {
+        if (axis.active !== false) {
+            axes.push({
+                type: "custom",
+                x1: axis.x1,
+                y1: axis.y1,
+                x2: axis.x2,
+                y2: axis.y2
+            });
         }
+    });
 
-        else if (
-            data.type === "circle" ||
-            data.type === "ellipse" ||
+    return axes;
+}
+
+    
+function reflectShapeData(data, axis) {
+    const reflect = point =>
+        reflectSymmetryPoint(point.x, point.y, axis);
+
+    const axisAngle = Math.atan2(
+        axis.y2 - axis.y1,
+        axis.x2 - axis.x1
+    );
+
+    if (data.type === "line") {
+        const p1 = reflect({ x: data.x1, y: data.y1 });
+        const p2 = reflect({ x: data.x2, y: data.y2 });
+
+        data.x1 = p1.x;
+        data.y1 = p1.y;
+        data.x2 = p2.x;
+        data.y2 = p2.y;
+    }
+
+    else if (
+        data.type === "circle" ||
+        data.type === "ellipse" ||
+        data.type === "curve" ||
+        data.type === "ellipse-arc"
+    ) {
+        const center = reflect({ x: data.cx, y: data.cy });
+
+        data.cx = center.x;
+        data.cy = center.y;
+
+        if (
             data.type === "curve" ||
             data.type === "ellipse-arc"
         ) {
-            const center = reflect({ x: data.cx, y: data.cy });
+            const oldStart = data.startAngle;
+            const oldEnd = data.endAngle;
 
-            data.cx = center.x;
-            data.cy = center.y;
-
-            // Reflect the curve and swap its endpoint roles.
-            // This keeps the same arc direction and shape.
-            if (data.type === "curve") {
-                const dx = axis.x2 - axis.x1;
-                const dy = axis.y2 - axis.y1;
-                const angle = Math.atan2(dy, dx);
-
-                const oldStartAngle = data.startAngle;
-                const oldEndAngle = data.endAngle;
-
-                data.startAngle = 2 * angle - oldEndAngle;
-                data.endAngle = 2 * angle - oldStartAngle;
-            }
+            data.startAngle = 2 * axisAngle - oldEnd;
+            data.endAngle = 2 * axisAngle - oldStart;
         }
-
-        else if (data.type === "path") {
-            data.points = (data.points || []).map(reflect);
-
-            data.holes = (data.holes || []).map(hole => {
-                const points = Array.isArray(hole)
-                    ? hole
-                    : hole.points;
-
-                const reflected = (points || []).map(reflect);
-
-                return Array.isArray(hole)
-                    ? reflected
-                    : { ...hole, points: reflected };
-            });
-        }
-
-        return data;
     }
+
+    else if (data.type === "rectangle") {
+        const center = reflect({
+            x: data.x + data.width / 2,
+            y: data.y + data.height / 2
+        });
+
+        data.x = center.x - data.width / 2;
+        data.y = center.y - data.height / 2;
+    }
+
+    else if (data.type === "path") {
+        data.points = (data.points || []).map(reflect);
+
+        data.holes = (data.holes || []).map(hole => {
+            const points = Array.isArray(hole)
+                ? hole
+                : hole.points;
+
+            const reflected = (points || []).map(reflect);
+
+            return Array.isArray(hole)
+                ? reflected
+                : { ...hole, points: reflected };
+        });
+    }
+
+    return data;
+}
+
 
 
     function applyLiveSymmetry(sourceShape) {
@@ -4423,14 +4438,14 @@
                 const start = mirrorAxisPlacementPoints[0];
 
                 if (point.x !== start.x || point.y !== start.y) {
-                    customMirrorAxes = [{
+                    customMirrorAxes.push({
                         id: `axis-${Date.now()}`,
                         x1: start.x,
                         y1: start.y,
                         x2: point.x,
                         y2: point.y,
                         active: true
-                    }];
+                    });
 
                     renderCustomMirrorAxes();
                     showToast("Custom mirror axis set!", "success");
@@ -5244,38 +5259,38 @@
             dragging.previousY = position.y;
 
 
-// Move each symmetry group through only one representative.
-// syncSymmetryGroup() will update the other members.
-const selectedTargets = selectedShapes.length
-    ? selectedShapes
-    : [shape];
+            // Move each symmetry group through only one representative.
+            // syncSymmetryGroup() will update the other members.
+            const selectedTargets = selectedShapes.length
+                ? selectedShapes
+                : [shape];
 
-const targets = [];
-const seenSymmetryGroups = new Set();
+            const targets = [];
+            const seenSymmetryGroups = new Set();
 
-selectedTargets.forEach(item => {
-    if (item.symmetryGroupId) {
-        if (seenSymmetryGroups.has(item.symmetryGroupId)) {
-            return;
-        }
+            selectedTargets.forEach(item => {
+                if (item.symmetryGroupId) {
+                    if (seenSymmetryGroups.has(item.symmetryGroupId)) {
+                        return;
+                    }
 
-        seenSymmetryGroups.add(item.symmetryGroupId);
+                    seenSymmetryGroups.add(item.symmetryGroupId);
 
-        // Prefer the shape actually being dragged.
-        const representative =
-            shape.symmetryGroupId === item.symmetryGroupId
-                ? shape
-                : item;
+                    // Prefer the shape actually being dragged.
+                    const representative =
+                        shape.symmetryGroupId === item.symmetryGroupId
+                            ? shape
+                            : item;
 
-        targets.push(representative);
-    } else {
-        targets.push(item);
-    }
-});
+                    targets.push(representative);
+                } else {
+                    targets.push(item);
+                }
+            });
 
-const movingShapes = new Set(
-    selectedTargets
-);
+            const movingShapes = new Set(
+                selectedTargets
+            );
 
 
             let closestSource = null;
@@ -6319,70 +6334,44 @@ const movingShapes = new Set(
         showToast(`Mirrored ${axis === "h" ? "horizontally" : "vertically"} across artboard`, "info");
     }
 
-    function mirrorAcrossCustomAxis() {
-        if (!customMirrorAxes.length) {
-            showToast("No custom mirror axis set. Click 'Custom Axis' and select 2 points on canvas.", "warning");
-            return;
-        }
-        const axis = customMirrorAxes[0];
-        const targets = selectedShapes.length ? selectedShapes : (selectedShape ? [selectedShape] : []);
-        if (!targets.length) return;
-
-        beginHistoryAction();
-
-        targets.forEach(shape => {
-            if (shape.type === "line") {
-                const p1 = reflectPointAcrossLine(shape.x1, shape.y1, axis.x1, axis.y1, axis.x2, axis.y2);
-                const p2 = reflectPointAcrossLine(shape.x2, shape.y2, axis.x1, axis.y1, axis.x2, axis.y2);
-                shape.x1 = p1.x; shape.y1 = p1.y;
-                shape.x2 = p2.x; shape.y2 = p2.y;
-                updateLine(shape);
-            } else if (shape.type === "circle") {
-                const c = reflectPointAcrossLine(shape.cx, shape.cy, axis.x1, axis.y1, axis.x2, axis.y2);
-                shape.cx = c.x; shape.cy = c.y;
-                updateBasicShape(shape);
-            } else if (shape.type === "curve") {
-                const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
-                const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
-                const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
-                const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
-                const pStart = reflectPointAcrossLine(startX, startY, axis.x1, axis.y1, axis.x2, axis.y2);
-                const pEnd = reflectPointAcrossLine(endX, endY, axis.x1, axis.y1, axis.x2, axis.y2);
-                const pCenter = reflectPointAcrossLine(shape.cx, shape.cy, axis.x1, axis.y1, axis.x2, axis.y2);
-                shape.cx = pCenter.x;
-                shape.cy = pCenter.y;
-                shape.startAngle = Math.atan2(pEnd.y - shape.cy, pEnd.x - shape.cx);
-                shape.endAngle = Math.atan2(pStart.y - shape.cy, pStart.x - shape.cx);
-                updateCurve(shape);
-            } else if (shape.type === "rectangle") {
-                const p1 = reflectPointAcrossLine(shape.x, shape.y, axis.x1, axis.y1, axis.x2, axis.y2);
-                const p2 = reflectPointAcrossLine(shape.x + shape.width, shape.y + shape.height, axis.x1, axis.y1, axis.x2, axis.y2);
-                shape.x = Math.min(p1.x, p2.x);
-                shape.y = Math.min(p1.y, p2.y);
-                shape.width = Math.abs(p2.x - p1.x);
-                shape.height = Math.abs(p2.y - p1.y);
-                updateBasicShape(shape);
-            } else if (shape.type === "path") {
-                shape.points = shape.points.map(p => reflectPointAcrossLine(p.x, p.y, axis.x1, axis.y1, axis.x2, axis.y2));
-                (shape.holes || []).forEach(h => {
-                    const pts = Array.isArray(h) ? h : h.points;
-                    const reflected = pts.map(p => reflectPointAcrossLine(p.x, p.y, axis.x1, axis.y1, axis.x2, axis.y2));
-                    if (Array.isArray(h)) {
-                        h.splice(0, h.length, ...reflected);
-                    } else {
-                        h.points = reflected;
-                    }
-                });
-                updatePathShape(shape);
-            }
-        });
-
-        if (selectedShape) createHandlesForShape(selectedShape);
-        updateMeasurementPanel();
-        updatePropertiesPanel();
-        commitHistoryAction();
-        showToast("Mirrored across custom axis", "success");
+   
+function mirrorAcrossCustomAxis() {
+    if (!customMirrorAxes.length) {
+        showToast("No custom mirror axis set.", "warning");
+        return;
     }
+
+    const axis = customMirrorAxes[customMirrorAxes.length - 1];
+
+    const targets = selectedShapes.length
+        ? selectedShapes
+        : (selectedShape ? [selectedShape] : []);
+
+    if (!targets.length) return;
+
+    beginHistoryAction();
+
+    targets.forEach(shape => {
+        const data = getShapeData(shape);
+
+        reflectShapeData(data, axis);
+
+        Object.assign(shape, data);
+
+        updateSymmetryMember(shape);
+    });
+
+    if (selectedShape) {
+        createHandlesForShape(selectedShape);
+    }
+
+    updateMeasurementPanel();
+    updatePropertiesPanel();
+    commitHistoryAction();
+
+    showToast("Mirrored across custom axis", "success");
+}
+
 
     function duplicateAndMirrorSelectedShapes() {
         const targets = selectedShapes.length ? selectedShapes : (selectedShape ? [selectedShape] : []);
@@ -6519,18 +6508,6 @@ const movingShapes = new Set(
             }
         }
 
-else if (action === "clear-custom-axis") {
-    customMirrorAxes = [];
-    mirrorAxisPlacementPoints = [];
-    isPlacingMirrorAxis = false;
-
-    customMirrorToolBtn?.classList.remove("active");
-
-    renderCustomMirrorAxes();
-
-    showToast("Custom mirror axis removed", "success");
-}
-
         else if (action === "custom-mirror") mirrorAcrossCustomAxis();
         else if (action === "duplicate-mirror") duplicateAndMirrorSelectedShapes();
         else if (action === "duplicate") duplicateSelectedShapes();
@@ -6540,6 +6517,17 @@ else if (action === "clear-custom-axis") {
                 if (idx !== -1 && idx < shapes.length - 1) reorderShape(idx, 1);
             }
         }
+    });
+    clearCustomAxisBtn?.addEventListener("click", () => {
+        customMirrorAxes = [];
+        mirrorAxisPlacementPoints = [];
+        isPlacingMirrorAxis = false;
+
+        customMirrorToolBtn?.classList.remove("active");
+
+        renderCustomMirrorAxes();
+
+        showToast("Custom mirror axis removed", "success");
     });
 
     liveSymmetryHCheckbox?.addEventListener("change", e => {
