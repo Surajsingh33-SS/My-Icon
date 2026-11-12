@@ -4411,7 +4411,15 @@
         });
 
         if (clickedShape) {
-            selectShape(clickedShape, event.shiftKey);
+
+            // Preserve the existing multi-selection when dragging
+            // a shape that is already selected.
+            if (
+                !selectedShapes.includes(clickedShape) ||
+                event.shiftKey
+            ) {
+                selectShape(clickedShape, event.shiftKey);
+            }
 
             dragging = {
                 shape: clickedShape,
@@ -4420,7 +4428,6 @@
                 previousY: pos.y,
                 snappedTo: null
             };
-
             if (clickedShape.type === "curve") {
                 clickedShape.horizontalGuide.style.display = "block";
                 clickedShape.angleGuide.style.display = "block";
@@ -6869,17 +6876,57 @@
                 if (d.trim()) {
                     const segments = parseSVGPathSegments(d);
 
+
                     // Recognize paths made entirely from connected arc segments.
                     const arcSegments = segments.filter(segment => segment.type === "arc");
 
                     const isArcGroup =
                         arcSegments.length >= 2 &&
+                        segments.every(segment => {
+                            if (segment.type === "move") return true;
+
+                            if (segment.type === "arc") {
+                                return segment.rotation === 0;
+                            }
+
+                            // Allow Z only when it closes at the existing endpoint.
+                            if (segment.type === "close") {
+                                const dx = segment.x - segment.x1;
+                                const dy = segment.y - segment.y1;
+
+                                return Math.hypot(dx, dy) < 0.0001;
+                            }
+
+                            return false;
+                        });
+
+
+
+                    const lineSegments = segments.filter(segment => segment.type === "line");
+
+                    const isLineGroup =
+                        fill === "none" &&
+                        lineSegments.length >= 1 &&
                         segments.every(segment =>
-                            segment.type === "move" ||
-                            (segment.type === "arc" && segment.rotation === 0)
+                            segment.type === "move" || segment.type === "line"
                         );
 
-                    if (isArcGroup) {
+                    if (isLineGroup) {
+                        lineSegments.forEach(segment => {
+                            parsed.push({
+                                type: "line",
+                                x1: segment.x1,
+                                y1: segment.y1,
+                                x2: segment.x,
+                                y2: segment.y,
+                                color: stroke,
+                                width: strokeWidth,
+                                strokeWidth
+                            });
+                        });
+
+                    } else if (isArcGroup) {
+
                         parsed.push({
                             type: "importedArcGroup",
                             arcs: arcSegments,
@@ -7116,8 +7163,12 @@
                 const s = shapes[shapes.length - 1];
 
                 s.radius = arc.rx;
-                s.startAngle = arc.startAngle;
-                s.endAngle = arc.endAngle;
+
+                const reverse = Number(data.sweep) === 0;
+
+                s.startAngle = reverse ? arc.endAngle : arc.startAngle;
+                s.endAngle = reverse ? arc.startAngle : arc.endAngle;
+
                 s.color = data.color;
                 s.strokeWidth = data.strokeWidth;
 
@@ -7143,8 +7194,12 @@
 
                 s.rx = arc.rx;
                 s.ry = arc.ry;
-                s.startAngle = arc.startAngle;
-                s.endAngle = arc.endAngle;
+
+                const reverse = Number(data.sweep) === 0;
+
+                s.startAngle = reverse ? arc.endAngle : arc.startAngle;
+                s.endAngle = reverse ? arc.startAngle : arc.endAngle;
+
                 s.color = data.color;
                 s.strokeWidth = data.strokeWidth;
 
