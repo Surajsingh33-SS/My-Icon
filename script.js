@@ -1651,18 +1651,18 @@
             data.cx = center.x;
             data.cy = center.y;
 
-            // Circular curves can be reflected by reversing
-            // their angular direction.
+            // Reflect the curve and swap its endpoint roles.
+            // This keeps the same arc direction and shape.
             if (data.type === "curve") {
                 const dx = axis.x2 - axis.x1;
                 const dy = axis.y2 - axis.y1;
                 const angle = Math.atan2(dy, dx);
 
-                data.startAngle =
-                    2 * angle - data.startAngle;
+                const oldStartAngle = data.startAngle;
+                const oldEndAngle = data.endAngle;
 
-                data.endAngle =
-                    2 * angle - data.endAngle;
+                data.startAngle = 2 * angle - oldEndAngle;
+                data.endAngle = 2 * angle - oldStartAngle;
             }
         }
 
@@ -1685,6 +1685,7 @@
         return data;
     }
 
+
     function applyLiveSymmetry(sourceShape) {
         if (
             isApplyingLiveSymmetry ||
@@ -1695,33 +1696,36 @@
         }
 
         const axes = getActiveSymmetryAxes();
-
         if (!axes.length) return;
 
         const groupId = crypto.randomUUID();
-        const originalData = getShapeData(sourceShape);
+
+        // Save the exact axes used when this group was created.
+        const savedAxes = structuredClone(axes);
 
         sourceShape.symmetryGroupId = groupId;
         sourceShape.symmetryMember = "original";
+        sourceShape.symmetryTransforms = [];
 
         isApplyingLiveSymmetry = true;
 
         try {
-            let combinations = [
-                {
-                    data: originalData,
-                    usedAxes: []
-                }
-            ];
+            let combinations = [{
+                data: getShapeData(sourceShape),
+                transforms: []
+            }];
 
-            axes.forEach((axis, axisIndex) => {
+            savedAxes.forEach(axis => {
                 const additions = combinations.map(item => {
                     const reflected = structuredClone(item.data);
                     reflectShapeData(reflected, axis);
 
                     return {
                         data: reflected,
-                        usedAxes: [...item.usedAxes, axisIndex]
+                        transforms: [
+                            ...item.transforms,
+                            structuredClone(axis)
+                        ]
                     };
                 });
 
@@ -1736,6 +1740,7 @@
 
                 data.symmetryGroupId = groupId;
                 data.symmetryMember = `member-${index + 1}`;
+                data.symmetryTransforms = item.transforms;
 
                 createShapeFromCopy(data);
             });
@@ -1743,6 +1748,91 @@
             isApplyingLiveSymmetry = false;
         }
     }
+
+    function updateSymmetryMember(member) {
+        if (member.type === "line") {
+            updateLine(member);
+        } else if (member.type === "curve") {
+            updateCurve(member);
+        } else if (member.type === "ellipse-arc") {
+            updateEllipseArc(member);
+        } else if (
+            member.type === "circle" ||
+            member.type === "ellipse" ||
+            member.type === "rectangle"
+        ) {
+            updateBasicShape(member);
+        } else if (member.type === "path") {
+            updatePathShape(member);
+        }
+    }
+
+
+    function syncSymmetryGroup(editedShape) {
+        if (
+            isSyncingSymmetryGroup ||
+            !editedShape ||
+            !editedShape.symmetryGroupId
+        ) {
+            return;
+        }
+
+        const members = getSymmetryGroupMembers(editedShape);
+
+        if (members.length <= 1) return;
+
+        const sourceData = getShapeData(editedShape);
+
+        if (
+            sourceData.type === "path" &&
+            typeof sourceData.svgPathData === "string"
+        ) {
+            return;
+        }
+
+        isSyncingSymmetryGroup = true;
+
+        try {
+            // First convert the edited member back into
+            // the original member's coordinate system.
+            const originalData = structuredClone(sourceData);
+
+            const sourceTransforms =
+                editedShape.symmetryTransforms || [];
+
+            // Reverse the transforms in reverse order.
+            [...sourceTransforms].reverse().forEach(axis => {
+                reflectShapeData(originalData, axis);
+            });
+
+            // Now generate every other member from the original.
+            members.forEach(member => {
+                if (member === editedShape) return;
+
+                const data = structuredClone(originalData);
+
+                const targetTransforms =
+                    member.symmetryTransforms || [];
+
+                targetTransforms.forEach(axis => {
+                    reflectShapeData(data, axis);
+                });
+
+                delete data.id;
+                delete data.symmetryGroupId;
+                delete data.symmetryMember;
+                delete data.symmetryTransforms;
+
+                Object.assign(member, data);
+
+                updateSymmetryMember(member);
+            });
+        } finally {
+            isSyncingSymmetryGroup = false;
+        }
+    }
+
+
 
 
     function getShapeElements(shape) {
@@ -2202,6 +2292,7 @@
         }
         bringShapeGuidesToFront(shape);
         updateSVGSource();
+        syncSymmetryGroup(shape);
     }
 
     function createOtherShape(type, x, y) {
@@ -2445,6 +2536,7 @@
         }
 
         updateSVGSource();
+        syncSymmetryGroup(shape);
     }
 
     function createBezierCurve(x, y) {
@@ -3375,6 +3467,7 @@
 
         updateSVGSource();
         shape.element?.setAttribute("stroke", shape.color);
+        syncSymmetryGroup(shape);
     }
 
 
@@ -3498,6 +3591,7 @@
 
         bringShapeGuidesToFront(shape);
         updateSVGSource();
+        syncSymmetryGroup(shape);
     }
 
     function updateBasicShape(shape) {
@@ -3549,6 +3643,7 @@
         }
         bringShapeGuidesToFront(shape);
         updateSVGSource();
+        syncSymmetryGroup(shape);
     }
 
     // ========================================================================
