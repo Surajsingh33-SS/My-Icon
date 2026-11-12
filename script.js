@@ -4154,27 +4154,39 @@
         // Custom Mirror Axis 2-Point Placement Mode
         if (isPlacingMirrorAxis) {
             if (event.button !== 0) return;
-            if (!customMirrorStart) {
-                customMirrorStart = { x: Math.round(pos.x * 2) / 2, y: Math.round(pos.y * 2) / 2 };
-                showToast("First point placed. Click second point to complete mirror axis.", "info");
+
+            const point = {
+                x: Math.round(pos.x * 2) / 2,
+                y: Math.round(pos.y * 2) / 2
+            };
+
+            if (mirrorAxisPlacementPoints.length === 0) {
+                mirrorAxisPlacementPoints.push(point);
+                showToast("First point placed. Click the second point.", "info");
             } else {
-                const end = { x: Math.round(pos.x * 2) / 2, y: Math.round(pos.y * 2) / 2 };
-                if (end.x !== customMirrorStart.x || end.y !== customMirrorStart.y) {
+                const start = mirrorAxisPlacementPoints[0];
+
+                if (point.x !== start.x || point.y !== start.y) {
                     customMirrorAxes = [{
                         id: `axis-${Date.now()}`,
-                        x1: customMirrorStart.x,
-                        y1: customMirrorStart.y,
-                        x2: end.x,
-                        y2: end.y,
+                        x1: start.x,
+                        y1: start.y,
+                        x2: point.x,
+                        y2: point.y,
                         active: true
                     }];
+
                     renderCustomMirrorAxes();
                     showToast("Custom mirror axis set!", "success");
+                } else {
+                    showToast("Choose a different second point.", "warning");
                 }
-                customMirrorStart = null;
+
+                mirrorAxisPlacementPoints = [];
                 isPlacingMirrorAxis = false;
                 customMirrorToolBtn?.classList.remove("active");
             }
+
             return;
         }
 
@@ -4281,7 +4293,7 @@
             return;
         }
 
-        // Imported SVG connected-anchor dragging
+        // Imported SVG anchor dragging with endpoint snapping
         if (svgAnchorHit) {
             const shape = shapes.find(s =>
                 s.type === "path" && s.handles?.includes(svgAnchorHit)
@@ -4289,16 +4301,34 @@
 
             if (!shape) return;
 
+            const anchorId = svgAnchorHit.dataset.anchorId;
+
+            const anchor = shape.svgAnchors?.find(
+                item => item.id === anchorId
+            );
+
+            if (!anchor) return;
+
             selectShape(shape);
 
             dragging = {
                 shape,
                 type: "svg-anchor",
-                anchorId: svgAnchorHit.dataset.anchorId,
+                anchorId,
+
                 startX: pos.x,
                 startY: pos.y,
-                originalSegments: cloneSVGSegments(shape.svgEditableSegments)
+
+                anchorStartX: anchor.x,
+                anchorStartY: anchor.y,
+
+                originalSegments: cloneSVGSegments(
+                    shape.svgEditableSegments
+                )
             };
+
+            // Register this endpoint with the snapping system.
+            prepareHandleDrag(shape, `svg_${anchorId}`);
 
             return;
         }
@@ -4601,16 +4631,31 @@
         const shape = dragging.shape;
 
 
-        // Move a connected anchor shared by neighbouring segments.
+        // Move an SVG anchor with endpoint snapping.
         if (dragging.type === "svg-anchor") {
-            const dx = position.x - dragging.startX;
-            const dy = position.y - dragging.startY;
+
+            const snapped = getSnappedPoint(
+                dragging.anchorStartX +
+                (position.x - dragging.startX),
+                dragging.anchorStartY +
+                (position.y - dragging.startY),
+                shape,
+                event.shiftKey
+            );
+
+            const dx = snapped.x - dragging.anchorStartX;
+            const dy = snapped.y - dragging.anchorStartY;
 
             shape.svgEditableSegments = cloneSVGSegments(
                 dragging.originalSegments
             );
 
-            moveSVGAnchor(shape, dragging.anchorId, dx, dy);
+            moveSVGAnchor(
+                shape,
+                dragging.anchorId,
+                dx,
+                dy
+            );
 
             shape.svgAnchors = buildSVGAnchorMap(
                 shape.svgEditableSegments
@@ -6161,8 +6206,10 @@
         else if (action === "flip-v") flipSelectedShapes("v");
         else if (action === "custom-mirror-axis") {
             isPlacingMirrorAxis = !isPlacingMirrorAxis;
-            customMirrorStart = null;
+            mirrorAxisPlacementPoints = [];
+
             btn.classList.toggle("active", isPlacingMirrorAxis);
+
             if (isPlacingMirrorAxis) {
                 showToast("Click 2 points on the canvas to place a custom mirror axis", "info");
             } else {
@@ -7066,8 +7113,29 @@
                             segment.type === "move" || segment.type === "line"
                         );
                     // Recognize paths containing both straight lines and circular arcs.
+                    // Recognize paths containing combinations of lines,
+                    // circular/elliptical arcs, and Bézier curves.
                     const isMixedEditablePath =
                         fill === "none" &&
+                        segments.some(segment => segment.type === "arc") &&
+                        segments.some(segment =>
+                            segment.type === "line" ||
+                            segment.type === "cubic" ||
+                            segment.type === "smooth-cubic" ||
+                            segment.type === "quadratic" ||
+                            segment.type === "smooth-quadratic"
+                        ) &&
+                        segments.every(segment =>
+                            segment.type === "move" ||
+                            segment.type === "line" ||
+                            segment.type === "arc" ||
+                            segment.type === "close" ||
+                            segment.type === "cubic" ||
+                            segment.type === "smooth-cubic" ||
+                            segment.type === "quadratic" ||
+                            segment.type === "smooth-quadratic"
+                        );
+                    fill === "none" &&
                         segments.some(segment => segment.type === "line") &&
                         segments.some(segment => segment.type === "arc") &&
                         segments.every(segment => {
@@ -7108,7 +7176,11 @@
                             segments: segments.filter(segment =>
                                 segment.type === "line" ||
                                 segment.type === "arc" ||
-                                segment.type === "close"
+                                segment.type === "close" ||
+                                segment.type === "cubic" ||
+                                segment.type === "smooth-cubic" ||
+                                segment.type === "quadratic" ||
+                                segment.type === "smooth-quadratic"
                             ),
                             color: stroke,
                             strokeWidth
@@ -7324,6 +7396,7 @@
 
                             updateCurve(shape);
 
+
                         } else {
                             shape.rx = arc.rx;
                             shape.ry = arc.ry;
@@ -7342,7 +7415,69 @@
                         }
 
                         ensureShapeId(shape);
+
+                    } else if (
+                        segment.type === "cubic" ||
+                        segment.type === "smooth-cubic" ||
+                        segment.type === "quadratic" ||
+                        segment.type === "smooth-quadratic"
+                    ) {
+
+                        let bezierPathData =
+                            `M ${segment.x1} ${segment.y1} `;
+
+                        if (
+                            segment.type === "cubic" ||
+                            segment.type === "smooth-cubic"
+                        ) {
+                            bezierPathData +=
+                                `C ${segment.cx1} ${segment.cy1} ` +
+                                `${segment.cx2} ${segment.cy2} ` +
+                                `${segment.x} ${segment.y}`;
+                        } else {
+                            bezierPathData +=
+                                `Q ${segment.cx} ${segment.cy} ` +
+                                `${segment.x} ${segment.y}`;
+                        }
+
+                        const independentSegments =
+                            parseSVGPathSegments(bezierPathData);
+
+                        const bezierShape = createShapeFromCopy({
+                            type: "path",
+                            name: "Bezier Curve",
+
+                            svgPathData: bezierPathData,
+                            svgEditableSegments: independentSegments,
+                            svgAnchors: buildSVGAnchorMap(
+                                independentSegments
+                            ),
+
+                            points: [],
+                            holes: [],
+                            curved: false,
+
+                            color: data.color,
+                            fill: "none",
+                            strokeWidth: data.strokeWidth,
+
+                            offsetX: 0,
+                            offsetY: 0,
+
+                            hidden: false,
+                            locked: false
+                        });
+
+                        bezierShape.importedSVGSegment = true;
+
+                        if (!firstImportedShape) {
+                            firstImportedShape = bezierShape;
+                        }
+
+                        ensureShapeId(bezierShape);
                     }
+
+
                 });
 
                 if (firstImportedShape) {
