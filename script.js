@@ -1551,78 +1551,199 @@
     // 10. SHAPE FACTORIES (LINE, CURVE, CIRCLE, RECTANGLE, PATH)
     // ========================================================================
     let isApplyingLiveSymmetry = false;
+    let isSyncingSymmetryGroup = false;
+
+    function getShapeData(shape) {
+        const data = {};
+
+        Object.keys(shape).forEach(key => {
+            if (!shapeDOMKeys.has(key)) {
+                data[key] = structuredClone(shape[key]);
+            }
+        });
+
+        return data;
+    }
+
+    function reflectSymmetryPoint(x, y, axis) {
+        const dx = axis.x2 - axis.x1;
+        const dy = axis.y2 - axis.y1;
+        const lengthSquared = dx * dx + dy * dy;
+
+        if (lengthSquared < 0.000001) {
+            return { x, y };
+        }
+
+        const t = (
+            (x - axis.x1) * dx +
+            (y - axis.y1) * dy
+        ) / lengthSquared;
+
+        const projectedX = axis.x1 + t * dx;
+        const projectedY = axis.y1 + t * dy;
+
+        return {
+            x: 2 * projectedX - x,
+            y: 2 * projectedY - y
+        };
+    }
+
+    function getActiveSymmetryAxes() {
+        const axes = [];
+
+        if (liveSymmetryV) {
+            axes.push({
+                type: "vertical",
+                x1: artboardSize / 2,
+                y1: 0,
+                x2: artboardSize / 2,
+                y2: artboardSize
+            });
+        }
+
+        if (liveSymmetryH) {
+            axes.push({
+                type: "horizontal",
+                x1: 0,
+                y1: artboardSize / 2,
+                x2: artboardSize,
+                y2: artboardSize / 2
+            });
+        }
+
+        const customAxis = customMirrorAxes.find(axis => axis.active !== false);
+
+        if (customAxis) {
+            axes.push({
+                type: "custom",
+                x1: customAxis.x1,
+                y1: customAxis.y1,
+                x2: customAxis.x2,
+                y2: customAxis.y2
+            });
+        }
+
+        return axes;
+    }
+
+    function reflectShapeData(data, axis) {
+        const reflect = point =>
+            reflectSymmetryPoint(point.x, point.y, axis);
+
+        if (data.type === "line") {
+            const p1 = reflect({ x: data.x1, y: data.y1 });
+            const p2 = reflect({ x: data.x2, y: data.y2 });
+
+            data.x1 = p1.x;
+            data.y1 = p1.y;
+            data.x2 = p2.x;
+            data.y2 = p2.y;
+        }
+
+        else if (
+            data.type === "circle" ||
+            data.type === "ellipse" ||
+            data.type === "curve" ||
+            data.type === "ellipse-arc"
+        ) {
+            const center = reflect({ x: data.cx, y: data.cy });
+
+            data.cx = center.x;
+            data.cy = center.y;
+
+            // Circular curves can be reflected by reversing
+            // their angular direction.
+            if (data.type === "curve") {
+                const dx = axis.x2 - axis.x1;
+                const dy = axis.y2 - axis.y1;
+                const angle = Math.atan2(dy, dx);
+
+                data.startAngle =
+                    2 * angle - data.startAngle;
+
+                data.endAngle =
+                    2 * angle - data.endAngle;
+            }
+        }
+
+        else if (data.type === "path") {
+            data.points = (data.points || []).map(reflect);
+
+            data.holes = (data.holes || []).map(hole => {
+                const points = Array.isArray(hole)
+                    ? hole
+                    : hole.points;
+
+                const reflected = (points || []).map(reflect);
+
+                return Array.isArray(hole)
+                    ? reflected
+                    : { ...hole, points: reflected };
+            });
+        }
+
+        return data;
+    }
+
     function applyLiveSymmetry(sourceShape) {
-        if (isApplyingLiveSymmetry) return;
-        if (!liveSymmetryH && !liveSymmetryV) return;
+        if (
+            isApplyingLiveSymmetry ||
+            !sourceShape ||
+            sourceShape.symmetryGroupId
+        ) {
+            return;
+        }
+
+        const axes = getActiveSymmetryAxes();
+
+        if (!axes.length) return;
+
+        const groupId = crypto.randomUUID();
+        const originalData = getShapeData(sourceShape);
+
+        sourceShape.symmetryGroupId = groupId;
+        sourceShape.symmetryMember = "original";
 
         isApplyingLiveSymmetry = true;
-        try {
-            const modes = [];
-            if (liveSymmetryV) modes.push("v");
-            if (liveSymmetryH) modes.push("h");
-            if (liveSymmetryH && liveSymmetryV) modes.push("vh");
 
-            modes.forEach(mode => {
-                const data = {};
-                Object.keys(sourceShape).forEach(k => {
-                    if (!shapeDOMKeys.has(k)) data[k] = structuredClone(sourceShape[k]);
+        try {
+            let combinations = [
+                {
+                    data: originalData,
+                    usedAxes: []
+                }
+            ];
+
+            axes.forEach((axis, axisIndex) => {
+                const additions = combinations.map(item => {
+                    const reflected = structuredClone(item.data);
+                    reflectShapeData(reflected, axis);
+
+                    return {
+                        data: reflected,
+                        usedAxes: [...item.usedAxes, axisIndex]
+                    };
                 });
 
-                if (mode.includes("v")) {
-                    if (data.type === "line") {
-                        data.x1 = artboardSize - data.x1;
-                        data.x2 = artboardSize - data.x2;
-                    } else if (
-                        data.type === "curve" ||
-                        data.type === "circle" ||
-                        data.type === "ellipse"
-                    ) {
-                        data.cx = artboardSize - data.cx;
-                        if (data.type === "curve") {
-                            data.startAngle = Math.PI - data.startAngle;
-                            data.endAngle = Math.PI - data.endAngle;
-                        }
-                    } else if (data.type === "rectangle") {
-                        data.x = artboardSize - (data.x + data.width);
-                    } else if (data.type === "path") {
-                        data.points = (data.points || []).map(p => ({ x: artboardSize - p.x, y: p.y }));
-                        data.holes = (data.holes || []).map(h => {
-                            const pts = Array.isArray(h) ? h : h.points;
-                            const mapped = pts.map(p => ({ x: artboardSize - p.x, y: p.y }));
-                            return Array.isArray(h) ? mapped : { ...h, points: mapped };
-                        });
-                    }
-                }
+                combinations = combinations.concat(additions);
+            });
 
-                if (mode.includes("h")) {
-                    if (data.type === "line") {
-                        data.y1 = artboardSize - data.y1;
-                        data.y2 = artboardSize - data.y2;
-                    } else if (data.type === "curve" || data.type === "circle") {
-                        data.cy = artboardSize - data.cy;
-                        if (data.type === "curve") {
-                            data.startAngle = -data.startAngle;
-                            data.endAngle = -data.endAngle;
-                        }
-                    } else if (data.type === "rectangle") {
-                        data.y = artboardSize - (data.y + data.height);
-                    } else if (data.type === "path") {
-                        data.points = (data.points || []).map(p => ({ x: p.x, y: artboardSize - p.y }));
-                        data.holes = (data.holes || []).map(h => {
-                            const pts = Array.isArray(h) ? h : h.points;
-                            const mapped = pts.map(p => ({ x: p.x, y: artboardSize - p.y }));
-                            return Array.isArray(h) ? mapped : { ...h, points: mapped };
-                        });
-                    }
-                }
+            combinations.slice(1).forEach((item, index) => {
+                const data = item.data;
 
-                data.name = `${sourceShape.name || sourceShape.type} (Symmetry)`;
+                data.name =
+                    `${sourceShape.name || sourceShape.type} (Symmetry)`;
+
+                data.symmetryGroupId = groupId;
+                data.symmetryMember = `member-${index + 1}`;
+
                 createShapeFromCopy(data);
             });
         } finally {
             isApplyingLiveSymmetry = false;
         }
     }
+
 
     function getShapeElements(shape) {
         if (shape.type === "line") {
@@ -2534,43 +2655,92 @@
         }
     }
 
+
+    function getSymmetryGroupMembers(shape) {
+        if (!shape) return [];
+
+        if (!shape.symmetryGroupId) {
+            return [shape];
+        }
+
+        return shapes.filter(
+            item => item.symmetryGroupId === shape.symmetryGroupId
+        );
+    }
+
+    function expandSymmetrySelection(selection) {
+        const result = new Set();
+
+        selection.forEach(shape => {
+            getSymmetryGroupMembers(shape).forEach(member => {
+                result.add(member);
+            });
+        });
+
+        return [...result];
+    }
+
+    function getSelectedShapesForDeletion() {
+        const selection = selectedShapes.length
+            ? selectedShapes
+            : selectedShape
+                ? [selectedShape]
+                : [];
+
+        return expandSymmetrySelection(selection);
+    }
+
+
+
     function selectShape(shape, additive = false) {
         const oldPrimary = selectedShape;
 
-        // Keep handles if the old shape has a persistent connection.
         if (
             oldPrimary &&
             oldPrimary !== shape &&
             !isShapeConnected(oldPrimary)
         ) {
-            oldPrimary.handles?.forEach(h => h.remove());
+            oldPrimary.handles?.forEach(handle => handle.remove());
             oldPrimary.handles = [];
         }
 
+        const group = getSymmetryGroupMembers(shape);
+
         if (!additive) {
-            selectedShapes = shape ? [shape] : [];
+            selectedShapes = group;
             selectedShape = shape;
         } else {
-            const index = selectedShapes.indexOf(shape);
-            if (index !== -1) {
-                selectedShapes.splice(index, 1);
-                if (selectedShape === shape) {
+            const allSelected = group.length > 0 &&
+                group.every(member => selectedShapes.includes(member));
+
+            if (allSelected) {
+                selectedShapes = selectedShapes.filter(
+                    member => !group.includes(member)
+                );
+
+                if (group.includes(selectedShape)) {
                     selectedShape = selectedShapes.at(-1) || null;
                 }
             } else {
-                selectedShapes.push(shape);
+                group.forEach(member => {
+                    if (!selectedShapes.includes(member)) {
+                        selectedShapes.push(member);
+                    }
+                });
+
                 selectedShape = shape;
             }
         }
 
-        // Update CSS selection glow
         shapes.forEach(item => {
             if (item.element) {
-                item.element.classList.toggle("is-selected", selectedShapes.includes(item));
+                item.element.classList.toggle(
+                    "is-selected",
+                    selectedShapes.includes(item)
+                );
             }
         });
 
-        // Bug Fix: Always recreate handles for newly selected primary shape!
         if (selectedShape && !selectedShape.hidden && !selectedShape.locked) {
             createHandlesForShape(selectedShape);
         }
@@ -2581,6 +2751,7 @@
         bringHandlesToFront();
         refreshConnectionHandles();
     }
+
 
     function bringHandlesToFront() {
         shapes.forEach(shape => {
@@ -5400,22 +5571,36 @@
             return;
         }
 
+
         if (deleteBtn) {
             event.preventDefault();
             event.stopPropagation();
+
             const idx = Number(deleteBtn.dataset.layerIndex);
-            if (shapes[idx]) {
+            const shape = shapes[idx];
+
+            if (shape) {
+                const targets = getSymmetryGroupMembers(shape);
+
                 beginHistoryAction();
-                removeShape(shapes[idx]);
-                shapes.splice(idx, 1);
+
+                targets.forEach(member => removeShape(member));
+
+                shapes = shapes.filter(
+                    member => !targets.includes(member)
+                );
+
                 selectShape(null);
                 renderLayers();
                 updateSVGSource();
                 commitHistoryAction();
-                showToast("Layer deleted", "info");
+
+                showToast("Deleted shape group", "info");
             }
+
             return;
         }
+
 
         if (moveBtn) {
             event.preventDefault();
@@ -6227,19 +6412,26 @@
         showToast(`Vertical live symmetry ${liveSymmetryV ? "enabled" : "disabled"}`, "info");
     });
 
+
     deleteButton?.addEventListener("click", () => {
-        const targets = selectedShapes.length ? [...selectedShapes] : (selectedShape ? [selectedShape] : []);
+        const targets = getSelectedShapesForDeletion();
+
         if (!targets.length) return;
 
         beginHistoryAction();
-        targets.forEach(s => removeShape(s));
-        shapes = shapes.filter(s => !targets.includes(s));
+
+        targets.forEach(shape => removeShape(shape));
+
+        shapes = shapes.filter(shape => !targets.includes(shape));
+
         selectShape(null);
         renderLayers();
         updateSVGSource();
         commitHistoryAction();
-        showToast("Deleted shape(s)", "info");
+
+        showToast("Deleted shape group(s)", "info");
     });
+
 
     // ========================================================================
     // 17. SVG SOURCE CODE & ROBUST PARSER

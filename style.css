@@ -2797,17 +2797,34 @@ input[type="range"]::-webkit-slider-thumb:hover {
     color: #ffffff;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
+.view-controls-group {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 26;
+}
+.floating-view-controls {
+    display: contents;
+}
 
 .floating-view-controls .float-btn {
-    width: 24px;
-    height: 24px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-full);
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-weight: 600;
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    color: var(--text-primary);
+    font-size: 15px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
 }
 
 .float-btn img {
@@ -2872,7 +2889,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-radius: 4px;
     transition: background 0.15s ease;
 }
-
+.floating-view-controls .float-divider {
+    display: none;
+}
 .live-symmetry-label:hover {
     background: var(--bg-surface-hover);
     color: var(--text-primary);
