@@ -126,6 +126,7 @@
     const viewModeCategoriesBtn = document.getElementById("view-mode-categories");
     const categoriesAlphabeticalList = document.getElementById("categories-alphabetical-list");
     const clearCategoryFilterBtn = document.getElementById("clear-category-filter");
+    const snapToggleButton = document.getElementById("snap-toggle-button");
 
     // Project Manager Views
     const sidebarOptions = document.querySelectorAll(".sidebar-option");
@@ -423,6 +424,47 @@
             console.warn("Could not save theme preference:", error);
         }
     }
+    // =====================================
+    // ENDPOINT SNAP TOGGLE
+    // =====================================
+
+    let snapEnabled = true;
+
+    function updateSnapButton() {
+        if (!snapToggleButton) return;
+
+        snapToggleButton.textContent = snapEnabled ? "Snap" : "Free";
+        snapToggleButton.setAttribute("aria-pressed", String(snapEnabled));
+
+        snapToggleButton.title = snapEnabled
+            ? "Endpoint snapping ON (Alt + S)"
+            : "Endpoint snapping OFF (Alt + S)";
+    }
+
+    function toggleSnapping() {
+        snapEnabled = !snapEnabled;
+
+        // Cancel any temporary snap during an active drag.
+        if (!snapEnabled) {
+            if (dragging) {
+                dragging.snappedTo = null;
+                dragging.sourceHandle = null;
+                dragging.releasedSnap = null;
+            }
+
+            hideSnapTarget();
+
+            if (endpointSnapIndicator) {
+                endpointSnapIndicator.style.display = "none";
+            }
+        }
+
+        updateSnapButton();
+    }
+
+    snapToggleButton?.addEventListener("click", toggleSnapping);
+
+    updateSnapButton();
 
     function applyAccentColor(color) {
         const normalizedColor = String(color || "").toLowerCase();
@@ -3819,7 +3861,7 @@
     }
 
     function getSnappedPoint(x, y, currentShape, shiftKey = false) {
-        if (shiftKey) {
+        if (!snapEnabled || shiftKey) {
             hideSnapTarget();
             if (endpointSnapIndicator) endpointSnapIndicator.style.display = "none";
             return { x, y };
@@ -4815,8 +4857,8 @@
             let closestTarget = null;
             let closestDist = Infinity;
 
-            // Shift temporarily disables snapping.
-            if (!event.shiftKey) {
+            // Shift or Snap OFF temporarily disables snapping.
+            if (snapEnabled && !event.shiftKey) {
                 // Keep the previous snap briefly while the pointer moves away.
                 if (dragging.sourceHandle && dragging.snappedTo) {
                     const sourceShape = shapes.find(
@@ -6827,8 +6869,27 @@
                 if (d.trim()) {
                     const segments = parseSVGPathSegments(d);
 
-                    // Recognize our native Curve and Ellipse Arc shapes.
-                    if (
+                    // Recognize paths made entirely from connected arc segments.
+                    const arcSegments = segments.filter(segment => segment.type === "arc");
+
+                    const isArcGroup =
+                        arcSegments.length >= 2 &&
+                        segments.every(segment =>
+                            segment.type === "move" ||
+                            (segment.type === "arc" && segment.rotation === 0)
+                        );
+
+                    if (isArcGroup) {
+                        parsed.push({
+                            type: "importedArcGroup",
+                            arcs: arcSegments,
+                            originalPathData: d,
+                            color: stroke,
+                            fill,
+                            strokeWidth
+                        });
+
+                    } else if (
                         segments.length === 2 &&
                         segments[0].type === "move" &&
                         segments[1].type === "arc" &&
@@ -6939,7 +7000,109 @@
         selectShape(null);
 
         parsed.forEach(data => {
-            if (data.type === "importedArc") {
+            if (data.type === "importedArcGroup") {
+
+                // Preserve the original fill separately when the SVG has one.
+                if (data.fill && data.fill !== "none") {
+                    createShapeFromCopy({
+                        type: "path",
+                        name: "SVG Compound Fill",
+                        svgPathData: data.originalPathData,
+                        points: [],
+                        holes: [],
+                        color: "none",
+                        fill: data.fill,
+                        strokeWidth: 0.1,
+                        hidden: false,
+                        locked: true,
+                        importedFillOnly: true
+                    });
+
+                    const fillShape = shapes[shapes.length - 1];
+
+                    fillShape.element.style.pointerEvents = "none";
+                }
+
+                let firstImportedCurve = null;
+
+                data.arcs.forEach(arcData => {
+
+                    const arc = arcEndpointToCenter(
+                        arcData.x1,
+                        arcData.y1,
+                        arcData.rx,
+                        arcData.ry,
+                        arcData.rotation || 0,
+                        arcData.largeArc,
+                        arcData.sweep,
+                        arcData.x,
+                        arcData.y
+                    );
+
+                    const isCircular =
+                        Math.abs(arc.rx - arc.ry) < 0.0001;
+
+                    if (isCircular) {
+                        createCurve(arc.cx, arc.cy);
+                    } else {
+                        createEllipseArc(arc.cx, arc.cy);
+                    }
+
+                    const shape = shapes[shapes.length - 1];
+
+                    // The Curve tool draws in the clockwise direction.
+                    // Reverse endpoints when the SVG arc uses the opposite direction.
+                    const reverse = Number(arcData.sweep) === 0;
+
+                    shape.color = data.color;
+                    shape.strokeWidth = data.strokeWidth;
+
+                    shape.importedSVGSegment = true;
+
+                    if (isCircular) {
+                        shape.radius = arc.rx;
+
+                        shape.startAngle = reverse
+                            ? arc.endAngle
+                            : arc.startAngle;
+
+                        shape.endAngle = reverse
+                            ? arc.startAngle
+                            : arc.endAngle;
+
+                        updateCurve(shape);
+
+                    } else {
+                        shape.rx = arc.rx;
+                        shape.ry = arc.ry;
+
+                        shape.startAngle = reverse
+                            ? arc.endAngle
+                            : arc.startAngle;
+
+                        shape.endAngle = reverse
+                            ? arc.startAngle
+                            : arc.endAngle;
+
+                        updateEllipseArc(shape);
+                    }
+
+                    if (!firstImportedCurve) {
+                        firstImportedCurve = shape;
+                    }
+
+                    ensureShapeId(shape);
+
+                });
+
+                // Finish with only the first imported curve selected.
+                if (firstImportedCurve) {
+                    selectShape(firstImportedCurve);
+                }
+
+
+            } else if (data.type === "importedArc") {
+
                 const arc = arcEndpointToCenter(
                     data.startX, data.startY,
                     data.radius, data.radius,
@@ -6949,14 +7112,19 @@
                 );
 
                 createCurve(arc.cx, arc.cy);
+
                 const s = shapes[shapes.length - 1];
+
                 s.radius = arc.rx;
                 s.startAngle = arc.startAngle;
                 s.endAngle = arc.endAngle;
                 s.color = data.color;
                 s.strokeWidth = data.strokeWidth;
+
                 updateCurve(s);
+
             } else if (data.type === "importedEllipseArc") {
+
                 const arc = arcEndpointToCenter(
                     data.startX,
                     data.startY,
@@ -6983,6 +7151,7 @@
                 updateEllipseArc(s);
 
             } else {
+
                 if (data.type === "path") {
                     console.log("Original path:", data.svgPathData);
                     console.log("Editable segments:", data.svgEditableSegments);
@@ -6991,6 +7160,7 @@
                 createShapeFromCopy(data);
             }
         });
+
 
         renderLayers();
         updateMeasurementPanel();
@@ -8115,6 +8285,11 @@
 
         const ctrl = event.ctrlKey || event.metaKey;
         const key = event.key.toLowerCase();
+        if (event.altKey && key === "s") {
+            event.preventDefault();
+            toggleSnapping();
+            return;
+        }
 
         if (event.key === "?") {
             shortcutsModal?.classList.toggle("show");
