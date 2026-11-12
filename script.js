@@ -5243,8 +5243,40 @@
             dragging.previousX = position.x;
             dragging.previousY = position.y;
 
-            const targets = selectedShapes.length ? selectedShapes : [shape];
-            const movingShapes = new Set(targets);
+
+// Move each symmetry group through only one representative.
+// syncSymmetryGroup() will update the other members.
+const selectedTargets = selectedShapes.length
+    ? selectedShapes
+    : [shape];
+
+const targets = [];
+const seenSymmetryGroups = new Set();
+
+selectedTargets.forEach(item => {
+    if (item.symmetryGroupId) {
+        if (seenSymmetryGroups.has(item.symmetryGroupId)) {
+            return;
+        }
+
+        seenSymmetryGroups.add(item.symmetryGroupId);
+
+        // Prefer the shape actually being dragged.
+        const representative =
+            shape.symmetryGroupId === item.symmetryGroupId
+                ? shape
+                : item;
+
+        targets.push(representative);
+    } else {
+        targets.push(item);
+    }
+});
+
+const movingShapes = new Set(
+    selectedTargets
+);
+
 
             let closestSource = null;
             let closestTarget = null;
@@ -6486,6 +6518,19 @@
                 showToast("Custom mirror tool canceled", "info");
             }
         }
+
+else if (action === "clear-custom-axis") {
+    customMirrorAxes = [];
+    mirrorAxisPlacementPoints = [];
+    isPlacingMirrorAxis = false;
+
+    customMirrorToolBtn?.classList.remove("active");
+
+    renderCustomMirrorAxes();
+
+    showToast("Custom mirror axis removed", "success");
+}
+
         else if (action === "custom-mirror") mirrorAcrossCustomAxis();
         else if (action === "duplicate-mirror") duplicateAndMirrorSelectedShapes();
         else if (action === "duplicate") duplicateSelectedShapes();
