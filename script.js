@@ -332,17 +332,7 @@
             isOpen ? "Close Transform & Alignment toolbar" : "Open Transform & Alignment toolbar"
         );
     });
-    const viewControls = document.getElementById("floating-view-controls");
-    const viewControlsToggle = document.getElementById("view-controls-toggle");
-    viewControls?.classList.add("collapsed");
-    viewControlsToggle?.classList.add("collapsed");
 
-    viewControlsToggle?.addEventListener("click", () => {
-        const isCollapsed = viewControls.classList.toggle("collapsed");
-
-        viewControlsToggle.classList.toggle("collapsed", isCollapsed);
-        viewControlsToggle.setAttribute("aria-expanded", !isCollapsed);
-    });
     document.addEventListener("click", event => {
         if (
             !transformToolbar?.contains(event.target) &&

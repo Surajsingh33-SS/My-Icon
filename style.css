@@ -2798,95 +2798,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
-/* Floating View Controls (Top-Right of Artboard) */
-.floating-view-controls {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-full);
-    box-shadow: var(--shadow-md);
-    z-index: 25;
-    backdrop-filter: blur(12px);
-}
-
-/* Floating View Controls Group */
-.view-controls-group {
-    position: absolute;
-    top: 27px;
-    right: 65px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    z-index: 26;
-}
-
-/* Floating Controls */
-.floating-view-controls {
-    position: static;
-    transition:
-        opacity 0.25s ease,
-        transform 0.3s ease,
-        visibility 0.3s;
-    transform-origin: right center;
-}
-
-.floating-view-controls.collapsed {
-    opacity: 0;
-    transform: translateX(12px) scale(0.95);
-    visibility: hidden;
-    pointer-events: none;
-}
-
-/* View Controls Toggle */
-.view-controls-toggle {
-    width: 34px;
-    height: 34px;
-    position: relative;
-    top: 34px;
-    left: 265px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: var(--bg-surface);
-    border: 1px solid var(--border-default);
-    border-radius: 50%;
-    color: var(--text-secondary);
-    cursor: pointer;
-
-    z-index: 26;
-    box-shadow: var(--shadow-md);
-    backdrop-filter: blur(12px);
-
-    transition: transform 0.25s ease, background 0.2s ease;
-}
-
-.view-controls-toggle img {
-    width: 17px;
-    height: 17px;
-    transition: transform 0.25s ease;
-}
-
-/* Floating controls animation */
-.floating-view-controls {
-    transition:
-        opacity 0.25s ease,
-        transform 0.3s ease,
-        visibility 0.3s;
-    transform-origin: right center;
-}
-
-.floating-view-controls.collapsed {
-    opacity: 0;
-    transform: translateX(12px) scale(0.95);
-    visibility: hidden;
-    pointer-events: none;
-}
-
 .floating-view-controls .float-btn {
     width: 24px;
     height: 24px;
@@ -3310,3 +3221,53 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 
+/* Transform Toolbar Polish & Live Symmetry */
+
+.live-symmetry-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.transform-toolbar .live-symmetry-label {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+
+    height: 30px;
+    min-width: 65px;
+    padding: 0 7px;
+    box-sizing: border-box;
+
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text-secondary);
+
+    cursor: pointer;
+    user-select: none;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+}
+
+.transform-toolbar .live-symmetry-label:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+.transform-toolbar .live-symmetry-label input[type="checkbox"] {
+    position: relative;
+    display: inline-block;
+
+    width: 14px;
+    height: 14px;
+    min-width: 14px;
+    margin: 0;
+    padding: 0;
+
+    flex: 0 0 14px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
