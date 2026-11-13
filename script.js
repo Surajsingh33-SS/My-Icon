@@ -28,7 +28,7 @@
         const label = document.createElement("span");
         label.className = "styled-select-label";
         const gridModeIcons = {
-    full: `
+            full: `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M15 3v18" />
@@ -38,7 +38,7 @@
             <rect x="3" y="3" width="18" height="18" rx="2" />
         </svg>
     `,
-    keyframe: `
+            keyframe: `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 3v18" />
@@ -46,7 +46,7 @@
             <rect x="3" y="3" width="18" height="18" rx="2" />
         </svg>
     `,
-    clean: `
+            clean: `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M15 9.344V3" />
@@ -60,7 +60,7 @@
             <path d="M9 3v.344" />
         </svg>
     `
-};
+        };
 
         const chevron = document.createElement("span");
         chevron.className = "styled-select-chevron";
@@ -68,9 +68,9 @@
 
         trigger.append(label);
 
-if (type !== "grid-mode") {
-    trigger.append(chevron);
-}
+        if (type !== "grid-mode") {
+            trigger.append(chevron);
+        }
 
         const menu = document.createElement("div");
         menu.className = "styled-select-menu";
@@ -84,16 +84,16 @@ if (type !== "grid-mode") {
         function refresh() {
             const selectedOption = select.selectedOptions[0];
 
-if (gridModeIcons) {
-    label.innerHTML = gridModeIcons[select.value] || "";
-    trigger.title = selectedOption?.textContent || "Grid Display Mode";
-    trigger.setAttribute(
-        "aria-label",
-        `Grid Display Mode: ${selectedOption?.textContent || ""}`
-    );
-} else {
-    label.textContent = selectedOption?.textContent || "";
-}
+            if (type === "grid-mode") {
+                label.innerHTML = gridModeIcons[select.value] || "";
+                trigger.title = selectedOption?.textContent || "Grid Display Mode";
+                trigger.setAttribute(
+                    "aria-label",
+                    `Grid Display Mode: ${selectedOption?.textContent || ""}`
+                );
+            } else {
+                label.textContent = selectedOption?.textContent || "";
+            }
 
             menu.innerHTML = "";
 
@@ -108,19 +108,19 @@ if (gridModeIcons) {
                     String(option.value === select.value)
                 );
 
-                if (gridModeIcons) {
-    const icon = document.createElement("span");
-    icon.className = "styled-select-option-icon";
-    icon.innerHTML = gridModeIcons[option.value] || "";
+                if (type === "grid-mode") {
+                    const icon = document.createElement("span");
+                    icon.className = "styled-select-option-icon";
+                    icon.innerHTML = gridModeIcons[option.value] || "";
 
-    const text = document.createElement("span");
-    text.className = "styled-select-option-label";
-    text.textContent = option.textContent;
+                    const text = document.createElement("span");
+                    text.className = "styled-select-option-label";
+                    text.textContent = option.textContent;
 
-    item.append(icon, text);
-} else {
-    item.textContent = option.textContent;
-}
+                    item.append(icon, text);
+                } else {
+                    item.textContent = option.textContent;
+                }
 
                 if (option.value === select.value) {
                     item.classList.add("selected");
@@ -242,10 +242,10 @@ if (gridModeIcons) {
     const floatZoomLevel = document.getElementById("float-zoom-level");
     const gridModeSelect = document.getElementById("grid-mode-select");
 
-const gridModeDropdown = createStyledDropdown(
-    gridModeSelect,
-    "grid-mode"
-);
+    const gridModeDropdown = createStyledDropdown(
+        gridModeSelect,
+        "grid-mode"
+    );
 
     // Zoom & Pan (Sidebar Controls)
     const zoomInButton = document.getElementById("zoom-in");
@@ -743,10 +743,10 @@ const gridModeDropdown = createStyledDropdown(
         document.documentElement.style.setProperty("--global-icon-size", `${size}px`);
 
         const galleryColor =
-    document.body.classList.contains("light-theme") &&
-    color.toLowerCase() === "#000000"
-        ? "rgb(48, 48, 48)"
-        : color;
+            document.body.classList.contains("light-theme") &&
+                color.toLowerCase() === "#000000"
+                ? "rgb(48, 48, 48)"
+                : color;
         const defaultColor = document.body.classList.contains("light-theme")
             ? "#000000"
             : "#ffffff";
@@ -784,17 +784,17 @@ const gridModeDropdown = createStyledDropdown(
         });
 
         // Keep the open preview drawer synced with global color and stroke width
-if (selectedHomeProject && projectPreviewImage) {
-    if (previewStrokeWidth) {
-        previewStrokeWidth.value = stroke;
-    }
+        if (selectedHomeProject && projectPreviewImage) {
+            if (previewStrokeWidth) {
+                previewStrokeWidth.value = stroke;
+            }
 
-    if (previewStrokeValue) {
-        previewStrokeValue.textContent = stroke.toFixed(1);
-    }
+            if (previewStrokeValue) {
+                previewStrokeValue.textContent = stroke.toFixed(1);
+            }
 
-    projectPreviewImage.src = getPreviewSVG(selectedHomeProject, stroke);
-}
+            projectPreviewImage.src = getPreviewSVG(selectedHomeProject, stroke);
+        }
 
         // Also support image-based thumbnails
         document.querySelectorAll(".home-project-preview img").forEach(img => {
@@ -874,6 +874,345 @@ if (selectedHomeProject && projectPreviewImage) {
         };
     }
 
+
+    // ========================================================================
+    // ICON CATEGORY SYSTEM
+    // ========================================================================
+
+    const STANDARD_ICON_CATEGORIES = [
+        "Accessibility",
+        "Accounts & access",
+        "Animals",
+        "Arrows",
+        "Buildings",
+        "Charts",
+        "Communication",
+        "Connectivity",
+        "Cursors",
+        "Design",
+        "Coding & development",
+        "Devices",
+        "Emoji",
+        "File icons",
+        "Finance",
+        "Food & beverage",
+        "Gaming",
+        "Home",
+        "Layout",
+        "Letters & digits",
+        "Mail",
+        "Mathematics",
+        "Medical",
+        "Multimedia",
+        "Nature",
+        "Navigation & places",
+        "Notifications",
+        "People",
+        "Photography",
+        "Science",
+        "Seasons",
+        "Security",
+        "Shapes",
+        "Shopping",
+        "Social",
+        "Sports",
+        "Sustainability",
+        "Text formatting",
+        "Time & calendar",
+        "Tools",
+        "Transportation",
+        "Travel",
+        "Weather"
+    ];
+
+    const CUSTOM_CATEGORIES_STORAGE_KEY = "iconMakerCustomCategories";
+    const CATEGORY_MIGRATION_KEY = "iconMakerCategoryMigrationV1";
+
+    // Keywords used to recognize icon names.
+    const ICON_CATEGORY_KEYWORDS = {
+        "Accessibility": [
+            "accessibility", "wheelchair", "hearing", "blind",
+            "screen reader", "assistive"
+        ],
+        "Accounts & access": [
+            "user", "account", "profile", "login", "logout",
+            "log-in", "log-out", "password", "key", "contact",
+            "badge", "id-card", "fingerprint"
+        ],
+        "Animals": [
+            "cat", "dog", "bird", "fish", "paw", "rabbit",
+            "bug", "butterfly", "turtle", "horse", "fox", "wolf"
+        ],
+        "Arrows": [
+            "arrow", "chevron", "move", "undo", "redo",
+            "corner", "rotate", "refresh", "repeat", "reply"
+        ],
+        "Buildings": [
+            "building", "hospital", "school", "office",
+            "factory", "church", "castle", "warehouse"
+        ],
+        "Charts": [
+            "chart", "graph", "bar-chart", "pie-chart",
+            "trending", "analytics", "activity"
+        ],
+        "Communication": [
+            "message", "chat", "comment", "conversation",
+            "phone", "call", "speech", "mic", "microphone"
+        ],
+        "Connectivity": [
+            "wifi", "bluetooth", "signal", "network",
+            "router", "antenna", "connection", "radio-tower"
+        ],
+        "Cursors": [
+            "cursor", "pointer", "mouse-pointer", "click",
+            "hand", "select"
+        ],
+        "Design": [
+            "palette", "paint", "brush", "pen-tool",
+            "ruler", "pencil", "draft", "vector", "swatch"
+        ],
+        "Coding & development": [
+            "code", "terminal", "bug", "git", "braces",
+            "brackets", "variable", "function", "database",
+            "server", "binary", "command"
+        ],
+        "Devices": [
+            "computer", "monitor", "laptop", "desktop",
+            "tablet", "smartphone", "mobile", "keyboard",
+            "mouse", "printer", "watch"
+        ],
+        "Emoji": [
+            "smile", "smiley", "frown", "laugh", "angry",
+            "heart-eyes", "meh", "emoji"
+        ],
+        "File icons": [
+            "file", "folder", "document", "clipboard",
+            "archive", "attachment", "paperclip"
+        ],
+        "Finance": [
+            "wallet", "money", "cash", "coin", "bank",
+            "credit-card", "dollar", "currency", "receipt",
+            "bitcoin", "piggy-bank"
+        ],
+        "Food & beverage": [
+            "food", "coffee", "cup", "pizza", "burger",
+            "cake", "apple", "carrot", "beer", "wine",
+            "utensils", "restaurant"
+        ],
+        "Gaming": [
+            "gamepad", "game", "joystick", "dice",
+            "chess", "controller", "puzzle"
+        ],
+        "Home": [
+            "home", "house", "sofa", "bed", "lamp",
+            "door", "window", "refrigerator", "couch"
+        ],
+        "Layout": [
+            "layout", "columns", "rows", "grid", "panel",
+            "sidebar", "align", "gallery", "table"
+        ],
+        "Letters & digits": [
+            "letter", "alphabet", "number", "digit",
+            "type", "uppercase", "lowercase"
+        ],
+        "Mail": [
+            "mail", "email", "inbox", "envelope",
+            "send", "forward", "reply-all"
+        ],
+        "Mathematics": [
+            "plus", "minus", "divide", "multiply",
+            "equals", "percent", "infinity", "calculator",
+            "sigma", "pi", "sqrt"
+        ],
+        "Medical": [
+            "medical", "health", "hospital", "pill",
+            "medicine", "stethoscope", "syringe",
+            "thermometer", "bandage", "heart-pulse"
+        ],
+        "Multimedia": [
+            "play", "pause", "stop", "video", "music",
+            "audio", "volume", "speaker", "headphones",
+            "film", "clapperboard"
+        ],
+        "Nature": [
+            "tree", "flower", "leaf", "plant", "forest",
+            "mountain", "earth", "globe", "seedling"
+        ],
+        "Navigation & places": [
+            "map", "map-pin", "location", "compass",
+            "navigation", "pin", "landmark", "signpost"
+        ],
+        "Notifications": [
+            "bell", "notification", "alert", "alarm",
+            "warning", "badge"
+        ],
+        "People": [
+            "users", "people", "person", "man", "woman",
+            "child", "baby", "group", "team", "smile"
+        ],
+        "Photography": [
+            "camera", "image", "photo", "picture",
+            "aperture", "focus", "scan"
+        ],
+        "Science": [
+            "flask", "atom", "microscope", "telescope",
+            "dna", "molecule", "beaker", "test-tube"
+        ],
+        "Seasons": [
+            "spring", "summer", "autumn", "fall", "winter"
+        ],
+        "Security": [
+            "shield", "lock", "unlock", "security",
+            "safe", "fingerprint", "scan-face"
+        ],
+        "Shapes": [
+            "circle", "square", "triangle", "rectangle",
+            "hexagon", "polygon", "shape", "pentagon",
+            "octagon", "diamond"
+        ],
+        "Shopping": [
+            "cart", "shopping", "bag", "basket",
+            "store", "tag", "barcode", "package"
+        ],
+        "Social": [
+            "share", "social", "heart", "thumbs-up",
+            "thumbs-down", "like", "follow", "hashtag"
+        ],
+        "Sports": [
+            "football", "basketball", "soccer", "tennis",
+            "trophy", "medal", "volleyball", "baseball"
+        ],
+        "Sustainability": [
+            "recycle", "recycling", "eco", "sustainability",
+            "solar", "wind", "renewable"
+        ],
+        "Text formatting": [
+            "bold", "italic", "underline", "strikethrough",
+            "align-left", "align-center", "align-right",
+            "list", "heading", "type"
+        ],
+        "Time & calendar": [
+            "clock", "calendar", "timer", "hourglass",
+            "watch", "history", "stopwatch", "date"
+        ],
+        "Tools": [
+            "tool", "wrench", "hammer", "screwdriver",
+            "settings", "sliders", "cog", "gear"
+        ],
+        "Transportation": [
+            "car", "bus", "train", "truck", "bicycle",
+            "bike", "plane", "ship", "taxi", "motorcycle"
+        ],
+        "Travel": [
+            "suitcase", "luggage", "passport", "ticket",
+            "hotel", "tent", "backpack", "旅"
+        ],
+        "Weather": [
+            "sun", "moon", "cloud", "rain", "snow",
+            "wind", "storm", "cloudy", "sunrise", "sunset"
+        ]
+    };
+
+    // Automatically detect a category from an icon's name.
+    function detectIconCategory(iconName) {
+        const name = (iconName || "").toLowerCase()
+            .replace(/([a-z])([A-Z])/g, "$1 $2")
+            .replace(/[_-]+/g, " ")
+            .trim();
+
+        if (!name) return "Uncategorized";
+
+        const matches = [];
+
+        for (const [category, keywords] of Object.entries(ICON_CATEGORY_KEYWORDS)) {
+            for (const keyword of keywords) {
+                const normalizedKeyword = keyword.toLowerCase();
+
+                if (
+                    name === normalizedKeyword ||
+                    name.includes(normalizedKeyword)
+                ) {
+                    matches.push({
+                        category,
+                        length: normalizedKeyword.length
+                    });
+                }
+            }
+        }
+
+        if (!matches.length) return "Uncategorized";
+
+        // Prefer the most specific keyword match.
+        matches.sort((a, b) => b.length - a.length);
+
+        return matches[0].category;
+    }
+
+    // Get saved custom categories.
+    function getCustomCategories() {
+        try {
+            const saved = JSON.parse(
+                localStorage.getItem(CUSTOM_CATEGORIES_STORAGE_KEY) || "[]"
+            );
+
+            return Array.isArray(saved) ? saved : [];
+        } catch (error) {
+            console.error("Could not load custom categories:", error);
+            return [];
+        }
+    }
+
+    function getAllIconCategories() {
+        return [
+            ...STANDARD_ICON_CATEGORIES,
+            ...getCustomCategories(),
+            "Uncategorized"
+        ];
+    }
+
+    function saveCustomCategory(categoryName) {
+        const name = categoryName.trim();
+
+        if (!name) return false;
+
+        const allCategories = getAllIconCategories();
+
+        if (allCategories.some(
+            category => category.toLowerCase() === name.toLowerCase()
+        )) {
+            return false;
+        }
+
+        const customCategories = getCustomCategories();
+        customCategories.push(name);
+
+        localStorage.setItem(
+            CUSTOM_CATEGORIES_STORAGE_KEY,
+            JSON.stringify(customCategories)
+        );
+
+        return true;
+    }
+
+    function populateFinishCategories(selectedCategory = "Uncategorized") {
+        if (!finishIconCategory) return;
+
+        finishIconCategory.innerHTML = "";
+
+        getAllIconCategories().forEach(category => {
+            const option = document.createElement("option");
+            option.value = category;
+            option.textContent = category;
+            finishIconCategory.appendChild(option);
+        });
+
+        finishIconCategory.value = getAllIconCategories().includes(selectedCategory)
+            ? selectedCategory
+            : "Uncategorized";
+    }
+
+
+
     function createProject(data = null) {
         return {
             id: crypto.randomUUID(),
@@ -887,27 +1226,58 @@ if (selectedHomeProject && projectPreviewImage) {
         };
     }
 
+
     function loadProjectManager() {
         try {
             const savedManager = localStorage.getItem(PROJECTS_STORAGE_KEY);
+
             if (savedManager) {
                 projectManager = JSON.parse(savedManager);
-                return;
+            } else {
+                // Migrate legacy single-project save if it exists.
+                const oldSave = localStorage.getItem(PROJECT_STORAGE_KEY);
+                const firstProject = createProject(
+                    oldSave ? JSON.parse(oldSave) : null
+                );
+
+                projectManager = {
+                    activeProjectId: firstProject.id,
+                    projects: [firstProject]
+                };
             }
 
-            // Migrate legacy single-project save if exists
-            const oldSave = localStorage.getItem(PROJECT_STORAGE_KEY);
-            const firstProject = createProject(oldSave ? JSON.parse(oldSave) : null);
-            projectManager = {
-                activeProjectId: firstProject.id,
-                projects: [firstProject]
-            };
+            if (!Array.isArray(projectManager.projects)) {
+                projectManager.projects = [];
+            }
+
+            // Categorize all existing finished icons only once.
+            const migrationDone = localStorage.getItem(
+                CATEGORY_MIGRATION_KEY
+            );
+
+            if (!migrationDone) {
+                projectManager.projects.forEach(project => {
+                    if (project.status !== "finished") return;
+
+                    project.category = detectIconCategory(project.name);
+                });
+
+                localStorage.setItem(CATEGORY_MIGRATION_KEY, "true");
+            }
+
+            // Save the migrated project data.
             saveProjectManager();
+
         } catch (error) {
             console.error("Could not load projects:", error);
-            projectManager = { activeProjectId: null, projects: [] };
+
+            projectManager = {
+                activeProjectId: null,
+                projects: []
+            };
         }
     }
+
 
     function saveProjectManager() {
         try {
@@ -1524,9 +1894,9 @@ if (selectedHomeProject && projectPreviewImage) {
     function setGridDisplayMode(mode) {
         currentGridDisplayMode = mode;
         if (gridModeSelect) {
-    gridModeSelect.value = mode;
-    gridModeDropdown?.refresh();
-}
+            gridModeSelect.value = mode;
+            gridModeDropdown?.refresh();
+        }
 
         const minorRect = document.getElementById("minor-grid-rect");
         const majorRect = document.getElementById("major-grid-rect");
@@ -8561,6 +8931,10 @@ if (selectedHomeProject && projectPreviewImage) {
     function renderHomeProjects() {
         if (!homeProjectGrid) return;
         homeProjectGrid.innerHTML = "";
+        const isCategoryRows =
+            galleryViewCategory === "categories" && !selectedCategoryFilter;
+
+        homeProjectGrid.classList.toggle("categories-layout", isCategoryRows);
 
         const allFinished = projectManager.projects.filter(p => p.status === "finished");
         let finished = [...allFinished];
@@ -8740,39 +9114,49 @@ if (selectedHomeProject && projectPreviewImage) {
             return card;
         }
 
+
+
         if (galleryViewCategory === "categories" && !selectedCategoryFilter) {
             const grouped = {};
+
             finished.forEach(p => {
                 const c = (p.category || "General").trim();
                 if (!grouped[c]) grouped[c] = [];
                 grouped[c].push(p);
             });
 
-            Object.keys(grouped).sort((a, b) => a.localeCompare(b)).forEach(catName => {
-                const groupContainer = document.createElement("div");
-                groupContainer.className = "gallery-category-group";
+            Object.keys(grouped).sort((a, b) => a.localeCompare(b))
+                .forEach(catName => {
+                    const groupContainer = document.createElement("div");
+                    groupContainer.className = "gallery-category-group";
 
-                const header = document.createElement("div");
-                header.className = "gallery-category-header";
-                header.innerHTML = `
-                    <span class="cat-header-title">${catName}</span>
-                    <span class="cat-header-count">${grouped[catName].length} ${grouped[catName].length === 1 ? "icon" : "icons"}</span>
-                `;
+                    const header = document.createElement("div");
+                    header.className = "gallery-category-header";
+                    header.innerHTML = `
+                <span class="cat-header-title">${catName}</span>
+                <span class="cat-header-count">
+                    ${grouped[catName].length}
+                    ${grouped[catName].length === 1 ? "icon" : "icons"}
+                </span>
+            `;
 
-                const cardsGrid = document.createElement("div");
-                cardsGrid.className = `gallery-category-cards home-project-grid ${homeViewMode === "list" ? "list-view" : ""}`;
+                    const cardsGrid = document.createElement("div");
+                    cardsGrid.className = "gallery-category-cards";
 
-                grouped[catName].forEach(p => cardsGrid.appendChild(createHomeProjectCard(p)));
+                    grouped[catName].forEach(p => {
+                        cardsGrid.appendChild(createHomeProjectCard(p));
+                    });
 
-                groupContainer.appendChild(header);
-                groupContainer.appendChild(cardsGrid);
-                homeProjectGrid.appendChild(groupContainer);
-            });
+                    groupContainer.append(header, cardsGrid);
+                    homeProjectGrid.appendChild(groupContainer);
+                });
         } else {
             finished.forEach(project => {
                 homeProjectGrid.appendChild(createHomeProjectCard(project));
             });
         }
+
+
 
         updateGlobalCustomizationState(false);
         updateProjectCounters();
@@ -8873,19 +9257,19 @@ if (selectedHomeProject && projectPreviewImage) {
         if (projectCategoryBadge) projectCategoryBadge.textContent = project.category || "General";
         if (projectDateBadge) projectDateBadge.textContent = `Saved ${new Date(project.savedAt).toLocaleDateString()}`;
 
-const globalStroke = Number(globalStrokeWidth?.value) || 2;
+        const globalStroke = Number(globalStrokeWidth?.value) || 2;
 
-if (previewStrokeWidth) {
-    previewStrokeWidth.value = globalStroke;
-}
+        if (previewStrokeWidth) {
+            previewStrokeWidth.value = globalStroke;
+        }
 
-if (previewStrokeValue) {
-    previewStrokeValue.textContent = globalStroke.toFixed(1);
-}
+        if (previewStrokeValue) {
+            previewStrokeValue.textContent = globalStroke.toFixed(1);
+        }
 
-if (projectPreviewImage) {
-    projectPreviewImage.src = getPreviewSVG(project, globalStroke);
-}
+        if (projectPreviewImage) {
+            projectPreviewImage.src = getPreviewSVG(project, globalStroke);
+        }
 
         if (projectFavoriteBtn) {
             projectFavoriteBtn.classList.toggle("active", project.favorite === true);
@@ -9062,12 +9446,49 @@ if (projectPreviewImage) {
         });
     }
 
+
     function updateHomeButtonLabel() {
         if (!homeButton) return;
+
         const isGallery = homeScreen?.classList.contains("show");
-        homeButton.textContent = isGallery ? "Editor" : "Gallery";
-        homeButton.title = isGallery ? "Return to Icon Editor" : "Open Icon Gallery";
+
+        const galleryIcon = `
+        <svg width="14" height="14" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+    `;
+
+        const editorIcon = `
+        <svg xmlns="http://www.w3.org/2000/svg"
+            width="14" height="14" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M10.584 21H5a2 2 0 01-2-2v-9a2 2 0 01.709-1.527l7-6a2 2 0 012.582 0l7 6A2 2 0 0121 10.001v.583" />
+            <path d="M14 12H10a1 1 0 00-1 1v8" />
+            <path d="m14.305 19.53.923-.382" />
+            <path d="m15.229 16.852-.924-.383" />
+            <path d="m16.852 15.228-.383-.923" />
+            <path d="m16.852 20.773-.383.924" />
+            <path d="m19.148 15.228.383-.923" />
+            <path d="m19.53 21.697-.382-.924" />
+            <path d="m20.773 16.852.922-.383" />
+            <path d="m20.773 19.148.922.383" />
+            <circle cx="18" cy="18" r="3" />
+        </svg>
+    `;
+
+        homeButton.innerHTML = isGallery
+            ? `${editorIcon}<span>Editor</span>`
+            : `${galleryIcon}<span>Gallery</span>`;
+
+        homeButton.title = isGallery
+            ? "Return to Icon Editor"
+            : "Open Icon Gallery";
     }
+
 
     function openIconEditor() {
         homeScreen?.classList.remove("show");
@@ -9239,21 +9660,74 @@ if (projectPreviewImage) {
     // ========================================================================
     // 21. FINISH PROJECT DIALOG
     // ========================================================================
+
+    let finishCategoryManuallyChanged = false;
+
     finishProjectButton?.addEventListener("click", () => {
         if (!finishModal) return;
-        const activeProject = projectManager.projects.find(p => p.id === projectManager.activeProjectId);
+
+        const activeProject = projectManager.projects.find(
+            p => p.id === projectManager.activeProjectId
+        );
 
         finishIconName.value = activeProject?.name || "";
-        finishIconCategory.value = activeProject?.category || "General";
+
+        finishCategoryManuallyChanged = false;
+
+        const suggestedCategory = detectIconCategory(
+            activeProject?.name || ""
+        );
+
+        populateFinishCategories(
+            activeProject?.category &&
+                activeProject.category !== "Uncategorized"
+                ? activeProject.category
+                : suggestedCategory
+        );
+
         const savedColorOption = activeProject?.finishStrokeColor || "original";
+
         const colorRadio = document.querySelector(
             `input[name="finish-style-choice"][value="${savedColorOption}"]`
         );
 
         if (colorRadio) colorRadio.checked = true;
+
         finishModal.classList.add("show");
         finishIconName.focus();
     });
+
+    // Suggest a category as the icon name changes.
+    finishIconName?.addEventListener("input", () => {
+        if (finishCategoryManuallyChanged) return;
+
+        const suggestedCategory = detectIconCategory(finishIconName.value);
+
+        populateFinishCategories(suggestedCategory);
+    });
+
+    // Manual category selection always takes priority.
+    finishIconCategory?.addEventListener("change", () => {
+        finishCategoryManuallyChanged = true;
+    });
+
+    // Add a custom category.
+    document.getElementById("add-custom-category")?.addEventListener("click", () => {
+        const categoryName = prompt("Enter your new category name:");
+
+        if (categoryName === null) return;
+
+        if (!saveCustomCategory(categoryName)) {
+            showToast("Category is empty or already exists.", "error");
+            return;
+        }
+
+        populateFinishCategories(categoryName);
+        finishCategoryManuallyChanged = true;
+
+        showToast("Custom category added successfully!", "success");
+    });
+
 
     finishCancel?.addEventListener("click", () => {
         finishModal.classList.remove("show");
