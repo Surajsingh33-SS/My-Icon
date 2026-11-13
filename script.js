@@ -27,12 +27,50 @@
 
         const label = document.createElement("span");
         label.className = "styled-select-label";
+        const gridModeIcons = {
+    full: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3v18" />
+            <path d="M3 15h18" />
+            <path d="M3 9h18" />
+            <path d="M9 3v18" />
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+        </svg>
+    `,
+    keyframe: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v18" />
+            <path d="M3 12h18" />
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+        </svg>
+    `,
+    clean: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 9.344V3" />
+            <path d="m2 2 20 20" />
+            <path d="M20.414 20.414A2 2 0 0119 21H5a2 2 0 01-2-2V5a2 2 0 01.586-1.414" />
+            <path d="M20.656 15H21" />
+            <path d="M21 9h-6.344" />
+            <path d="M3 15h12v6" />
+            <path d="M3 9h6v12" />
+            <path d="M8.656 3H19a2 2 0 012 2v10.343" />
+            <path d="M9 3v.344" />
+        </svg>
+    `
+};
 
         const chevron = document.createElement("span");
         chevron.className = "styled-select-chevron";
         chevron.setAttribute("aria-hidden", "true");
 
-        trigger.append(label, chevron);
+        trigger.append(label);
+
+if (type !== "grid-mode") {
+    trigger.append(chevron);
+}
 
         const menu = document.createElement("div");
         menu.className = "styled-select-menu";
@@ -44,8 +82,18 @@
         }
 
         function refresh() {
-            label.textContent =
-                select.selectedOptions[0]?.textContent || "";
+            const selectedOption = select.selectedOptions[0];
+
+if (gridModeIcons) {
+    label.innerHTML = gridModeIcons[select.value] || "";
+    trigger.title = selectedOption?.textContent || "Grid Display Mode";
+    trigger.setAttribute(
+        "aria-label",
+        `Grid Display Mode: ${selectedOption?.textContent || ""}`
+    );
+} else {
+    label.textContent = selectedOption?.textContent || "";
+}
 
             menu.innerHTML = "";
 
@@ -60,7 +108,19 @@
                     String(option.value === select.value)
                 );
 
-                item.textContent = option.textContent;
+                if (gridModeIcons) {
+    const icon = document.createElement("span");
+    icon.className = "styled-select-option-icon";
+    icon.innerHTML = gridModeIcons[option.value] || "";
+
+    const text = document.createElement("span");
+    text.className = "styled-select-option-label";
+    text.textContent = option.textContent;
+
+    item.append(icon, text);
+} else {
+    item.textContent = option.textContent;
+}
 
                 if (option.value === select.value) {
                     item.classList.add("selected");
@@ -181,6 +241,11 @@
     const floatZoomOut = document.getElementById("float-zoom-out");
     const floatZoomLevel = document.getElementById("float-zoom-level");
     const gridModeSelect = document.getElementById("grid-mode-select");
+
+const gridModeDropdown = createStyledDropdown(
+    gridModeSelect,
+    "grid-mode"
+);
 
     // Zoom & Pan (Sidebar Controls)
     const zoomInButton = document.getElementById("zoom-in");
@@ -677,6 +742,11 @@
         document.documentElement.style.setProperty("--global-stroke-width", `${stroke}px`);
         document.documentElement.style.setProperty("--global-icon-size", `${size}px`);
 
+        const galleryColor =
+    document.body.classList.contains("light-theme") &&
+    color.toLowerCase() === "#000000"
+        ? "rgb(48, 48, 48)"
+        : color;
         const defaultColor = document.body.classList.contains("light-theme")
             ? "#000000"
             : "#ffffff";
@@ -701,34 +771,30 @@
 
                 // Update stroke color and thickness
                 if (originalStroke && originalStroke !== "none") {
-                    shape.style.setProperty("stroke", color, "important");
+                    shape.style.setProperty("stroke", galleryColor, "important");
                     shape.style.setProperty("stroke-width", `${stroke}px`, "important");
                 }
 
                 // Update visible fill without filling transparent shapes
                 if (originalFill && originalFill !== "none") {
-                    shape.style.setProperty("fill", color, "important");
+                    shape.style.setProperty("fill", galleryColor, "important");
                 }
             });
 
         });
 
-        // Keep the open preview drawer synced with global preview settings
-        if (selectedHomeProject && projectPreviewImage) {
-            if (previewStrokeWidth) {
-                previewStrokeWidth.value = stroke;
-            }
+        // Keep the open preview drawer synced with global color and stroke width
+if (selectedHomeProject && projectPreviewImage) {
+    if (previewStrokeWidth) {
+        previewStrokeWidth.value = stroke;
+    }
 
-            if (previewStrokeValue) {
-                previewStrokeValue.textContent = stroke.toFixed(1);
-            }
+    if (previewStrokeValue) {
+        previewStrokeValue.textContent = stroke.toFixed(1);
+    }
 
-            projectPreviewImage.src = getPreviewSVG(selectedHomeProject, stroke);
-
-            projectPreviewImage.style.width = `${size}px`;
-            projectPreviewImage.style.height = `${size}px`;
-            projectPreviewImage.style.objectFit = "contain";
-        }
+    projectPreviewImage.src = getPreviewSVG(selectedHomeProject, stroke);
+}
 
         // Also support image-based thumbnails
         document.querySelectorAll(".home-project-preview img").forEach(img => {
@@ -1457,7 +1523,10 @@
 
     function setGridDisplayMode(mode) {
         currentGridDisplayMode = mode;
-        if (gridModeSelect) gridModeSelect.value = mode;
+        if (gridModeSelect) {
+    gridModeSelect.value = mode;
+    gridModeDropdown?.refresh();
+}
 
         const minorRect = document.getElementById("minor-grid-rect");
         const majorRect = document.getElementById("major-grid-rect");
@@ -8804,23 +8873,19 @@
         if (projectCategoryBadge) projectCategoryBadge.textContent = project.category || "General";
         if (projectDateBadge) projectDateBadge.textContent = `Saved ${new Date(project.savedAt).toLocaleDateString()}`;
 
-        const globalStroke = Number(globalStrokeWidth?.value) || 2;
-        const globalSize = Number(globalIconSize?.value) || 24;
+const globalStroke = Number(globalStrokeWidth?.value) || 2;
 
-        if (previewStrokeWidth) {
-            previewStrokeWidth.value = globalStroke;
-        }
+if (previewStrokeWidth) {
+    previewStrokeWidth.value = globalStroke;
+}
 
-        if (previewStrokeValue) {
-            previewStrokeValue.textContent = globalStroke.toFixed(1);
-        }
+if (previewStrokeValue) {
+    previewStrokeValue.textContent = globalStroke.toFixed(1);
+}
 
-        if (projectPreviewImage) {
-            projectPreviewImage.src = getPreviewSVG(project, globalStroke);
-            projectPreviewImage.style.width = `${globalSize}px`;
-            projectPreviewImage.style.height = `${globalSize}px`;
-            projectPreviewImage.style.objectFit = "contain";
-        }
+if (projectPreviewImage) {
+    projectPreviewImage.src = getPreviewSVG(project, globalStroke);
+}
 
         if (projectFavoriteBtn) {
             projectFavoriteBtn.classList.toggle("active", project.favorite === true);
