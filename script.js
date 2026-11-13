@@ -1140,6 +1140,36 @@ function detectIconCategories(iconName) {
     return matches.size ? [...matches] : ["Uncategorized"];
 }
 
+    // Resolve effective categories. A null manualCategories value means automatic mode.
+    function getProjectCategories(project) {
+        if (!project) return ["Uncategorized"];
+        if (Array.isArray(project.manualCategories) && project.manualCategories.length)
+            return [...new Set(project.manualCategories.filter(Boolean))];
+        if (Array.isArray(project.autoCategories) && project.autoCategories.length)
+            return [...new Set(project.autoCategories.filter(Boolean))];
+        return detectIconCategories(project.name || "");
+    }
+
+    function setProjectManualCategories(project, categories) {
+        const cleaned = [...new Set((categories || []).map(c => String(c).trim()).filter(Boolean))];
+        if (!cleaned.length) return false;
+        project.manualCategories = cleaned;
+        project.categories = [...cleaned];
+        project.categorySource = "manual";
+        project.category = cleaned[0];
+        return true;
+    }
+
+    function refreshProjectAutomaticCategories(project) {
+        if (!project) return;
+        project.autoCategories = detectIconCategories(project.name || "");
+        if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
+            project.categories = [...project.autoCategories];
+            project.categorySource = "automatic";
+            project.category = project.autoCategories[0] || "Uncategorized";
+        }
+    }
+
     // Get saved custom categories.
     function getCustomCategories() {
         try {
@@ -1257,22 +1287,31 @@ function getSelectedFinishCategories() {
                 projectManager.projects = [];
             }
 
-            // Categorize all existing finished icons only once.
-            const migrationDone = localStorage.getItem(
-                CATEGORY_MIGRATION_KEY
-            );
+            // Normalize category data without overwriting previously saved manual choices.
+            projectManager.projects.forEach(project => {
+                if (project.status !== "finished") return;
 
-            if (!migrationDone) {
-                projectManager.projects.forEach(project => {
-                    if (project.status !== "finished") return;
+                if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
+                    if (Array.isArray(project.categories) && project.categories.length &&
+                        project.categorySource === "manual") {
+                        project.manualCategories = [...new Set(project.categories.filter(Boolean))];
+                    } else if ((!Array.isArray(project.autoCategories) || !project.autoCategories.length) &&
+                               project.category && project.category !== "General" &&
+                               project.category !== "Uncategorized") {
+                        // Preserve legacy single-category assignments.
+                        project.manualCategories = [project.category];
+                    }
+                }
 
-                    project.category = detectIconCategory(project.name);
-                });
+                refreshProjectAutomaticCategories(project);
+                if (project.manualCategories?.length) {
+                    project.categories = [...project.manualCategories];
+                    project.categorySource = "manual";
+                    project.category = project.manualCategories[0];
+                }
+            });
 
-                localStorage.setItem(CATEGORY_MIGRATION_KEY, "true");
-            }
-
-            // Save the migrated project data.
+            localStorage.setItem(CATEGORY_MIGRATION_KEY, "true");
             saveProjectManager();
 
         } catch (error) {
@@ -8915,8 +8954,8 @@ function getSelectedFinishCategories() {
             return project.searchTerms;
         }
         const name = (project.name || "").trim().toLowerCase();
-        const category = (project.category || "").trim().toLowerCase();
-        const baseTerms = [name, category].filter(Boolean);
+        const categories = getProjectCategories(project);
+        const baseTerms = [name, ...categories].map(value => String(value).trim().toLowerCase()).filter(Boolean);
 
         // Expanded intelligent synonym matching
         if (["search", "magnifier", "magnifying glass", "find"].some(k => name.includes(k))) {
@@ -8956,9 +8995,10 @@ function getSelectedFinishCategories() {
 
         // Populate alphabetical category list in sidebar
         const categoryCounts = {};
-        allFinished.forEach(p => {
-            const cat = (p.category || "General").trim();
-            categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+        allFinished.forEach(project => {
+            getProjectCategories(project).forEach(category => {
+                categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+            });
         });
         const sortedCategories = Object.keys(categoryCounts).sort((a, b) => a.localeCompare(b));
 
@@ -9001,9 +9041,9 @@ function getSelectedFinishCategories() {
 
         const activeCategory = homeCategorySelect?.value || "all";
         if (selectedCategoryFilter) {
-            finished = finished.filter(p => (p.category || "General").trim() === selectedCategoryFilter);
+            finished = finished.filter(project => getProjectCategories(project).includes(selectedCategoryFilter));
         } else if (activeCategory !== "all") {
-            finished = finished.filter(p => (p.category || "General").trim() === activeCategory);
+            finished = finished.filter(project => getProjectCategories(project).includes(activeCategory));
         }
 
         // Search Filter (only matches name, category, or specific keywords; no default "icon" match)
@@ -9015,7 +9055,7 @@ function getSelectedFinishCategories() {
         if (query) {
             const words = query.split(/\s+/).filter(Boolean);
             finished = finished.filter(p => {
-                const text = `${p.name || ""} ${p.category || ""} ${getProjectSearchTerms(p).join(" ")}`.toLowerCase();
+                const text = `${p.name || ""} ${getProjectCategories(p).join(" ")} ${getProjectSearchTerms(p).join(" ")}`.toLowerCase();
                 return words.every(w => text.includes(w));
             });
         }
@@ -9095,7 +9135,7 @@ function getSelectedFinishCategories() {
 
                 const cat = document.createElement("span");
                 cat.className = "home-project-category";
-                cat.textContent = `${project.category || "General"} • ${new Date(project.savedAt).toLocaleDateString()}`;
+                cat.textContent = `${getProjectCategories(project).join(", ")} • ${new Date(project.savedAt).toLocaleDateString()}`;
 
                 infoCol.appendChild(name);
                 infoCol.appendChild(cat);
@@ -9126,10 +9166,11 @@ function getSelectedFinishCategories() {
         if (galleryViewCategory === "categories" && !selectedCategoryFilter) {
             const grouped = {};
 
-            finished.forEach(p => {
-                const c = (p.category || "General").trim();
-                if (!grouped[c]) grouped[c] = [];
-                grouped[c].push(p);
+            finished.forEach(project => {
+                getProjectCategories(project).forEach(category => {
+                    if (!grouped[category]) grouped[category] = [];
+                    grouped[category].push(project);
+                });
             });
 
             Object.keys(grouped).sort((a, b) => a.localeCompare(b))
@@ -9261,7 +9302,7 @@ function getSelectedFinishCategories() {
         if (projectRelated) projectRelated.hidden = true;
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
-        if (projectCategoryBadge) projectCategoryBadge.textContent = project.category || "General";
+        if (projectCategoryBadge) projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
         if (projectDateBadge) projectDateBadge.textContent = `Saved ${new Date(project.savedAt).toLocaleDateString()}`;
 
         const globalStroke = Number(globalStrokeWidth?.value) || 2;
@@ -9380,7 +9421,11 @@ function getSelectedFinishCategories() {
 
         const remix = createProject(copiedData);
         remix.name = remixName;
-        remix.category = sourceProject.category || "General";
+        remix.manualCategories = Array.isArray(sourceProject.manualCategories) ? [...sourceProject.manualCategories] : null;
+        remix.autoCategories = [...getProjectCategories(sourceProject)];
+        remix.categories = [...getProjectCategories(sourceProject)];
+        remix.categorySource = sourceProject.categorySource || "automatic";
+        remix.category = remix.categories[0] || "Uncategorized";
         remix.searchTerms = [...getProjectSearchTerms(sourceProject)];
         remix.remixedFrom = sourceProject.id;
 
@@ -9559,7 +9604,7 @@ function getSelectedFinishCategories() {
 
             const meta = document.createElement("p");
             meta.className = "management-card-meta";
-            meta.textContent = `${project.category || "General"} • ${new Date(project.savedAt).toLocaleDateString()}`;
+            meta.textContent = `${getProjectCategories(project).join(", ")} • ${new Date(project.savedAt).toLocaleDateString()}`;
 
             info.appendChild(name);
             info.appendChild(meta);
@@ -9681,13 +9726,9 @@ finishProjectButton?.addEventListener("click", () => {
 
     finishCategoryManuallyChanged = false;
 
-    const savedCategories = Array.isArray(activeProject?.categories)
-        ? activeProject.categories
-        : activeProject?.category &&
-          activeProject.category !== "General"
-            ? [activeProject.category]
-            : detectIconCategories(activeProject?.name || "");
-
+    const savedCategories = getProjectCategories(activeProject);
+    finishCategoryManuallyChanged = Array.isArray(activeProject?.manualCategories) &&
+        activeProject.manualCategories.length > 0;
     populateFinishCategories(savedCategories);
 
     const savedColorOption = activeProject?.finishStrokeColor || "original";
@@ -9705,10 +9746,7 @@ finishProjectButton?.addEventListener("click", () => {
 // Update automatic suggestions when the icon name changes.
 finishIconName?.addEventListener("input", () => {
     if (finishCategoryManuallyChanged) return;
-
-    populateFinishCategories(
-        detectIconCategories(finishIconName.value)
-    );
+    populateFinishCategories(detectIconCategories(finishIconName.value));
 });
 
 // Any manual checkbox change takes priority.
@@ -9737,22 +9775,7 @@ document.getElementById("add-custom-category")?.addEventListener("click", () => 
 
     showToast("Custom category added successfully!", "success");
 });
-    // Add a custom category.
-    document.getElementById("add-custom-category")?.addEventListener("click", () => {
-        const categoryName = prompt("Enter your new category name:");
 
-        if (categoryName === null) return;
-
-        if (!saveCustomCategory(categoryName)) {
-            showToast("Category is empty or already exists.", "error");
-            return;
-        }
-
-        populateFinishCategories(categoryName);
-        finishCategoryManuallyChanged = true;
-
-        showToast("Custom category added successfully!", "success");
-    });
 
 
     finishCancel?.addEventListener("click", () => {
@@ -9787,11 +9810,13 @@ if (selectedCategories.length === 0) {
 }
 
 activeProject.name = name;
-activeProject.categories = selectedCategories;
 
-// Keep the first category temporarily for compatibility
-// with existing Gallery code. We'll update that next.
-activeProject.category = selectedCategories[0];
+if (finishCategoryManuallyChanged) {
+    setProjectManualCategories(activeProject, selectedCategories);
+} else {
+    activeProject.manualCategories = null;
+    refreshProjectAutomaticCategories(activeProject);
+}
         activeProject.finishStrokeColor = colorOption;
         activeProject.thumbnail = generateSVG(
             colorOption === "white" ? "white" : "original"
