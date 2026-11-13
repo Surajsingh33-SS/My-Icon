@@ -1629,112 +1629,160 @@
 
 
 
-    function reflectShapeData(data, axis) {
-        const reflect = (x, y) =>
-            reflectSymmetryPoint(x, y, axis);
 
-        const axisAngle = Math.atan2(
-            axis.y2 - axis.y1,
-            axis.x2 - axis.x1
+function reflectShapeData(data, axis) {
+    const reflect = (x, y) =>
+        reflectSymmetryPoint(x, y, axis);
+
+    const axisAngle = Math.atan2(
+        axis.y2 - axis.y1,
+        axis.x2 - axis.x1
+    );
+
+    if (data.type === "line") {
+        const p1 = reflect(data.x1, data.y1);
+        const p2 = reflect(data.x2, data.y2);
+
+        data.x1 = p1.x;
+        data.y1 = p1.y;
+        data.x2 = p2.x;
+        data.y2 = p2.y;
+    }
+
+    else if (data.type === "curve") {
+        const start = reflect(
+            data.cx + data.radius * Math.cos(data.startAngle),
+            data.cy + data.radius * Math.sin(data.startAngle)
         );
 
-        if (data.type === "line") {
-            const p1 = reflect(data.x1, data.y1);
-            const p2 = reflect(data.x2, data.y2);
+        const end = reflect(
+            data.cx + data.radius * Math.cos(data.endAngle),
+            data.cy + data.radius * Math.sin(data.endAngle)
+        );
 
-            data.x1 = p1.x;
-            data.y1 = p1.y;
-            data.x2 = p2.x;
-            data.y2 = p2.y;
-        }
+        const center = reflect(data.cx, data.cy);
 
-        else if (data.type === "curve") {
-            const start = reflect(
-                data.cx + data.radius * Math.cos(data.startAngle),
-                data.cy + data.radius * Math.sin(data.startAngle)
-            );
+        data.cx = center.x;
+        data.cy = center.y;
 
-            const end = reflect(
-                data.cx + data.radius * Math.cos(data.endAngle),
-                data.cy + data.radius * Math.sin(data.endAngle)
-            );
+        data.startAngle = Math.atan2(
+            start.y - center.y,
+            start.x - center.x
+        );
 
-            const center = reflect(data.cx, data.cy);
+        data.endAngle = Math.atan2(
+            end.y - center.y,
+            end.x - center.x
+        );
+    }
 
-            data.cx = center.x;
-            data.cy = center.y;
+    else if (data.type === "ellipse-arc") {
+        const center = reflect(data.cx, data.cy);
 
-            data.startAngle = Math.atan2(
-                end.y - center.y,
-                end.x - center.x
-            );
+        data.cx = center.x;
+        data.cy = center.y;
 
-            data.endAngle = Math.atan2(
-                start.y - center.y,
-                start.x - center.x
-            );
-        }
+        data.rotation =
+            2 * axisAngle - (data.rotation || 0);
 
-        else if (data.type === "ellipse-arc") {
-            const oldStart = data.startAngle;
-            const oldEnd = data.endAngle;
+        data.startAngle = -data.startAngle;
+        data.endAngle = -data.endAngle;
 
-            const center = reflect(data.cx, data.cy);
+        data.sweepFlag = data.sweepFlag === 0 ? 1 : 0;
+    }
 
-            data.cx = center.x;
-            data.cy = center.y;
+    else if (
+        data.type === "circle" ||
+        data.type === "ellipse"
+    ) {
+        const center = reflect(data.cx, data.cy);
 
-            data.rotation =
-                2 * axisAngle - (data.rotation || 0);
+        data.cx = center.x;
+        data.cy = center.y;
+    }
 
-            data.startAngle = -oldEnd;
-            data.endAngle = -oldStart;
+    else if (data.type === "rectangle") {
+        const center = reflect(
+            data.x + data.width / 2,
+            data.y + data.height / 2
+        );
 
-            data.sweepFlag = data.sweepFlag === 0 ? 1 : 0;
-        }
+        data.x = center.x - data.width / 2;
+        data.y = center.y - data.height / 2;
+    }
 
-        else if (
-            data.type === "circle" ||
-            data.type === "ellipse"
-        ) {
-            const center = reflect(data.cx, data.cy);
+    else if (data.type === "path") {
 
-            data.cx = center.x;
-            data.cy = center.y;
-        }
+        // Normal editable paths
+        data.points = (data.points || []).map(point =>
+            reflect(point.x, point.y)
+        );
 
-        else if (data.type === "rectangle") {
-            const center = reflect(
-                data.x + data.width / 2,
-                data.y + data.height / 2
-            );
+        data.holes = (data.holes || []).map(hole => {
+            const points = Array.isArray(hole)
+                ? hole
+                : hole.points;
 
-            data.x = center.x - data.width / 2;
-            data.y = center.y - data.height / 2;
-        }
-
-        else if (data.type === "path") {
-            data.points = (data.points || []).map(point =>
+            const reflected = (points || []).map(point =>
                 reflect(point.x, point.y)
             );
 
-            data.holes = (data.holes || []).map(hole => {
-                const points = Array.isArray(hole)
-                    ? hole
-                    : hole.points;
+            return Array.isArray(hole)
+                ? reflected
+                : { ...hole, points: reflected };
+        });
 
-                const reflected = (points || []).map(point =>
-                    reflect(point.x, point.y)
-                );
+        // SVG paths, including Bézier curves
+        if (Array.isArray(data.svgEditableSegments)) {
 
-                return Array.isArray(hole)
-                    ? reflected
-                    : { ...hole, points: reflected };
+            data.svgEditableSegments.forEach(segment => {
+
+                const coordinatePairs = [
+                    ["x", "y"],
+                    ["x1", "y1"],
+                    ["cx", "cy"],
+                    ["cx1", "cy1"],
+                    ["cx2", "cy2"]
+                ];
+
+                coordinatePairs.forEach(([xKey, yKey]) => {
+                    if (
+                        typeof segment[xKey] === "number" &&
+                        typeof segment[yKey] === "number"
+                    ) {
+                        const point = reflect(
+                            segment[xKey],
+                            segment[yKey]
+                        );
+
+                        segment[xKey] = point.x;
+                        segment[yKey] = point.y;
+                    }
+                });
+
+                // SVG elliptical arc segments
+                if (segment.type === "arc") {
+                    segment.rotation =
+                        2 * axisAngle - (segment.rotation || 0);
+
+                    segment.sweep = segment.sweep === 0 ? 1 : 0;
+                }
             });
-        }
 
-        return data;
+            // Rebuild the SVG path from its reflected segments
+            data.svgPathData = serializeSVGSegments(
+                data.svgEditableSegments
+            );
+
+            data.svgAnchors = buildSVGAnchorMap(
+                data.svgEditableSegments
+            );
+        }
     }
+
+    return data;
+}
+
 
 
 
@@ -2277,10 +2325,12 @@
 
         shapes.push(shape);
 
-        updateEllipseArc(shape);
-        selectShape(shape);
+updateEllipseArc(shape);
+selectShape(shape);
 
-        return shape;
+applyLiveSymmetry(shape);
+
+return shape;
     }
     function getEllipseArcPoint(shape, angle) {
         const rotation = shape.rotation || 0;
@@ -2335,13 +2385,21 @@
         shape.helperGuides[4].setAttribute("x2", end.x);
         shape.helperGuides[4].setAttribute("y2", end.y);
 
-        let delta = shape.endAngle - shape.startAngle;
 
-        while (delta < 0) delta += Math.PI * 2;
-        while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+const sweep = shape.sweepFlag ?? 1;
 
-        const largeArc = delta > Math.PI ? 1 : 0;
-        const sweep = shape.sweepFlag ?? 1;
+let delta = shape.endAngle - shape.startAngle;
+
+if (sweep === 1) {
+    while (delta < 0) delta += Math.PI * 2;
+    while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+} else {
+    while (delta > 0) delta -= Math.PI * 2;
+    while (delta <= -Math.PI * 2) delta += Math.PI * 2;
+}
+
+const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
+
 
         const d =
             `M ${start.x} ${start.y} ` +
@@ -2667,14 +2725,16 @@
         };
 
         workspace.appendChild(element);
-        shapes.push(shape);
+shapes.push(shape);
 
-        updatePathShape(shape);
-        selectShape(shape);
+updatePathShape(shape);
+selectShape(shape);
 
-        updateSVGSource();
+applyLiveSymmetry(shape);
 
-        return shape;
+updateSVGSource();
+
+return shape;
     }
 
     function finishPath() {
