@@ -1118,20 +1118,25 @@ function detectIconCategories(iconName) {
     const name = (iconName || "").toLowerCase()
         .replace(/([a-z])([A-Z])/g, "$1 $2")
         .replace(/[_-]+/g, " ")
+        .replace(/[^a-z0-9\\s]/g, " ")
+        .replace(/\\s+/g, " ")
         .trim();
 
     if (!name) return ["Uncategorized"];
 
+    const searchableName = ` ${name} `;
     const matches = new Set();
 
     for (const [category, keywords] of Object.entries(ICON_CATEGORY_KEYWORDS)) {
         for (const keyword of keywords) {
-            const normalizedKeyword = keyword.toLowerCase();
+            const normalizedKeyword = keyword.toLowerCase()
+                .replace(/[_-]+/g, " ")
+                .replace(/\\s+/g, " ")
+                .trim();
 
-            if (
-                name === normalizedKeyword ||
-                name.includes(normalizedKeyword)
-            ) {
+            // Match complete words/phrases, not accidental substrings
+            // (for example, "car" must not match "calendar").
+            if (searchableName.includes(` ${normalizedKeyword} `)) {
                 matches.add(category);
             }
         }
