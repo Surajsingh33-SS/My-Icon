@@ -9298,6 +9298,101 @@ function getSelectedFinishCategories() {
         return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
     }
 
+    function ensureProjectCategoryEditor() {
+        if (!projectCategoryBadge?.parentElement) return null;
+
+        let button = document.getElementById("project-edit-categories");
+        let panel = document.getElementById("project-category-editor");
+
+        if (!button) {
+            button = document.createElement("button");
+            button.type = "button";
+            button.id = "project-edit-categories";
+            button.textContent = "Edit categories";
+            button.style.cssText = "margin-left:8px;padding:5px 9px;border:1px solid var(--border-color,#64748b);border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;";
+            projectCategoryBadge.parentElement.appendChild(button);
+        }
+
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "project-category-editor";
+            panel.hidden = true;
+            panel.style.cssText = "margin-top:10px;padding:12px;border:1px solid var(--border-color,#64748b);border-radius:10px;max-height:240px;overflow:auto;background:var(--panel-bg,rgba(127,127,127,.08));";
+            projectCategoryBadge.parentElement.appendChild(panel);
+        }
+
+        button.onclick = () => {
+            const project = selectedHomeProject;
+            if (!project) return;
+            panel.innerHTML = "";
+
+            const heading = document.createElement("strong");
+            heading.textContent = "Choose all categories that apply";
+            heading.style.display = "block";
+            heading.style.marginBottom = "9px";
+            panel.appendChild(heading);
+
+            const selected = new Set(getProjectCategories(project));
+            getAllIconCategories().forEach(category => {
+                const label = document.createElement("label");
+                label.style.cssText = "display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;";
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.value = category;
+                checkbox.checked = selected.has(category);
+                const text = document.createElement("span");
+                text.textContent = category;
+                label.append(checkbox, text);
+                panel.appendChild(label);
+            });
+
+            const actions = document.createElement("div");
+            actions.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;";
+
+            const save = document.createElement("button");
+            save.type = "button";
+            save.textContent = "Save categories";
+            save.onclick = () => {
+                const chosen = [...panel.querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
+                if (!setProjectManualCategories(project, chosen)) {
+                    showToast("Select at least one category.", "error");
+                    return;
+                }
+                saveProjectManager();
+                panel.hidden = true;
+                projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+                renderHomeProjects();
+                renderManagementTable();
+                showToast("Manual categories saved.", "success");
+            };
+
+            const automatic = document.createElement("button");
+            automatic.type = "button";
+            automatic.textContent = "Use automatic";
+            automatic.onclick = () => {
+                project.manualCategories = null;
+                refreshProjectAutomaticCategories(project);
+                saveProjectManager();
+                panel.hidden = true;
+                projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+                renderHomeProjects();
+                renderManagementTable();
+                showToast("Automatic categories restored.", "success");
+            };
+
+            const cancel = document.createElement("button");
+            cancel.type = "button";
+            cancel.textContent = "Cancel";
+            cancel.onclick = () => { panel.hidden = true; };
+
+            actions.append(save, automatic, cancel);
+            panel.appendChild(actions);
+            panel.hidden = false;
+        };
+
+        return { button, panel };
+    }
+
     function showProjectPreview(project) {
         if (!project || !projectDetails) return;
 
@@ -9307,6 +9402,7 @@ function getSelectedFinishCategories() {
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
         if (projectCategoryBadge) projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+        ensureProjectCategoryEditor();
         if (projectDateBadge) projectDateBadge.textContent = `Saved ${new Date(project.savedAt).toLocaleDateString()}`;
 
         const globalStroke = Number(globalStrokeWidth?.value) || 2;
