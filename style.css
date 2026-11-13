@@ -167,12 +167,6 @@ body.light-theme .home-project-card:hover {
 }
 
 
-
-body.light-theme .home-project-preview svg,
-body.light-theme .home-project-preview img {
-    stroke: #0a0a0a !important;
-}
-
 body.light-theme .home-card-tooltip {
     background: #0f172a;
     color: #f8fafc;
@@ -3643,12 +3637,15 @@ body.light-theme #workspace .svg-artwork[fill]:not([fill="none"]) {
     fill: #000000 !important;
 }
 
-/* Home and Gallery icon previews */
-body.light-theme .home-project-preview svg {
-    filter: brightness(0);
-}
-
 /* Project details preview */
 body.light-theme #project-preview-image {
     filter: brightness(0);
+}
+/* Light Theme - Visual-only Gallery Preview Color */
+body.light-theme .home-project-preview svg [stroke]:not([stroke="none"]) {
+    stroke: rgb(48, 48, 48) !important;
+}
+
+body.light-theme .home-project-preview svg [fill]:not([fill="none"]) {
+    fill: rgb(48, 48, 48) !important;
 }

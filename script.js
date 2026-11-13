@@ -713,6 +713,16 @@ const isChanged = color.toLowerCase() !== defaultColor || stroke !== 2 || size !
 
         });
 
+        // Keep the open preview drawer synced with gallery color
+if (selectedHomeProject && projectPreviewImage) {
+    const drawerStroke = Number(previewStrokeWidth?.value) || 2;
+
+    projectPreviewImage.src = getPreviewSVG(
+        selectedHomeProject,
+        drawerStroke
+    );
+}
+
         // Also support image-based thumbnails
         document.querySelectorAll(".home-project-preview img").forEach(img => {
             img.style.width = `${size}px`;
@@ -6849,7 +6859,11 @@ if (shape.strokeElement) {
     }
 
     
-function generateSVGFromShapes(sourceShapes, colorMode = "original") {
+function generateSVGFromShapes(
+    sourceShapes,
+    colorMode = "original",
+    overrideColor = null
+) {
     const artwork = [];
 
     sourceShapes.forEach(shape => {
@@ -6857,18 +6871,25 @@ function generateSVGFromShapes(sourceShapes, colorMode = "original") {
 
         let strokeColor = shape.color;
 
-        if (colorMode === "white") strokeColor = "#FFFFFF";
-        else if (colorMode === "black") strokeColor = "#000000";
-        else if (colorMode === "accent") {
-            strokeColor = document.body.getAttribute("data-accent") || "#ff0077";
-        }
+if (colorMode === "white") {
+    strokeColor = "#FFFFFF";
+} else if (colorMode === "black") {
+    strokeColor = "#000000";
+} else if (colorMode === "accent") {
+    strokeColor = document.body.getAttribute("data-accent") || "#ff0077";
+}
 
-        // Keep fill consistent with the selected export color
-        let fillColor = shape.fill || "none";
+// Apply gallery preview color only when requested
+if (overrideColor) {
+    strokeColor = overrideColor;
+}
 
-        if (fillColor !== "none" && colorMode !== "original") {
-            fillColor = strokeColor;
-        }
+// Keep filled shapes consistent with the export color
+let fillColor = shape.fill || "none";
+
+if (fillColor !== "none" && (colorMode !== "original" || overrideColor)) {
+    fillColor = strokeColor;
+}
 
         if (shape.type === "line") {
 
@@ -8297,9 +8318,10 @@ function generateSVGFromShapes(sourceShapes, colorMode = "original") {
     // 18. EXPORT (SVG VECTOR + HIGH-RES PNG BITMAP)
     // ========================================================================
     let activeExportFormat = "svg";
-    let activeExportColor = "original";
-    let activeExportScale = 2; // 48px
-    let exportTargetProject = null;
+let activeExportColor = "original";
+let activeExportScale = 2; // 48px
+let exportTargetProject = null;
+let exportFromHome = false;
 
     topbarExportBtn?.addEventListener("click", () => {
 
@@ -8309,7 +8331,8 @@ function generateSVGFromShapes(sourceShapes, colorMode = "original") {
 
         // Use the homepage preview project if its drawer is open.
         // Otherwise, use the editor's active project.
-        exportTargetProject = selectedHomeProject || activeProject;
+        exportFromHome = Boolean(selectedHomeProject);
+exportTargetProject = selectedHomeProject || activeProject;
 
         if (!exportTargetProject) {
             showToast("No project selected for export", "error");
@@ -8372,10 +8395,16 @@ function generateSVGFromShapes(sourceShapes, colorMode = "original") {
             .toLowerCase()
             .replace(/[^a-z0-9_-]/g, "-");
 
-        const svgString = generateSVGFromShapes(
-            activeProject.data.shapes,
-            activeExportColor
-        );
+       const galleryColor = globalIconColor?.value ||
+    (document.body.classList.contains("light-theme") ? "#000000" : "#ffffff");
+
+const svgString = generateSVGFromShapes(
+    activeProject.data.shapes,
+    activeExportColor,
+    exportFromHome && activeExportColor === "original"
+        ? galleryColor
+        : null
+);
 
         if (activeExportFormat === "svg") {
             const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
@@ -8733,10 +8762,29 @@ function generateSVGFromShapes(sourceShapes, colorMode = "original") {
 
     // Preview Drawer Helpers
     function getPreviewSVG(project, strokeW = 2) {
-        if (!project?.thumbnail) return "";
-        const svg = project.thumbnail.replace(/stroke-width="[^"]*"/g, `stroke-width="${strokeW}"`);
-        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-    }
+    if (!project?.thumbnail) return "";
+
+    const galleryColor = globalIconColor?.value ||
+        (document.body.classList.contains("light-theme")
+            ? "#000000"
+            : "#FFFFFF");
+
+    let svg = project.thumbnail;
+
+    // Match the gallery preview color
+    svg = svg.replace(
+        /(stroke|fill)="(?!none)[^"]*"/g,
+        (match, attribute) => `${attribute}="${galleryColor}"`
+    );
+
+    // Match the gallery preview stroke width
+    svg = svg.replace(
+        /stroke-width="[^"]*"/g,
+        `stroke-width="${strokeW}"`
+    );
+
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
 
     function showProjectPreview(project) {
         if (!project || !projectDetails) return;
