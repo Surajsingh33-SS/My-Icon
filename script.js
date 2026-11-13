@@ -1113,40 +1113,32 @@
         ]
     };
 
-    // Automatically detect a category from an icon's name.
-    function detectIconCategory(iconName) {
-        const name = (iconName || "").toLowerCase()
-            .replace(/([a-z])([A-Z])/g, "$1 $2")
-            .replace(/[_-]+/g, " ")
-            .trim();
+   // Automatically detect all matching categories from an icon's name.
+function detectIconCategories(iconName) {
+    const name = (iconName || "").toLowerCase()
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/[_-]+/g, " ")
+        .trim();
 
-        if (!name) return "Uncategorized";
+    if (!name) return ["Uncategorized"];
 
-        const matches = [];
+    const matches = new Set();
 
-        for (const [category, keywords] of Object.entries(ICON_CATEGORY_KEYWORDS)) {
-            for (const keyword of keywords) {
-                const normalizedKeyword = keyword.toLowerCase();
+    for (const [category, keywords] of Object.entries(ICON_CATEGORY_KEYWORDS)) {
+        for (const keyword of keywords) {
+            const normalizedKeyword = keyword.toLowerCase();
 
-                if (
-                    name === normalizedKeyword ||
-                    name.includes(normalizedKeyword)
-                ) {
-                    matches.push({
-                        category,
-                        length: normalizedKeyword.length
-                    });
-                }
+            if (
+                name === normalizedKeyword ||
+                name.includes(normalizedKeyword)
+            ) {
+                matches.add(category);
             }
         }
-
-        if (!matches.length) return "Uncategorized";
-
-        // Prefer the most specific keyword match.
-        matches.sort((a, b) => b.length - a.length);
-
-        return matches[0].category;
     }
+
+    return matches.size ? [...matches] : ["Uncategorized"];
+}
 
     // Get saved custom categories.
     function getCustomCategories() {
@@ -1194,22 +1186,37 @@
         return true;
     }
 
-    function populateFinishCategories(selectedCategory = "Uncategorized") {
-        if (!finishIconCategory) return;
+   function populateFinishCategories(selectedCategories = ["Uncategorized"]) {
+    if (!finishIconCategory) return;
 
-        finishIconCategory.innerHTML = "";
+    const selected = Array.isArray(selectedCategories)
+        ? selectedCategories
+        : [selectedCategories];
 
-        getAllIconCategories().forEach(category => {
-            const option = document.createElement("option");
-            option.value = category;
-            option.textContent = category;
-            finishIconCategory.appendChild(option);
-        });
+    finishIconCategory.innerHTML = "";
 
-        finishIconCategory.value = getAllIconCategories().includes(selectedCategory)
-            ? selectedCategory
-            : "Uncategorized";
-    }
+    getAllIconCategories().forEach(category => {
+        const label = document.createElement("label");
+        label.className = "finish-category-option";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = category;
+        checkbox.checked = selected.includes(category);
+
+        const text = document.createElement("span");
+        text.textContent = category;
+
+        label.append(checkbox, text);
+        finishIconCategory.appendChild(label);
+    });
+}
+
+function getSelectedFinishCategories() {
+    return Array.from(
+        finishIconCategory?.querySelectorAll('input[type="checkbox"]:checked') || []
+    ).map(checkbox => checkbox.value);
+}
 
 
 
@@ -9661,56 +9668,75 @@
     // 21. FINISH PROJECT DIALOG
     // ========================================================================
 
-    let finishCategoryManuallyChanged = false;
+   let finishCategoryManuallyChanged = false;
 
-    finishProjectButton?.addEventListener("click", () => {
-        if (!finishModal) return;
+finishProjectButton?.addEventListener("click", () => {
+    if (!finishModal) return;
 
-        const activeProject = projectManager.projects.find(
-            p => p.id === projectManager.activeProjectId
-        );
+    const activeProject = projectManager.projects.find(
+        p => p.id === projectManager.activeProjectId
+    );
 
-        finishIconName.value = activeProject?.name || "";
+    finishIconName.value = activeProject?.name || "";
 
-        finishCategoryManuallyChanged = false;
+    finishCategoryManuallyChanged = false;
 
-        const suggestedCategory = detectIconCategory(
-            activeProject?.name || ""
-        );
+    const savedCategories = Array.isArray(activeProject?.categories)
+        ? activeProject.categories
+        : activeProject?.category &&
+          activeProject.category !== "General"
+            ? [activeProject.category]
+            : detectIconCategories(activeProject?.name || "");
 
-        populateFinishCategories(
-            activeProject?.category &&
-                activeProject.category !== "Uncategorized"
-                ? activeProject.category
-                : suggestedCategory
-        );
+    populateFinishCategories(savedCategories);
 
-        const savedColorOption = activeProject?.finishStrokeColor || "original";
+    const savedColorOption = activeProject?.finishStrokeColor || "original";
 
-        const colorRadio = document.querySelector(
-            `input[name="finish-style-choice"][value="${savedColorOption}"]`
-        );
+    const colorRadio = document.querySelector(
+        `input[name="finish-style-choice"][value="${savedColorOption}"]`
+    );
 
-        if (colorRadio) colorRadio.checked = true;
+    if (colorRadio) colorRadio.checked = true;
 
-        finishModal.classList.add("show");
-        finishIconName.focus();
-    });
+    finishModal.classList.add("show");
+    finishIconName.focus();
+});
 
-    // Suggest a category as the icon name changes.
-    finishIconName?.addEventListener("input", () => {
-        if (finishCategoryManuallyChanged) return;
+// Update automatic suggestions when the icon name changes.
+finishIconName?.addEventListener("input", () => {
+    if (finishCategoryManuallyChanged) return;
 
-        const suggestedCategory = detectIconCategory(finishIconName.value);
+    populateFinishCategories(
+        detectIconCategories(finishIconName.value)
+    );
+});
 
-        populateFinishCategories(suggestedCategory);
-    });
-
-    // Manual category selection always takes priority.
-    finishIconCategory?.addEventListener("change", () => {
+// Any manual checkbox change takes priority.
+finishIconCategory?.addEventListener("change", event => {
+    if (event.target.matches('input[type="checkbox"]')) {
         finishCategoryManuallyChanged = true;
-    });
+    }
+});
 
+// Add a custom category.
+document.getElementById("add-custom-category")?.addEventListener("click", () => {
+    const categoryName = prompt("Enter your new category name:");
+
+    if (categoryName === null) return;
+
+    if (!saveCustomCategory(categoryName)) {
+        showToast("Category is empty or already exists.", "error");
+        return;
+    }
+
+    const selectedCategories = getSelectedFinishCategories();
+    selectedCategories.push(categoryName.trim());
+
+    populateFinishCategories(selectedCategories);
+    finishCategoryManuallyChanged = true;
+
+    showToast("Custom category added successfully!", "success");
+});
     // Add a custom category.
     document.getElementById("add-custom-category")?.addEventListener("click", () => {
         const categoryName = prompt("Enter your new category name:");
@@ -9753,8 +9779,19 @@
 
         if (!activeProject) return;
 
-        activeProject.name = name;
-        activeProject.category = finishIconCategory.value;
+const selectedCategories = getSelectedFinishCategories();
+
+if (selectedCategories.length === 0) {
+    showToast("Please select at least one category.", "error");
+    return;
+}
+
+activeProject.name = name;
+activeProject.categories = selectedCategories;
+
+// Keep the first category temporarily for compatibility
+// with existing Gallery code. We'll update that next.
+activeProject.category = selectedCategories[0];
         activeProject.finishStrokeColor = colorOption;
         activeProject.thumbnail = generateSVG(
             colorOption === "white" ? "white" : "original"
