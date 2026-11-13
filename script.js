@@ -9,122 +9,122 @@
     "use strict";
 
     // =====================================
-        // CUSTOM STYLED SELECT DROPDOWNS
-        // =====================================
+    // CUSTOM STYLED SELECT DROPDOWNS
+    // =====================================
 
-        function createStyledDropdown(select, type) {
-            if (!select) return null;
+    function createStyledDropdown(select, type) {
+        if (!select) return null;
 
-            const wrapper = document.createElement("div");
-            wrapper.className = "styled-select";
-            wrapper.dataset.select = type;
+        const wrapper = document.createElement("div");
+        wrapper.className = "styled-select";
+        wrapper.dataset.select = type;
 
-            const trigger = document.createElement("button");
-            trigger.type = "button";
-            trigger.className = "styled-select-trigger";
-            trigger.setAttribute("aria-haspopup", "listbox");
+        const trigger = document.createElement("button");
+        trigger.type = "button";
+        trigger.className = "styled-select-trigger";
+        trigger.setAttribute("aria-haspopup", "listbox");
+        trigger.setAttribute("aria-expanded", "false");
+
+        const label = document.createElement("span");
+        label.className = "styled-select-label";
+
+        const chevron = document.createElement("span");
+        chevron.className = "styled-select-chevron";
+        chevron.setAttribute("aria-hidden", "true");
+
+        trigger.append(label, chevron);
+
+        const menu = document.createElement("div");
+        menu.className = "styled-select-menu";
+        menu.setAttribute("role", "listbox");
+
+        function close() {
+            wrapper.classList.remove("open");
             trigger.setAttribute("aria-expanded", "false");
-
-            const label = document.createElement("span");
-            label.className = "styled-select-label";
-
-            const chevron = document.createElement("span");
-            chevron.className = "styled-select-chevron";
-            chevron.setAttribute("aria-hidden", "true");
-
-            trigger.append(label, chevron);
-
-            const menu = document.createElement("div");
-            menu.className = "styled-select-menu";
-            menu.setAttribute("role", "listbox");
-
-            function close() {
-                wrapper.classList.remove("open");
-                trigger.setAttribute("aria-expanded", "false");
-            }
-
-            function refresh() {
-                label.textContent =
-                    select.selectedOptions[0]?.textContent || "";
-
-                menu.innerHTML = "";
-
-                Array.from(select.options).forEach(option => {
-                    const item = document.createElement("button");
-
-                    item.type = "button";
-                    item.className = "styled-select-option";
-                    item.setAttribute("role", "option");
-                    item.setAttribute(
-                        "aria-selected",
-                        String(option.value === select.value)
-                    );
-
-                    item.textContent = option.textContent;
-
-                    if (option.value === select.value) {
-                        item.classList.add("selected");
-                    }
-
-                    item.addEventListener("click", () => {
-                        select.value = option.value;
-
-                        close();
-                        refresh();
-
-                        // Keep the original select's existing change listeners working.
-                        select.dispatchEvent(
-                            new Event("change", { bubbles: true })
-                        );
-                    });
-
-                    menu.appendChild(item);
-                });
-            }
-
-            trigger.addEventListener("click", event => {
-                event.stopPropagation();
-
-                const shouldOpen = !wrapper.classList.contains("open");
-
-                // Close any other custom dropdown first.
-                document.querySelectorAll(".styled-select.open").forEach(openDropdown => {
-                    if (openDropdown !== wrapper) {
-                        openDropdown.classList.remove("open");
-
-                        openDropdown
-                            .querySelector(".styled-select-trigger")
-                            ?.setAttribute("aria-expanded", "false");
-                    }
-                });
-
-                wrapper.classList.toggle("open", shouldOpen);
-                trigger.setAttribute("aria-expanded", String(shouldOpen));
-            });
-
-            // Close when clicking outside this dropdown.
-            document.addEventListener("click", event => {
-                if (!wrapper.contains(event.target)) {
-                    close();
-                }
-            });
-
-            // Close when Escape is pressed.
-            document.addEventListener("keydown", event => {
-                if (event.key === "Escape") {
-                    close();
-                }
-            });
-
-            wrapper.append(trigger, menu);
-
-            select.insertAdjacentElement("afterend", wrapper);
-            select.classList.add("native-select-hidden");
-
-            refresh();
-
-            return { refresh, close };
         }
+
+        function refresh() {
+            label.textContent =
+                select.selectedOptions[0]?.textContent || "";
+
+            menu.innerHTML = "";
+
+            Array.from(select.options).forEach(option => {
+                const item = document.createElement("button");
+
+                item.type = "button";
+                item.className = "styled-select-option";
+                item.setAttribute("role", "option");
+                item.setAttribute(
+                    "aria-selected",
+                    String(option.value === select.value)
+                );
+
+                item.textContent = option.textContent;
+
+                if (option.value === select.value) {
+                    item.classList.add("selected");
+                }
+
+                item.addEventListener("click", () => {
+                    select.value = option.value;
+
+                    close();
+                    refresh();
+
+                    // Keep the original select's existing change listeners working.
+                    select.dispatchEvent(
+                        new Event("change", { bubbles: true })
+                    );
+                });
+
+                menu.appendChild(item);
+            });
+        }
+
+        trigger.addEventListener("click", event => {
+            event.stopPropagation();
+
+            const shouldOpen = !wrapper.classList.contains("open");
+
+            // Close any other custom dropdown first.
+            document.querySelectorAll(".styled-select.open").forEach(openDropdown => {
+                if (openDropdown !== wrapper) {
+                    openDropdown.classList.remove("open");
+
+                    openDropdown
+                        .querySelector(".styled-select-trigger")
+                        ?.setAttribute("aria-expanded", "false");
+                }
+            });
+
+            wrapper.classList.toggle("open", shouldOpen);
+            trigger.setAttribute("aria-expanded", String(shouldOpen));
+        });
+
+        // Close when clicking outside this dropdown.
+        document.addEventListener("click", event => {
+            if (!wrapper.contains(event.target)) {
+                close();
+            }
+        });
+
+        // Close when Escape is pressed.
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape") {
+                close();
+            }
+        });
+
+        wrapper.append(trigger, menu);
+
+        select.insertAdjacentElement("afterend", wrapper);
+        select.classList.add("native-select-hidden");
+
+        refresh();
+
+        return { refresh, close };
+    }
     // ========================================================================
     // 1. CONSTANTS & DOM REFERENCES
     // ========================================================================
@@ -523,24 +523,36 @@
     // 4. APPEARANCE: THEME & ACCENT SYSTEM
     // ========================================================================
     function applyTheme(theme) {
-        const isLight = theme === "light";
-        document.body.classList.toggle("light-theme", isLight);
+    const isLight = theme === "light";
 
-        themeToggleKnob.innerHTML = isLight
-    ? '<img src="assets/icons/sun-fill.svg" alt="Sun">'
-    : '<img src="assets/icons/moon-fill.svg" alt="Moon">';
+    document.body.classList.toggle("light-theme", isLight);
 
-        if (themeToggle) {
-            themeToggle.setAttribute("aria-label", isLight ? "Switch to dark theme" : "Switch to light theme");
-            themeToggle.setAttribute("aria-pressed", String(isLight));
-        }
+    themeToggleKnob.innerHTML = isLight
+        ? '<img src="assets/icons/sun-fill.svg" alt="Sun">'
+        : '<img src="assets/icons/moon-fill.svg" alt="Moon">';
 
-        try {
-            localStorage.setItem(THEME_STORAGE_KEY, isLight ? "light" : "dark");
-        } catch (error) {
-            console.warn("Could not save theme preference:", error);
-        }
+    if (themeToggle) {
+        themeToggle.setAttribute(
+            "aria-label",
+            isLight ? "Switch to dark theme" : "Switch to light theme"
+        );
+        themeToggle.setAttribute("aria-pressed", String(isLight));
     }
+
+    // Update Global Preview default color with the theme
+    if (globalIconColor) {
+        globalIconColor.value = isLight ? "#000000" : "#FFFFFF";
+    }
+
+    // Refresh the global preview and its displayed values
+    updateGlobalCustomizationState(false);
+
+    try {
+        localStorage.setItem(THEME_STORAGE_KEY, isLight ? "light" : "dark");
+    } catch (error) {
+        console.warn("Could not save theme preference:", error);
+    }
+}
     // =====================================
     // ENDPOINT SNAP TOGGLE
     // =====================================
@@ -650,7 +662,8 @@
     // 5. GLOBAL ICON CUSTOMIZATION (LIVE PREVIEW IN GALLERY)
     // ========================================================================
     function updateGlobalCustomizationState(save = true) {
-        const color = globalIconColor.value || "#ffffff";
+        const color = globalIconColor.value ||
+    (document.body.classList.contains("light-theme") ? "#000000" : "#ffffff");
         const stroke = Number(globalStrokeWidth.value) || 2;
         const size = Number(globalIconSize.value) || 24;
 
@@ -664,16 +677,48 @@
         document.documentElement.style.setProperty("--global-stroke-width", `${stroke}px`);
         document.documentElement.style.setProperty("--global-icon-size", `${size}px`);
 
-        const isChanged = color.toLowerCase() !== "#ffffff" || stroke !== 2 || size !== 24;
+        const defaultColor = document.body.classList.contains("light-theme")
+    ? "#000000"
+    : "#ffffff";
+
+const isChanged = color.toLowerCase() !== defaultColor || stroke !== 2 || size !== 24;
         if (resetGlobalCustomization) {
             resetGlobalCustomization.disabled = !isChanged;
         }
 
-        // Apply to thumbnail preview tiles in gallery
+
+        // Apply Global Preview settings to inline SVG thumbnails
+        document.querySelectorAll(".home-project-preview svg").forEach(svg => {
+            // Icon size
+            svg.style.width = `${size}px`;
+            svg.style.height = `${size}px`;
+
+            // Icon stroke color and thickness
+
+            svg.querySelectorAll("[stroke], [fill]").forEach(shape => {
+                const originalStroke = shape.getAttribute("stroke");
+                const originalFill = shape.getAttribute("fill");
+
+                // Update stroke color and thickness
+                if (originalStroke && originalStroke !== "none") {
+                    shape.style.setProperty("stroke", color, "important");
+                    shape.style.setProperty("stroke-width", `${stroke}px`, "important");
+                }
+
+                // Update visible fill without filling transparent shapes
+                if (originalFill && originalFill !== "none") {
+                    shape.style.setProperty("fill", color, "important");
+                }
+            });
+
+        });
+
+        // Also support image-based thumbnails
         document.querySelectorAll(".home-project-preview img").forEach(img => {
             img.style.width = `${size}px`;
             img.style.height = `${size}px`;
         });
+
 
         if (save) {
             try {
@@ -689,7 +734,11 @@
     });
 
     resetGlobalCustomization?.addEventListener("click", () => {
-        if (globalIconColor) globalIconColor.value = "#ffffff";
+        if (globalIconColor) {
+    globalIconColor.value = document.body.classList.contains("light-theme")
+        ? "#000000"
+        : "#FFFFFF";
+}
         if (globalStrokeWidth) globalStrokeWidth.value = 2;
         if (globalIconSize) globalIconSize.value = 24;
 
@@ -1550,7 +1599,9 @@
             dropPreview = null;
         }
 
-        const previewColor = "#83B5FF";
+       const previewColor = document.body.classList.contains("light-theme")
+    ? "#000000"
+    : "#83B5FF";
 
         if (draggingTool === "line") {
             dropPreview = document.createElementNS(SVG_NS, "line");
@@ -2087,6 +2138,14 @@
 
 
     function getShapeElements(shape) {
+        // Mark only actual artwork elements for theme-aware preview styling
+if (shape.element) {
+    shape.element.classList.add("svg-artwork");
+}
+
+if (shape.strokeElement) {
+    shape.strokeElement.classList.add("svg-artwork");
+}
         if (shape.type === "line") {
             return [shape.hoverBg, shape.element, shape.guideBg, shape.guide, shape.hitLine].filter(Boolean);
         }
@@ -6789,117 +6848,156 @@
         return generateSVGFromShapes(shapes, colorMode);
     }
 
-    function generateSVGFromShapes(sourceShapes, colorMode = "original") {
-        const artwork = [];
+    
+function generateSVGFromShapes(sourceShapes, colorMode = "original") {
+    const artwork = [];
 
-        sourceShapes.forEach(shape => {
-            if (shape.hidden) return;
+    sourceShapes.forEach(shape => {
+        if (shape.hidden) return;
 
-            let strokeColor = shape.color;
-            if (colorMode === "white") strokeColor = "#FFFFFF";
-            else if (colorMode === "black") strokeColor = "#000000";
-            else if (colorMode === "accent") strokeColor = document.body.getAttribute("data-accent") || "#ff0077";
+        let strokeColor = shape.color;
 
-            if (shape.type === "line") {
-                artwork.push(`    <line x1="${formatSVGNumber(shape.x1)}" y1="${formatSVGNumber(shape.y1)}" x2="${formatSVGNumber(shape.x2)}" y2="${formatSVGNumber(shape.y2)}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.width)}" stroke-linecap="${shape.cap || "round"}"/>`);
-            } else if (shape.type === "curve") {
-                const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
-                const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
-                const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
-                const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
+        if (colorMode === "white") strokeColor = "#FFFFFF";
+        else if (colorMode === "black") strokeColor = "#000000";
+        else if (colorMode === "accent") {
+            strokeColor = document.body.getAttribute("data-accent") || "#ff0077";
+        }
 
-                let delta = shape.endAngle - shape.startAngle;
-                while (delta < 0) delta += Math.PI * 2;
-                while (delta >= Math.PI * 2) delta -= Math.PI * 2;
-                const largeArc = delta > Math.PI ? 1 : 0;
+        // Keep fill consistent with the selected export color
+        let fillColor = shape.fill || "none";
 
-                const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} 1 ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
-                artwork.push(`    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`);
-            } else if (shape.type === "ellipse-arc") {
-                const start = getEllipseArcPoint(shape, shape.startAngle);
-                const end = getEllipseArcPoint(shape, shape.endAngle);
+        if (fillColor !== "none" && colorMode !== "original") {
+            fillColor = strokeColor;
+        }
 
-                let delta = shape.endAngle - shape.startAngle;
+        if (shape.type === "line") {
 
-                while (delta < 0) delta += Math.PI * 2;
-                while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+            artwork.push(
+                `    <line x1="${formatSVGNumber(shape.x1)}" y1="${formatSVGNumber(shape.y1)}" x2="${formatSVGNumber(shape.x2)}" y2="${formatSVGNumber(shape.y2)}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.width)}" stroke-linecap="${shape.cap || "round"}"/>`
+            );
 
-                const largeArc = delta > Math.PI ? 1 : 0;
+        } else if (shape.type === "curve") {
 
-                const rotationDegrees =
-                    (shape.rotation || 0) * 180 / Math.PI;
+            const startX = shape.cx + shape.radius * Math.cos(shape.startAngle);
+            const startY = shape.cy + shape.radius * Math.sin(shape.startAngle);
+            const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
+            const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
 
-                const sweep = shape.sweepFlag ?? 1;
+            let delta = shape.endAngle - shape.startAngle;
 
-                const pathD =
-                    `M ${formatSVGNumber(start.x)} ${formatSVGNumber(start.y)} ` +
-                    `A ${formatSVGNumber(shape.rx)} ${formatSVGNumber(shape.ry)} ` +
-                    `${formatSVGNumber(rotationDegrees)} ${largeArc} ${sweep} ` +
-                    `${formatSVGNumber(end.x)} ${formatSVGNumber(end.y)}`;
+            while (delta < 0) delta += Math.PI * 2;
+            while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+
+            const largeArc = delta > Math.PI ? 1 : 0;
+
+            const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} 1 ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
+
+            artwork.push(
+                `    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`
+            );
+
+        } else if (shape.type === "ellipse-arc") {
+
+            const start = getEllipseArcPoint(shape, shape.startAngle);
+            const end = getEllipseArcPoint(shape, shape.endAngle);
+
+            let delta = shape.endAngle - shape.startAngle;
+
+            while (delta < 0) delta += Math.PI * 2;
+            while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+
+            const largeArc = delta > Math.PI ? 1 : 0;
+
+            const rotationDegrees =
+                (shape.rotation || 0) * 180 / Math.PI;
+
+            const sweep = shape.sweepFlag ?? 1;
+
+            const pathD =
+                `M ${formatSVGNumber(start.x)} ${formatSVGNumber(start.y)} ` +
+                `A ${formatSVGNumber(shape.rx)} ${formatSVGNumber(shape.ry)} ` +
+                `${formatSVGNumber(rotationDegrees)} ${largeArc} ${sweep} ` +
+                `${formatSVGNumber(end.x)} ${formatSVGNumber(end.y)}`;
+
+            artwork.push(
+                `    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`
+            );
+
+        } else if (shape.type === "path") {
+
+            // Imported SVG path: preserve its original Bézier geometry
+            if (typeof shape.svgPathData === "string") {
+
+                const transform =
+                    shape.offsetX || shape.offsetY
+                        ? ` transform="translate(${formatSVGNumber(shape.offsetX || 0)} ${formatSVGNumber(shape.offsetY || 0)})"`
+                        : "";
 
                 artwork.push(
-                    `    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`
+                    `    <path d="${shape.svgPathData}"${transform} fill="${fillColor}" fill-rule="evenodd" stroke="${strokeColor || "none"}" stroke-width="${formatSVGNumber(shape.strokeWidth || 2)}" stroke-linecap="round" stroke-linejoin="round"/>`
                 );
-            } else if (shape.type === "path") {
 
-                // Imported SVG path: preserve its original Bézier geometry
-                if (typeof shape.svgPathData === "string") {
+            } else {
 
-                    const transform =
-                        shape.offsetX || shape.offsetY
-                            ? ` transform="translate(${formatSVGNumber(shape.offsetX || 0)} ${formatSVGNumber(shape.offsetY || 0)})"`
-                            : "";
+                const hasHoles = shape.holes && shape.holes.length > 0;
+                const outerPathData = createPathData(shape.points, shape.curved);
 
-                    artwork.push(
-                        `    <path d="${shape.svgPathData}"${transform} fill="${shape.fill || "none"}" fill-rule="evenodd" stroke="${strokeColor || "none"}" stroke-width="${formatSVGNumber(shape.strokeWidth || 2)}" stroke-linecap="round" stroke-linejoin="round"/>`
-                    );
+                if (hasHoles) {
+
+                    const parts = getPathParts(shape);
+
+                    const compoundPathData = parts.map(item =>
+                        createPathData(item.points, item.curved)
+                    ).join(" ");
+
+                    if (shape.fill && shape.fill !== "none") {
+                        artwork.push(
+                            `    <path d="${compoundPathData}" fill="${fillColor}" fill-rule="evenodd" stroke="none"/>`
+                        );
+                    }
+
+                    if (shape.strokeWidth && strokeColor && strokeColor !== "none") {
+                        artwork.push(
+                            `    <path d="${compoundPathData}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round"/>`
+                        );
+                    }
 
                 } else {
 
-                    const hasHoles = shape.holes && shape.holes.length > 0;
-                    const outerPathData = createPathData(shape.points, shape.curved);
+                    artwork.push(
+                        `    <path d="${outerPathData}" fill="${fillColor}" fill-rule="evenodd" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round"/>`
+                    );
 
-                    if (hasHoles) {
-                        const parts = getPathParts(shape);
-                        const compoundPathData = parts.map(item =>
-                            createPathData(item.points, item.curved)
-                        ).join(" ");
-
-                        if (shape.fill && shape.fill !== "none") {
-                            artwork.push(
-                                `    <path d="${compoundPathData}" fill="${shape.fill}" fill-rule="evenodd" stroke="none"/>`
-                            );
-                        }
-
-                        if (shape.strokeWidth && strokeColor && strokeColor !== "none") {
-                            artwork.push(
-                                `    <path d="${compoundPathData}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round"/>`
-                            );
-                        }
-
-                    } else {
-                        artwork.push(
-                            `    <path d="${outerPathData}" fill="${shape.fill || "none"}" fill-rule="evenodd" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round"/>`
-                        );
-                    }
                 }
-            } else if (shape.type === "circle") {
-                artwork.push(`    <circle cx="${formatSVGNumber(shape.cx)}" cy="${formatSVGNumber(shape.cy)}" r="${formatSVGNumber(shape.radius)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`);
-            } else if (shape.type === "ellipse") {
-                artwork.push(
-                    `    <ellipse cx="${formatSVGNumber(shape.cx)}" cy="${formatSVGNumber(shape.cy)}" rx="${formatSVGNumber(shape.rx)}" ry="${formatSVGNumber(shape.ry)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`
-                );
-            } else if (shape.type === "rectangle") {
-                artwork.push(`    <rect x="${formatSVGNumber(shape.x)}" y="${formatSVGNumber(shape.y)}" width="${formatSVGNumber(shape.width)}" height="${formatSVGNumber(shape.height)}" rx="${formatSVGNumber(shape.cornerRadius || 0)}" ry="${formatSVGNumber(shape.cornerRadius || 0)}" fill="${shape.fill || "none"}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`);
             }
-        });
 
-        return [
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${artboardSize}" height="${artboardSize}" viewBox="0 0 ${artboardSize} ${artboardSize}">`,
-            artwork.join("\n"),
-            `</svg>`
-        ].join("\n");
-    }
+        } else if (shape.type === "circle") {
+
+            artwork.push(
+                `    <circle cx="${formatSVGNumber(shape.cx)}" cy="${formatSVGNumber(shape.cy)}" r="${formatSVGNumber(shape.radius)}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`
+            );
+
+        } else if (shape.type === "ellipse") {
+
+            artwork.push(
+                `    <ellipse cx="${formatSVGNumber(shape.cx)}" cy="${formatSVGNumber(shape.cy)}" rx="${formatSVGNumber(shape.rx)}" ry="${formatSVGNumber(shape.ry)}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`
+            );
+
+        } else if (shape.type === "rectangle") {
+
+            artwork.push(
+                `    <rect x="${formatSVGNumber(shape.x)}" y="${formatSVGNumber(shape.y)}" width="${formatSVGNumber(shape.width)}" height="${formatSVGNumber(shape.height)}" rx="${formatSVGNumber(shape.cornerRadius || 0)}" ry="${formatSVGNumber(shape.cornerRadius || 0)}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}"/>`
+            );
+
+        }
+    });
+
+    return [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${artboardSize}" height="${artboardSize}" viewBox="0 0 ${artboardSize} ${artboardSize}">`,
+        artwork.join("\n"),
+        `</svg>`
+    ].join("\n");
+}
 
     function updateSVGSource() {
         if (!svgCode) return;
@@ -8572,8 +8670,8 @@
         }
 
         updateGlobalCustomizationState(false);
-updateProjectCounters();
-}
+        updateProjectCounters();
+    }
 
     function updateHomeProjectSelection() {
         document.querySelectorAll(".home-project-card").forEach(card => {

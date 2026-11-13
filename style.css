@@ -152,6 +152,7 @@ body.light-theme {
     --shadow-popover: 0 16px 40px -8px rgba(15, 23, 42, 0.15), 0 0 0 1px var(--border-default);
 }
 
+
 /* Light Theme Gallery & Preview Overrides */
 body.light-theme .home-project-card {
     background: rgba(243, 244, 246, 0.88);
@@ -165,9 +166,7 @@ body.light-theme .home-project-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.09);
 }
 
-body.light-theme {
-    --gallery-icon-stroke: #0a0a0a !important;
-}
+
 
 body.light-theme .home-project-preview svg,
 body.light-theme .home-project-preview img {
@@ -790,10 +789,29 @@ body[data-accent="#a6ff00"] .btn-finish:hover {
     border-color: var(--border-strong);
 }
 
+/* Light theme */
+body.light-theme #reset-global-customization {
+    background: #d1d5db;
+    border-color: #9ca3af;
+}
+
+body.light-theme #reset-global-customization:hover {
+    background: #bfc5ce;
+    border-color: #9ca3af;
+}
+
+#reset-global-customization:hover {
+    background: var(--bg-surface-hover);
+    border-color: var(--border-strong);
+}
+
 #reset-global-customization.is-rotating img {
     animation: spin 0.45s ease-out;
 }
-
+body.light-theme #reset-global-customization img {
+    filter: brightness(0) saturate(100%);
+    opacity: 0.65;
+}
 @keyframes spin {
     from {
         transform: rotate(0deg);
@@ -3610,4 +3628,27 @@ select {
     height: 16px;
     object-fit: contain;
     display: block;
+}
+/* =========================================
+   LIGHT THEME - BLACK ICON PREVIEWS
+========================================= */
+
+/* Editor artwork */
+body.light-theme #workspace .svg-artwork {
+    stroke: #000000 !important;
+}
+
+/* Only filled artwork should receive a black fill */
+body.light-theme #workspace .svg-artwork[fill]:not([fill="none"]) {
+    fill: #000000 !important;
+}
+
+/* Home and Gallery icon previews */
+body.light-theme .home-project-preview svg {
+    filter: brightness(0);
+}
+
+/* Project details preview */
+body.light-theme #project-preview-image {
+    filter: brightness(0);
 }
