@@ -1292,13 +1292,13 @@ function getSelectedFinishCategories() {
                 if (project.status !== "finished") return;
 
                 if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
-                    if (Array.isArray(project.categories) && project.categories.length &&
-                        project.categorySource === "manual") {
+                    if (Array.isArray(project.categories) && project.categories.length) {
+                        // Before this migration, categories[] was populated by the
+                        // Finish dialog, so preserve the user's multi-select choices.
                         project.manualCategories = [...new Set(project.categories.filter(Boolean))];
                     } else if ((!Array.isArray(project.autoCategories) || !project.autoCategories.length) &&
                                project.category && project.category !== "General" &&
                                project.category !== "Uncategorized") {
-                        // Preserve legacy single-category assignments.
                         project.manualCategories = [project.category];
                     }
                 }
