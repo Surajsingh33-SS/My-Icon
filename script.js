@@ -8,6 +8,123 @@
 (function () {
     "use strict";
 
+    // =====================================
+        // CUSTOM STYLED SELECT DROPDOWNS
+        // =====================================
+
+        function createStyledDropdown(select, type) {
+            if (!select) return null;
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "styled-select";
+            wrapper.dataset.select = type;
+
+            const trigger = document.createElement("button");
+            trigger.type = "button";
+            trigger.className = "styled-select-trigger";
+            trigger.setAttribute("aria-haspopup", "listbox");
+            trigger.setAttribute("aria-expanded", "false");
+
+            const label = document.createElement("span");
+            label.className = "styled-select-label";
+
+            const chevron = document.createElement("span");
+            chevron.className = "styled-select-chevron";
+            chevron.setAttribute("aria-hidden", "true");
+
+            trigger.append(label, chevron);
+
+            const menu = document.createElement("div");
+            menu.className = "styled-select-menu";
+            menu.setAttribute("role", "listbox");
+
+            function close() {
+                wrapper.classList.remove("open");
+                trigger.setAttribute("aria-expanded", "false");
+            }
+
+            function refresh() {
+                label.textContent =
+                    select.selectedOptions[0]?.textContent || "";
+
+                menu.innerHTML = "";
+
+                Array.from(select.options).forEach(option => {
+                    const item = document.createElement("button");
+
+                    item.type = "button";
+                    item.className = "styled-select-option";
+                    item.setAttribute("role", "option");
+                    item.setAttribute(
+                        "aria-selected",
+                        String(option.value === select.value)
+                    );
+
+                    item.textContent = option.textContent;
+
+                    if (option.value === select.value) {
+                        item.classList.add("selected");
+                    }
+
+                    item.addEventListener("click", () => {
+                        select.value = option.value;
+
+                        close();
+                        refresh();
+
+                        // Keep the original select's existing change listeners working.
+                        select.dispatchEvent(
+                            new Event("change", { bubbles: true })
+                        );
+                    });
+
+                    menu.appendChild(item);
+                });
+            }
+
+            trigger.addEventListener("click", event => {
+                event.stopPropagation();
+
+                const shouldOpen = !wrapper.classList.contains("open");
+
+                // Close any other custom dropdown first.
+                document.querySelectorAll(".styled-select.open").forEach(openDropdown => {
+                    if (openDropdown !== wrapper) {
+                        openDropdown.classList.remove("open");
+
+                        openDropdown
+                            .querySelector(".styled-select-trigger")
+                            ?.setAttribute("aria-expanded", "false");
+                    }
+                });
+
+                wrapper.classList.toggle("open", shouldOpen);
+                trigger.setAttribute("aria-expanded", String(shouldOpen));
+            });
+
+            // Close when clicking outside this dropdown.
+            document.addEventListener("click", event => {
+                if (!wrapper.contains(event.target)) {
+                    close();
+                }
+            });
+
+            // Close when Escape is pressed.
+            document.addEventListener("keydown", event => {
+                if (event.key === "Escape") {
+                    close();
+                }
+            });
+
+            wrapper.append(trigger, menu);
+
+            select.insertAdjacentElement("afterend", wrapper);
+            select.classList.add("native-select-hidden");
+
+            refresh();
+
+            return { refresh, close };
+        }
     // ========================================================================
     // 1. CONSTANTS & DOM REFERENCES
     // ========================================================================
@@ -114,6 +231,15 @@
     const clearSearchBtn = document.getElementById("clear-search-btn");
     const homeCategorySelect = document.getElementById("home-category-select");
     const homeSortSelect = document.getElementById("home-sort-select");
+    const homeCategoryDropdown = createStyledDropdown(
+        homeCategorySelect,
+        "category"
+    );
+
+    const homeSortDropdown = createStyledDropdown(
+        homeSortSelect,
+        "sort"
+    );
     const homeProjectGrid = document.getElementById("home-project-grid");
     const homeViewToggleBtns = document.querySelectorAll(".home-view-toggle button");
     const homeTabs = document.querySelectorAll(".home-nav-option");
@@ -400,9 +526,9 @@
         const isLight = theme === "light";
         document.body.classList.toggle("light-theme", isLight);
 
-        if (themeToggleKnob) {
-            themeToggleKnob.textContent = isLight ? "☀" : "☾";
-        }
+        themeToggleKnob.innerHTML = isLight
+    ? '<img src="assets/icons/sun-fill.svg" alt="Sun">'
+    : '<img src="assets/icons/moon-fill.svg" alt="Moon">';
 
         if (themeToggle) {
             themeToggle.setAttribute("aria-label", isLight ? "Switch to dark theme" : "Switch to light theme");
@@ -462,6 +588,27 @@
         const safeColor = ALLOWED_ACCENTS.includes(normalizedColor) ? normalizedColor : DEFAULT_ACCENT;
 
         document.body.setAttribute("data-accent", safeColor);
+        // Choose readable tooltip text based on accent brightness.
+        const hex = safeColor.replace("#", "");
+
+        const r = parseInt(hex.substring(0, 2), 16) / 255;
+        const g = parseInt(hex.substring(2, 4), 16) / 255;
+        const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+        const linearize = value =>
+            value <= 0.04045
+                ? value / 12.92
+                : Math.pow((value + 0.055) / 1.055, 2.4);
+
+        const brightness =
+            0.2126 * linearize(r) +
+            0.7152 * linearize(g) +
+            0.0722 * linearize(b);
+
+        document.documentElement.style.setProperty(
+            "--accent-contrast",
+            brightness > 0.50 ? "#090a0f" : "#ffffff"
+        );
 
         accentSwatches.forEach(swatch => {
             const isActive = swatch.dataset.accent.toLowerCase() === safeColor;
@@ -1630,158 +1777,168 @@
 
 
 
-function reflectShapeData(data, axis) {
-    const reflect = (x, y) =>
-        reflectSymmetryPoint(x, y, axis);
+    function reflectShapeData(data, axis) {
+        const reflect = (x, y) =>
+            reflectSymmetryPoint(x, y, axis);
 
-    const axisAngle = Math.atan2(
-        axis.y2 - axis.y1,
-        axis.x2 - axis.x1
-    );
-
-    if (data.type === "line") {
-        const p1 = reflect(data.x1, data.y1);
-        const p2 = reflect(data.x2, data.y2);
-
-        data.x1 = p1.x;
-        data.y1 = p1.y;
-        data.x2 = p2.x;
-        data.y2 = p2.y;
-    }
-
-    else if (data.type === "curve") {
-        const start = reflect(
-            data.cx + data.radius * Math.cos(data.startAngle),
-            data.cy + data.radius * Math.sin(data.startAngle)
+        const axisAngle = Math.atan2(
+            axis.y2 - axis.y1,
+            axis.x2 - axis.x1
         );
 
-        const end = reflect(
-            data.cx + data.radius * Math.cos(data.endAngle),
-            data.cy + data.radius * Math.sin(data.endAngle)
-        );
+        if (data.type === "line") {
+            const p1 = reflect(data.x1, data.y1);
+            const p2 = reflect(data.x2, data.y2);
 
-        const center = reflect(data.cx, data.cy);
+            data.x1 = p1.x;
+            data.y1 = p1.y;
+            data.x2 = p2.x;
+            data.y2 = p2.y;
+        }
 
-        data.cx = center.x;
-        data.cy = center.y;
+        else if (data.type === "curve") {
+            const start = reflect(
+                data.cx + data.radius * Math.cos(data.startAngle),
+                data.cy + data.radius * Math.sin(data.startAngle)
+            );
 
-        data.startAngle = Math.atan2(
-            start.y - center.y,
-            start.x - center.x
-        );
+            const end = reflect(
+                data.cx + data.radius * Math.cos(data.endAngle),
+                data.cy + data.radius * Math.sin(data.endAngle)
+            );
 
-        data.endAngle = Math.atan2(
-            end.y - center.y,
-            end.x - center.x
-        );
-    }
+            const center = reflect(data.cx, data.cy);
 
-    else if (data.type === "ellipse-arc") {
-        const center = reflect(data.cx, data.cy);
+            data.cx = center.x;
+            data.cy = center.y;
 
-        data.cx = center.x;
-        data.cy = center.y;
+            data.startAngle = Math.atan2(
+                start.y - center.y,
+                start.x - center.x
+            );
 
-        data.rotation =
-            2 * axisAngle - (data.rotation || 0);
+            data.endAngle = Math.atan2(
+                end.y - center.y,
+                end.x - center.x
+            );
+            data.sweepFlag = data.sweepFlag === 0 ? 1 : 0;
+        }
 
-        data.startAngle = -data.startAngle;
-        data.endAngle = -data.endAngle;
+        else if (data.type === "ellipse-arc") {
+            const center = reflect(data.cx, data.cy);
 
-        data.sweepFlag = data.sweepFlag === 0 ? 1 : 0;
-    }
+            data.cx = center.x;
+            data.cy = center.y;
 
-    else if (
-        data.type === "circle" ||
-        data.type === "ellipse"
-    ) {
-        const center = reflect(data.cx, data.cy);
+            data.rotation =
+                2 * axisAngle - (data.rotation || 0);
 
-        data.cx = center.x;
-        data.cy = center.y;
-    }
+            data.startAngle = -data.startAngle;
+            data.endAngle = -data.endAngle;
 
-    else if (data.type === "rectangle") {
-        const center = reflect(
-            data.x + data.width / 2,
-            data.y + data.height / 2
-        );
+            data.sweepFlag = data.sweepFlag === 0 ? 1 : 0;
+        }
 
-        data.x = center.x - data.width / 2;
-        data.y = center.y - data.height / 2;
-    }
+        else if (
+            data.type === "circle" ||
+            data.type === "ellipse"
+        ) {
+            const center = reflect(data.cx, data.cy);
 
-    else if (data.type === "path") {
+            data.cx = center.x;
+            data.cy = center.y;
+        }
 
-        // Normal editable paths
-        data.points = (data.points || []).map(point =>
-            reflect(point.x, point.y)
-        );
+        else if (data.type === "rectangle") {
+            const center = reflect(
+                data.x + data.width / 2,
+                data.y + data.height / 2
+            );
 
-        data.holes = (data.holes || []).map(hole => {
-            const points = Array.isArray(hole)
-                ? hole
-                : hole.points;
+            data.x = center.x - data.width / 2;
+            data.y = center.y - data.height / 2;
+        }
 
-            const reflected = (points || []).map(point =>
+        else if (data.type === "path") {
+            // Reflect the Bézier path's movement offset.
+            const offsetOrigin = reflect(0, 0);
+            const offsetPoint = reflect(
+                data.offsetX || 0,
+                data.offsetY || 0
+            );
+
+            data.offsetX = offsetPoint.x - offsetOrigin.x;
+            data.offsetY = offsetPoint.y - offsetOrigin.y;
+
+            // Normal editable paths
+            data.points = (data.points || []).map(point =>
                 reflect(point.x, point.y)
             );
 
-            return Array.isArray(hole)
-                ? reflected
-                : { ...hole, points: reflected };
-        });
+            data.holes = (data.holes || []).map(hole => {
+                const points = Array.isArray(hole)
+                    ? hole
+                    : hole.points;
 
-        // SVG paths, including Bézier curves
-        if (Array.isArray(data.svgEditableSegments)) {
+                const reflected = (points || []).map(point =>
+                    reflect(point.x, point.y)
+                );
 
-            data.svgEditableSegments.forEach(segment => {
+                return Array.isArray(hole)
+                    ? reflected
+                    : { ...hole, points: reflected };
+            });
 
-                const coordinatePairs = [
-                    ["x", "y"],
-                    ["x1", "y1"],
-                    ["cx", "cy"],
-                    ["cx1", "cy1"],
-                    ["cx2", "cy2"]
-                ];
+            // SVG paths, including Bézier curves
+            if (Array.isArray(data.svgEditableSegments)) {
 
-                coordinatePairs.forEach(([xKey, yKey]) => {
-                    if (
-                        typeof segment[xKey] === "number" &&
-                        typeof segment[yKey] === "number"
-                    ) {
-                        const point = reflect(
-                            segment[xKey],
-                            segment[yKey]
-                        );
+                data.svgEditableSegments.forEach(segment => {
 
-                        segment[xKey] = point.x;
-                        segment[yKey] = point.y;
+                    const coordinatePairs = [
+                        ["x", "y"],
+                        ["x1", "y1"],
+                        ["cx", "cy"],
+                        ["cx1", "cy1"],
+                        ["cx2", "cy2"]
+                    ];
+
+                    coordinatePairs.forEach(([xKey, yKey]) => {
+                        if (
+                            typeof segment[xKey] === "number" &&
+                            typeof segment[yKey] === "number"
+                        ) {
+                            const point = reflect(
+                                segment[xKey],
+                                segment[yKey]
+                            );
+
+                            segment[xKey] = point.x;
+                            segment[yKey] = point.y;
+                        }
+                    });
+
+                    // SVG elliptical arc segments
+                    if (segment.type === "arc") {
+                        segment.rotation =
+                            2 * axisAngle - (segment.rotation || 0);
+
+                        segment.sweep = segment.sweep === 0 ? 1 : 0;
                     }
                 });
 
-                // SVG elliptical arc segments
-                if (segment.type === "arc") {
-                    segment.rotation =
-                        2 * axisAngle - (segment.rotation || 0);
+                // Rebuild the SVG path from its reflected segments
+                data.svgPathData = serializeSVGSegments(
+                    data.svgEditableSegments
+                );
 
-                    segment.sweep = segment.sweep === 0 ? 1 : 0;
-                }
-            });
-
-            // Rebuild the SVG path from its reflected segments
-            data.svgPathData = serializeSVGSegments(
-                data.svgEditableSegments
-            );
-
-            data.svgAnchors = buildSVGAnchorMap(
-                data.svgEditableSegments
-            );
+                data.svgAnchors = buildSVGAnchorMap(
+                    data.svgEditableSegments
+                );
+            }
         }
-    }
 
-    return data;
-}
+        return data;
+    }
 
 
 
@@ -1883,13 +2040,6 @@ function reflectShapeData(data, axis) {
         if (members.length <= 1) return;
 
         const sourceData = getShapeData(editedShape);
-
-        if (
-            sourceData.type === "path" &&
-            typeof sourceData.svgPathData === "string"
-        ) {
-            return;
-        }
 
         isSyncingSymmetryGroup = true;
 
@@ -2107,6 +2257,7 @@ function reflectShapeData(data, axis) {
             color: color,
             strokeWidth: 2,
             hidden: false,
+            sweepFlag: 1,
             locked: false,
 
             element: path,
@@ -2325,12 +2476,12 @@ function reflectShapeData(data, axis) {
 
         shapes.push(shape);
 
-updateEllipseArc(shape);
-selectShape(shape);
+        updateEllipseArc(shape);
+        selectShape(shape);
 
-applyLiveSymmetry(shape);
+        applyLiveSymmetry(shape);
 
-return shape;
+        return shape;
     }
     function getEllipseArcPoint(shape, angle) {
         const rotation = shape.rotation || 0;
@@ -2386,19 +2537,19 @@ return shape;
         shape.helperGuides[4].setAttribute("y2", end.y);
 
 
-const sweep = shape.sweepFlag ?? 1;
+        const sweep = shape.sweepFlag ?? 1;
 
-let delta = shape.endAngle - shape.startAngle;
+        let delta = shape.endAngle - shape.startAngle;
 
-if (sweep === 1) {
-    while (delta < 0) delta += Math.PI * 2;
-    while (delta >= Math.PI * 2) delta -= Math.PI * 2;
-} else {
-    while (delta > 0) delta -= Math.PI * 2;
-    while (delta <= -Math.PI * 2) delta += Math.PI * 2;
-}
+        if (sweep === 1) {
+            while (delta < 0) delta += Math.PI * 2;
+            while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+        } else {
+            while (delta > 0) delta -= Math.PI * 2;
+            while (delta <= -Math.PI * 2) delta += Math.PI * 2;
+        }
 
-const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
+        const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
 
 
         const d =
@@ -2619,6 +2770,7 @@ const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
             }
 
             updateSVGSource();
+            syncSymmetryGroup(shape); syncSymmetryGroup(shape);
 
             return;
         }
@@ -2725,16 +2877,16 @@ const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
         };
 
         workspace.appendChild(element);
-shapes.push(shape);
+        shapes.push(shape);
 
-updatePathShape(shape);
-selectShape(shape);
+        updatePathShape(shape);
+        selectShape(shape);
 
-applyLiveSymmetry(shape);
+        applyLiveSymmetry(shape);
 
-updateSVGSource();
+        updateSVGSource();
 
-return shape;
+        return shape;
     }
 
     function finishPath() {
@@ -3324,18 +3476,6 @@ return shape;
     }
 
 
-    function createSVGSegmentHitPath(segment) {
-        const d = `M ${segment.x1} ${segment.y1} ${segment.type === "arc"
-            ? `A ${segment.rx} ${segment.ry} ${segment.rotation} ${segment.largeArc} ${segment.sweep} ${segment.x} ${segment.y}`
-            : segment.type === "cubic" || segment.type === "smooth-cubic"
-                ? `C ${segment.cx1} ${segment.cy1} ${segment.cx2} ${segment.cy2} ${segment.x} ${segment.y}`
-                : segment.type === "quadratic" || segment.type === "smooth-quadratic"
-                    ? `Q ${segment.cx} ${segment.cy} ${segment.x} ${segment.y}`
-                    : `L ${segment.x} ${segment.y}`
-            }`;
-
-        return d;
-    }
     // Path Vertex Handles (Allows Direct Vertex Editing on Canvas)
 
     function updatePathHandles(shape) {
@@ -3350,35 +3490,7 @@ return shape;
         // Imported SVG path: render one handle per unique anchor.
         if (Array.isArray(shape.svgEditableSegments)) {
             shape.svgAnchors ||= buildSVGAnchorMap(shape.svgEditableSegments);
-            // Create an invisible selectable path for every SVG segment.
-            shape.svgEditableSegments.forEach(segment => {
-                if (segment.type === "move") return;
 
-                const hitPath = document.createElementNS(SVG_NS, "path");
-
-                hitPath.setAttribute("d", createSVGSegmentHitPath(segment));
-                hitPath.setAttribute("fill", "none");
-                hitPath.setAttribute(
-                    "stroke",
-                    shape.selectedSegmentId === segment.id
-                        ? "#FBBF24"
-                        : "transparent"
-                );
-                hitPath.setAttribute("stroke-width", "1.5");
-                hitPath.setAttribute("stroke-linecap", "round");
-                hitPath.setAttribute("stroke-linejoin", "round");
-                hitPath.setAttribute("pointer-events", "stroke");
-                hitPath.setAttribute(
-                    "transform",
-                    `translate(${shape.offsetX || 0} ${shape.offsetY || 0})`
-                );
-
-                hitPath.classList.add("svg-segment-hit-area");
-                hitPath.dataset.segmentId = segment.id;
-
-                workspace.appendChild(hitPath);
-                shape.handles.push(hitPath);
-            });
 
             shape.svgAnchors.forEach(anchor => {
                 const x = anchor.x + (shape.offsetX || 0);
@@ -3641,7 +3753,7 @@ return shape;
         const largeArc = delta > Math.PI ? 1 : 0;
 
         const curvePath =
-            `M ${startX} ${startY} A ${shape.radius} ${shape.radius} 0 ${largeArc} 1 ${endX} ${endY}`;
+            `M ${startX} ${startY} A ${shape.radius} ${shape.radius} 0 ${largeArc} ${shape.sweepFlag ?? 1} ${endX} ${endY}`;
 
         // Main curve
         shape.element.setAttribute("d", curvePath);
@@ -4446,10 +4558,42 @@ return shape;
                 bottom: Math.max(...ys)
             };
         }
-        if (shape.type === "path" && shape.points?.length) {
-            const xs = shape.points.map(p => p.x);
-            const ys = shape.points.map(p => p.y);
-            return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) };
+        if (shape.type === "path") {
+
+            // Imported SVG paths, including Bézier curves.
+            if (
+                typeof shape.svgPathData === "string" &&
+                shape.element?.getBBox
+            ) {
+                try {
+                    const bounds = shape.element.getBBox();
+
+                    const offsetX = shape.offsetX || 0;
+                    const offsetY = shape.offsetY || 0;
+
+                    return {
+                        left: bounds.x + offsetX,
+                        right: bounds.x + bounds.width + offsetX,
+                        top: bounds.y + offsetY,
+                        bottom: bounds.y + bounds.height + offsetY
+                    };
+                } catch (error) {
+                    // Fall through to regular path bounds.
+                }
+            }
+
+            // Regular paths.
+            if (shape.points?.length) {
+                const xs = shape.points.map(p => p.x);
+                const ys = shape.points.map(p => p.y);
+
+                return {
+                    left: Math.min(...xs),
+                    right: Math.max(...xs),
+                    top: Math.min(...ys),
+                    bottom: Math.max(...ys)
+                };
+            }
         }
         return null;
     }
@@ -4596,46 +4740,10 @@ return shape;
         const hitArea = event.target.closest(".edit-hit-area");
         const basicHit = event.target.closest(".basic-hit-area");
         const vertexHit = event.target.closest(".path-vertex-hit-area");
-        const svgSegmentHit = event.target.closest(".svg-segment-hit-area");
         const svgAnchorHit = event.target.closest(".svg-anchor-hit-area");
         const svgControlHit = event.target.closest(".svg-control-hit-area");
 
-        // Individual imported SVG segment selection
-        // Individual imported SVG segment selection
-        if (svgSegmentHit) {
-            const shape = shapes.find(s =>
-                s.type === "path" &&
-                s.handles?.includes(svgSegmentHit)
-            );
 
-            if (!shape) return;
-
-            const segmentId = svgSegmentHit.dataset.segmentId;
-
-            const segment = shape.svgEditableSegments.find(
-                item => item.id === segmentId
-            );
-
-            if (!segment) return;
-
-            // Remember which segment is selected.
-            shape.selectedSegmentId = segmentId;
-
-            // Select the shape. This rebuilds its handles.
-            selectShape(shape);
-
-            // Find the newly created hit area for the same segment.
-            const newHitArea = shape.handles.find(handle =>
-                handle.classList?.contains("svg-segment-hit-area") &&
-                handle.dataset.segmentId === segmentId
-            );
-
-            if (!newHitArea) return;
-
-
-
-            return;
-        }
 
 
         // Imported SVG control-point dragging
@@ -8293,14 +8401,19 @@ return shape;
         if (homeCategorySelect) {
             const previous = homeCategorySelect.value;
             homeCategorySelect.innerHTML = `<option value="all">All categories</option>`;
+
             sortedCategories.forEach(cat => {
                 const opt = document.createElement("option");
                 opt.value = cat;
                 opt.textContent = `${cat} (${categoryCounts[cat]})`;
                 homeCategorySelect.appendChild(opt);
             });
-            if (sortedCategories.includes(previous)) homeCategorySelect.value = previous;
+
+            if (sortedCategories.includes(previous)) {
+                homeCategorySelect.value = previous;
+            }
         }
+        homeCategoryDropdown?.refresh();
 
         const activeCategory = homeCategorySelect?.value || "all";
         if (selectedCategoryFilter) {
@@ -8458,8 +8571,9 @@ return shape;
             });
         }
 
-        updateProjectCounters();
-    }
+        updateGlobalCustomizationState(false);
+updateProjectCounters();
+}
 
     function updateHomeProjectSelection() {
         document.querySelectorAll(".home-project-card").forEach(card => {
