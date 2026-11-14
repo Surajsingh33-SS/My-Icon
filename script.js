@@ -1237,6 +1237,140 @@
         "weather": "Weather"
     };
 
+    // Additional domain vocabulary maps descriptive metadata to categories,
+    // even when an icon's name is abstract or visually descriptive.
+    const ICON_CATEGORY_METADATA_TERMS = {
+        "Accessibility": ["inclusive", "disability", "assistive technology", "screen reader", "braille", "visual impairment", "hearing impairment", "a11y"],
+        "Accounts & access": ["authentication", "authorization", "identity", "credential", "sign in", "sign out", "register", "avatar", "verification", "account settings"],
+        "Animals": ["animal", "pet", "wildlife", "mammal", "reptile", "amphibian", "insect", "species", "livestock"],
+        "Arrows": ["directional", "direction", "chevron", "back", "forward", "previous", "next", "navigate", "reorder"],
+        "Buildings": ["architecture", "structure", "skyscraper", "residential building", "commercial building", "construction site", "property"],
+        "Charts": ["analytics", "data visualization", "metric", "statistics", "dashboard", "reporting", "measurement", "insights"],
+        "Communication": ["conversation", "messaging", "voice call", "telephone", "speech", "discussion", "broadcast", "announcement"],
+        "Connectivity": ["internet", "wireless", "networking", "connection status", "hotspot", "signal strength", "ethernet"],
+        "Cursors": ["pointer", "mouse", "selection tool", "drag and drop", "click", "hover", "interaction"],
+        "Design": ["illustration", "graphic design", "drawing", "artwork", "creative", "color picker", "vector graphics", "typography"],
+        "Coding & development": ["programming", "developer", "source code", "software", "repository", "version control", "api", "debugging", "deployment", "database"],
+        "Devices": ["hardware", "electronics", "computer", "smartphone", "mobile device", "peripheral", "screen", "display"],
+        "Emoji": ["emoticon", "facial expression", "reaction", "mood", "feeling"],
+        "File icons": ["document", "directory", "storage", "attachment", "file type", "upload", "download", "archive"],
+        "Finance": ["payment", "banking", "transaction", "currency", "investment", "accounting", "billing", "budget", "expense", "income"],
+        "Food & beverage": ["cooking", "beverage", "drink", "dining", "kitchen", "meal", "fruit", "vegetable", "ingredient", "recipe"],
+        "Gaming": ["video game", "arcade", "game controller", "gameplay", "board game", "puzzle game"],
+        "Home": ["household", "furniture", "domestic", "living room", "bedroom", "appliance", "interior"],
+        "Layout": ["user interface", "interface", "ui", "ux", "alignment", "columns", "rows", "responsive layout", "wireframe"],
+        "Letters & digits": ["alphabet", "numeral", "character", "letterform", "number symbol", "alphanumeric"],
+        "Mail": ["email", "inbox", "envelope", "postal", "correspondence", "newsletter", "mailbox"],
+        "Mathematics": ["arithmetic", "equation", "calculation", "geometry", "numeric", "algebra", "fraction", "statistics"],
+        "Medical": ["healthcare", "health care", "clinic", "medicine", "doctor", "patient", "diagnosis", "treatment", "first aid", "wellness"],
+        "Multimedia": ["audio", "video", "playback", "sound", "music", "streaming", "media player", "recording"],
+        "Nature": ["botanical", "plant life", "landscape", "environment", "outdoors", "ecosystem", "earth", "vegetation"],
+        "Navigation & places": ["geolocation", "waypoint", "map", "mapping", "compass", "destination", "coordinates", "landmark", "route"],
+        "Notifications": ["alert", "reminder", "warning", "status update", "attention", "system message", "announcement"],
+        "People": ["human", "person", "avatar", "community", "group", "team", "crowd", "relationship"],
+        "Photography": ["photograph", "camera", "lens", "picture", "image capture", "exposure", "aperture", "snapshot"],
+        "Science": ["scientific", "laboratory", "experiment", "chemistry", "physics", "biology", "research", "specimen"],
+        "Seasons": ["seasonal", "springtime", "summertime", "autumn", "fall", "wintertime"],
+        "Security": ["privacy", "protection", "encryption", "secure", "authentication", "authorization", "permission", "access control", "firewall"],
+        "Shapes": ["geometric", "geometry", "polygon", "symmetry", "dimension", "outline", "contour"],
+        "Shopping": ["ecommerce", "e commerce", "retail", "store", "product", "checkout", "purchase", "order", "delivery"],
+        "Social": ["social network", "sharing", "community", "reaction", "like", "follow", "friend", "engagement"],
+        "Sports": ["athletic", "sport", "competition", "team sport", "ball game", "training", "tournament"],
+        "Sustainability": ["renewable energy", "green energy", "recycling", "climate", "eco friendly", "environmental", "carbon", "solar power"],
+        "Text formatting": ["typography", "text style", "formatting", "font", "paragraph", "alignment", "rich text"],
+        "Time & calendar": ["date", "schedule", "duration", "timeline", "calendar", "deadline", "reminder", "stopwatch"],
+        "Tools": ["utility", "configuration", "settings", "adjustment", "maintenance", "repair", "wrench", "gear"],
+        "Transportation": ["vehicle", "transit", "road", "automotive", "commute", "public transport", "rail", "aviation"],
+        "Travel": ["tourism", "luggage", "hotel", "destination", "accommodation", "vacation", "journey", "booking"],
+        "Weather": ["forecast", "temperature", "precipitation", "climate", "meteorology", "humidity", "wind speed"]
+    };
+
+    const CATEGORY_ANALYSIS_VERSION = 2;
+    function categoryText(value) {
+        return String(value || "").toLowerCase()
+            .replace(/([a-z])([A-Z])/g, "$1 $2")
+            .replace(/[_-]+/g, " ").replace(/[^a-z0-9]+/g, " ")
+            .replace(/\\s+/g, " ").trim();
+    }
+
+    function categoryValues(values, mapper = value => value) {
+        if (!Array.isArray(values)) return [];
+        return values.map(value => mapper(value))
+            .map(value => String(value || "").trim()).filter(Boolean);
+    }
+
+    function categoryPhraseMatches(source, keyword) {
+        const text = " " + categoryText(source) + " ";
+        const phrase = " " + categoryText(keyword) + " ";
+        return phrase.length > 2 && text.includes(phrase);
+    }
+
+    function classifyIconCategories(iconName, baseRecord, review = null) {
+        const lucide = baseRecord?.lucide || {};
+        const ai = baseRecord?.ai || {};
+        const edits = review?.metadataEdits || {};
+        const officialRaw = Array.isArray(lucide.categories) ? lucide.categories : [];
+        const official = normalizeCategoryList(officialRaw.map(value => {
+            const key = categoryText(value);
+            return LUCIDE_CATEGORY_MAP[key] || null;
+        }));
+        const aliases = [
+            ...categoryValues(lucide.aliases, value => typeof value === "object" ? (value.name || value.alias || "") : value),
+            ...categoryValues(edits.aliases, value => typeof value === "object" ? (value.name || value.alias || "") : value)
+        ];
+        const sources = [
+            { label: "icon name", weight: 1, values: [iconName] },
+            { label: "official tags", weight: 0.86, values: [...categoryValues(lucide.tags), ...categoryValues(edits.tags)] },
+            { label: "use cases", weight: 0.88, values: [...categoryValues(lucide.useCases), ...categoryValues(edits.useCases)] },
+            { label: "aliases", weight: 0.76, values: aliases },
+            { label: "search terms", weight: 0.68, values: [...categoryValues(ai.searchTerms), ...categoryValues(edits.searchTerms)] },
+            { label: "description", weight: 0.34, values: [edits.description || ai.description || ""] }
+        ].filter(source => source.values.length);
+
+        const ranked = [];
+        Object.entries(ICON_CATEGORY_KEYWORDS).forEach(([rawCategory, baseKeywords]) => {
+            const keywords = [...new Set([...baseKeywords, ...(ICON_CATEGORY_METADATA_TERMS[rawCategory] || [])])];
+            const category = resolveCategoryName(rawCategory);
+            if (!category) return;
+            let strongest = 0;
+            const evidence = [];
+            sources.forEach(source => {
+                const hits = keywords.filter(keyword => source.values.some(value => categoryPhraseMatches(value, keyword)));
+                if (!hits.length) return;
+                const specificity = hits.some(hit => categoryText(hit).includes(" ")) ? 1 : 0.94;
+                strongest = Math.max(strongest, source.weight * specificity);
+                hits.slice(0, 3).forEach(hit => evidence.push(source.label + ": " + hit));
+            });
+            if (official.includes(category)) strongest = Math.max(strongest, 1);
+            const independentSources = new Set(evidence.map(item => item.split(":")[0])).size;
+            if (independentSources >= 2 && strongest > 0) strongest = Math.min(0.99, strongest + 0.08);
+            if (strongest >= 0.60) ranked.push({
+                name: category,
+                score: Number(strongest.toFixed(2)),
+                evidence: [...new Set(evidence)].slice(0, 5),
+                source: official.includes(category) ? "Lucide + metadata" : "metadata"
+            });
+        });
+
+        const byName = new Map();
+        [...ranked, ...official.map(name => ({ name, score: 1, evidence: ["Official Lucide category"], source: "Lucide" }))]
+            .forEach(item => {
+                const key = item.name.toLowerCase();
+                const current = byName.get(key);
+                if (!current || item.score > current.score) byName.set(key, item);
+            });
+        const ordered = [...byName.values()].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+        const suggestions = ordered.filter(item => !official.some(value => value.toLowerCase() === item.name.toLowerCase())).slice(0, 6);
+        return { officialCategories: official, suggestions, categories: normalizeCategoryList([...official, ...suggestions.map(item => item.name)]) };
+    }
+
+    function getAutomaticMetadataCategories(iconName) {
+        const normalized = normalizeHomeSearchIconName(iconName);
+        const baseRecord = iconMetadataCache ? getIconMetadataRecord(iconMetadataCache, normalized) : null;
+        const review = homeSearchReviewByName instanceof Map ? homeSearchReviewByName.get(normalized) : null;
+        return classifyIconCategories(normalized, baseRecord, review);
+    }
+
     function getOfficialProjectCategories(project) {
         if (!project || !iconMetadataCache) return [];
         const record = getIconMetadataRecord(iconMetadataCache, project.name);
@@ -1256,10 +1390,11 @@
         }
         const savedAutomatic = normalizeCategoryList(project.autoCategories);
         const official = getOfficialProjectCategories(project);
+        const smart = getAutomaticMetadataCategories(project.name || "").categories;
         const detected = detectIconCategories(project.name || "")
             .filter(value => value !== "Uncategorized");
 
-        const combined = [...new Set([...savedAutomatic, ...official, ...detected])];
+        const combined = [...new Set([...savedAutomatic, ...official, ...smart, ...detected])];
         return combined.length ? combined : ["Uncategorized"];
     }
 
@@ -1277,8 +1412,9 @@
         if (!project) return;
         const detected = detectIconCategories(project.name || "")
             .filter(value => value !== "Uncategorized");
+        const analysis = getAutomaticMetadataCategories(project.name || "");
         const official = getOfficialProjectCategories(project);
-        project.autoCategories = [...new Set([...official, ...detected])];
+        project.autoCategories = normalizeCategoryList([...official, ...analysis.suggestions.map(item => item.name), ...detected]);
         if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
             project.categories = [...project.autoCategories];
             project.categorySource = "automatic";
@@ -1424,6 +1560,38 @@
             const close = document.createElement("button"); close.type = "button"; close.className = "project-utility-button"; close.textContent = "Close"; close.addEventListener("click", () => { overlay.hidden = true; });
             top.append(title, close); dialog.appendChild(top);
             const note = document.createElement("p"); note.textContent = "Changes apply across saved projects and icon-library reviews. Renaming preserves assignments; deleting removes only the category assignment, never the icon."; note.style.cssText = "font-size:12px;line-height:1.5;color:var(--text-secondary);"; dialog.appendChild(note);
+            const aiRow = document.createElement("div"); aiRow.style.cssText = "display:grid;gap:8px;padding:12px;margin:12px 0;border:1px solid var(--border-subtle);border-radius:10px;";
+            const aiTitle = document.createElement("strong"); aiTitle.textContent = "Smart category analysis";
+            const aiDescription = document.createElement("p"); aiDescription.textContent = "Analyze every Lucide icon using its name, tags, aliases, use cases and edited metadata. Existing manual assignments are preserved.";
+            aiDescription.style.cssText = "font-size:12px;line-height:1.5;color:var(--text-secondary);margin:0;";
+            const analyzeButton = document.createElement("button"); analyzeButton.type = "button"; analyzeButton.className = "project-utility-button"; analyzeButton.textContent = "Analyze all icons";
+            analyzeButton.style.cssText = "min-height:36px;padding:8px 12px;justify-self:start;";
+            const progress = document.createElement("progress"); progress.max = 1; progress.value = 0; progress.style.cssText = "width:100%;height:8px;"; progress.hidden = true;
+            const progressText = document.createElement("span"); progressText.style.cssText = "font-size:11px;color:var(--text-secondary);"; progressText.textContent = "Analysis has not been run yet.";
+            analyzeButton.addEventListener("click", async () => {
+                if (analyzeButton.disabled) return;
+                analyzeButton.disabled = true; progress.hidden = false; progress.value = 0;
+                analyzeButton.textContent = "Analyzing…"; progressText.textContent = "Preparing icon metadata…";
+                try {
+                    const result = await analyzeAllIconCategories(({ analyzed, total, assigned }) => {
+                        progress.value = total ? analyzed / total : 1;
+                        progressText.textContent = analyzed.toLocaleString() + " / " + total.toLocaleString() + " analyzed · " + assigned.toLocaleString() + " with category matches";
+                    });
+                    progress.value = 1;
+                    progressText.textContent = "Complete: " + result.analyzed.toLocaleString() + " icons analyzed; " + result.assigned.toLocaleString() + " received category matches.";
+                    analyzeButton.textContent = "Analyze again";
+                    showToast("Smart category analysis completed for " + result.analyzed.toLocaleString() + " icons.", "success");
+                } catch (error) {
+                    progressText.textContent = "Analysis stopped: " + error.message;
+                    analyzeButton.textContent = "Retry analysis";
+                    showToast("Could not analyze icon categories: " + error.message, "error");
+                    console.error(error);
+                } finally {
+                    analyzeButton.disabled = false;
+                }
+            });
+            aiRow.append(aiTitle, aiDescription, analyzeButton, progress, progressText);
+            dialog.appendChild(aiRow);
             const addRow = document.createElement("div"); addRow.style.cssText = "display:flex;gap:8px;margin:14px 0;";
             const input = document.createElement("input"); input.type = "text"; input.placeholder = "New category name"; input.style.cssText = "flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border-default);border-radius:7px;background:var(--bg-input);color:var(--text-primary);";
             const add = document.createElement("button"); add.type = "button"; add.className = "project-utility-button"; add.textContent = "Add category";
@@ -11381,6 +11549,72 @@ function getSelectedFinishCategories() {
         });
     }
 
+    async function saveAIReviewRecordsBatch(records) {
+        if (!Array.isArray(records) || !records.length) return true;
+        const db = await openAIReviewDatabase();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction("results", "readwrite");
+            const store = transaction.objectStore("results");
+            records.forEach(record => store.put(record));
+            transaction.oncomplete = () => {
+                records.forEach(record => {
+                    const key = normalizeHomeSearchIconName(record?.name);
+                    if (key) homeSearchReviewByName.set(key, record);
+                });
+                homeSearchProfileCache.clear();
+                resolve(true);
+            };
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error("Bulk category save was cancelled."));
+        });
+    }
+
+    async function analyzeAllIconCategories(onProgress = () => {}) {
+        const metadata = await loadIconMetadata();
+        const names = Object.keys(metadata || {}).sort((a, b) => a.localeCompare(b));
+        const existingReviews = await getAllAIReviewRecords();
+        const reviews = new Map(existingReviews.map(record => [normalizeHomeSearchIconName(record?.name), record]));
+        const total = names.length;
+        let analyzed = 0;
+        let assigned = 0;
+        const batchSize = 120;
+        for (let start = 0; start < total; start += batchSize) {
+            const batch = [];
+            for (const name of names.slice(start, start + batchSize)) {
+                const baseRecord = getIconMetadataRecord(metadata, name) || {};
+                const key = normalizeHomeSearchIconName(name);
+                const previous = reviews.get(key) || {};
+                const analysis = classifyIconCategories(name, baseRecord, previous);
+                batch.push({
+                    ...previous,
+                    name: key,
+                    officialCategories: analysis.officialCategories,
+                    aiSuggestions: analysis.suggestions,
+                    analyzedAt: new Date().toISOString(),
+                    analysisVersion: CATEGORY_ANALYSIS_VERSION
+                });
+                if (analysis.officialCategories.length || analysis.suggestions.length) assigned++;
+                analyzed++;
+            }
+            await saveAIReviewRecordsBatch(batch);
+            onProgress({ analyzed, total, assigned });
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        projectManager.projects.forEach(project => {
+            if (project.status !== "finished") return;
+            if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
+                refreshProjectAutomaticCategories(project);
+            }
+        });
+        saveProjectManager();
+        homeSearchProfileCache.clear();
+        renderHomeProjects();
+        renderManagementTable();
+        renderIconLibraryView();
+        return { analyzed, total, assigned };
+    }
+
     // Load official metadata and local manual edits for homepage search on startup.
     Promise.all([
         loadIconMetadata().catch(error => {
@@ -11541,7 +11775,12 @@ function getSelectedFinishCategories() {
                     return {
                         name,
                         score: searchContext ? scoreHomeProjectSearch(searchProject, searchContext) : 0,
-                        matchesCategory: selectedCategory === "all" || normalizeCategoryList([...(lucide.categories || []).map(value => { const key = String(value).toLowerCase().replace(/[-_]+/g, " ").trim(); return LUCIDE_CATEGORY_MAP[key] || null; }), ...(review?.manualCategories || [])]).includes(selectedCategory)
+                        matchesCategory: selectedCategory === "all" || (Array.isArray(review?.manualCategories) && review.manualCategories.length
+                            ? normalizeCategoryList(review.manualCategories).includes(selectedCategory)
+                            : normalizeCategoryList([
+                                ...(lucide.categories || []).map(value => { const key = String(value).toLowerCase().replace(/[-_]+/g, " ").trim(); return LUCIDE_CATEGORY_MAP[key] || null; }),
+                                ...(review?.aiSuggestions || []).map(item => item.name)
+                            ]).includes(selectedCategory))
                     };
                 }).filter(item =>
                     (!searchContext || item.score > 0) && item.matchesCategory
@@ -11659,8 +11898,9 @@ function getSelectedFinishCategories() {
             panel.appendChild(note);
         }
 
-        const selected = new Set(Array.isArray(review?.manualCategories)
-            ? review.manualCategories : official);
+        const selected = new Set(Array.isArray(review?.manualCategories) && review.manualCategories.length
+            ? review.manualCategories
+            : [...official, ...suggestions.filter(item => review?.analysisVersion >= CATEGORY_ANALYSIS_VERSION || isSupportedAICategorySuggestion(name, item, baseRecord)).map(item => item.name)]);
         const checkboxes = [];
         const group = document.createElement("div");
         group.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;";
@@ -11743,10 +11983,11 @@ function getSelectedFinishCategories() {
             String(iconName || "").replace(/[-_]/g, " "),
             ...(lucide.tags || []),
             ...(lucide.useCases || []),
-            ...((lucide.aliases || []).map(alias => alias.name || ""))
-        ].join(" ").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/).filter(token => token.length >= 4));
+            ...((lucide.aliases || []).map(alias => typeof alias === "string" ? alias : (alias.name || ""))),
+            ...(baseRecord?.ai?.searchTerms || [])
+        ].join(" ").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/).filter(token => token.length >= 3));
         const category = suggestion.name.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/)
-            .filter(token => token.length >= 4 && !["icons", "icon", "with", "from", "into"].includes(token));
+            .filter(token => token.length >= 3 && !["icons", "icon", "with", "from", "into", "and"].includes(token));
         if (category.some(token => tokens.has(token))) return true;
         const categoryData = window.ICON_CATEGORY_DATA;
         if (!Array.isArray(categoryData)) return false;
