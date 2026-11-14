@@ -9983,6 +9983,15 @@ function getSelectedFinishCategories() {
             ...(Array.isArray(inheritedEdits.tags) ? inheritedEdits.tags : []),
             ...(Array.isArray(inheritedEdits.searchTerms) ? inheritedEdits.searchTerms : []),
             ...(Array.isArray(inheritedEdits.useCases) ? inheritedEdits.useCases : []),
+            // Curated visual descriptions and user-edited descriptions are useful
+            // search evidence, but skip generic generated "Icon named ..." text.
+            ...[
+                metadataRecord?.ai?.description,
+                inheritedRecord?.ai?.description,
+                metadataEdits.description,
+                inheritedEdits.description
+            ].filter(value => typeof value === "string" && value.trim() &&
+                !/^icon named\\b/i.test(value.trim())),
             ...getExpandedIconSearchTerms(iconName, metadataRecord || inheritedRecord)
         ];
         const allTerms = [...new Set([
@@ -10320,7 +10329,10 @@ function getSelectedFinishCategories() {
                 };
 
                 const searchCandidates = [];
-                allSavedProjects.forEach(project => {
+                // Search within the currently selected gallery tab (All, Recent,
+                // or Favorites), while still using all saved names to avoid duplicates
+                // in the optional Lucide-library results.
+                finished.forEach(project => {
                     if (matchesActiveCategory(project)) {
                         searchCandidates.push({ type: "project", name: project.name, project });
                     }
@@ -11230,27 +11242,37 @@ function getSelectedFinishCategories() {
             category.value = categories.includes(currentCategory) ? currentCategory : "all";
 
             const renderList = () => {
-                const query = search.value.trim().toLowerCase();
+                const query = search.value.trim();
+                const searchContext = query ? createHomeSearchContext(query) : null;
                 const selectedCategory = category.value;
-                const matches = names.filter(name => {
+                const matches = names.map(name => {
                     const record = metadata[name] || {};
                     const lucide = record.lucide || {};
-                    const ai = record.ai || {};
-                    const manualTerms = reviewByName.get(name)?.metadataEdits?.searchTerms || [];
-                    const searchable = [
-                        name, ...(lucide.tags || []), ...(lucide.categories || []),
-                        ...(lucide.useCases || []), ...(ai.searchTerms || []),
-                        ...getExpandedIconSearchTerms(name, record), ...manualTerms, ai.description || ""
-                    ].join(" ").toLowerCase();
-                    return (!query || searchable.includes(query)) &&
-                        (selectedCategory === "all" || (lucide.categories || []).includes(selectedCategory));
+                    const review = reviewByName.get(name);
+                    const searchProject = {
+                        name,
+                        manualCategories: Array.isArray(review?.manualCategories)
+                            ? review.manualCategories : null,
+                        autoCategories: []
+                    };
+                    return {
+                        name,
+                        score: searchContext ? scoreHomeProjectSearch(searchProject, searchContext) : 0,
+                        matchesCategory: selectedCategory === "all" ||
+                            (lucide.categories || []).includes(selectedCategory)
+                    };
+                }).filter(item =>
+                    (!searchContext || item.score > 0) && item.matchesCategory
+                ).sort((a, b) => {
+                    if (searchContext && b.score !== a.score) return b.score - a.score;
+                    return a.name.localeCompare(b.name);
                 });
                 results.replaceChildren();
                 const count = document.createElement("p");
                 count.className = "muted";
                 count.textContent = matches.length + " of " + names.length + " icons";
                 results.appendChild(count);
-                matches.forEach(name => {
+                matches.forEach(({ name }) => {
                     const button = document.createElement("button");
                     button.type = "button";
                     button.textContent = name;
