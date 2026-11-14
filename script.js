@@ -4220,12 +4220,8 @@ function getSelectedFinishCategories() {
     function moveCurveHandles(shape) {
         if (shape.type !== "curve" || selectedShape !== shape) return;
 
-        const startAngle = Number.isFinite(shape._displayStartAngle)
-            ? shape._displayStartAngle
-            : shape.startAngle;
-        const endAngle = Number.isFinite(shape._displayEndAngle)
-            ? shape._displayEndAngle
-            : shape.endAngle;
+        const startAngle = shape.startAngle;
+        const endAngle = shape.endAngle;
 
         let delta = endAngle - startAngle;
 
@@ -4651,57 +4647,13 @@ function getSelectedFinishCategories() {
 
 
     function snapAngle(angle) {
-        const step = Math.PI / 18; // 10 degrees
+        const step = Math.PI / 18; // 10 degrees; retained for ellipse arcs
         return Math.round(angle / step) * step;
     }
 
-    function animateCurveHandleAngle(shape, action) {
-        const targetKey = action === "start" ? "startAngle" : "endAngle";
-        const displayKey = action === "start"
-            ? "_displayStartAngle"
-            : "_displayEndAngle";
-
-        if (!Number.isFinite(shape[displayKey])) {
-            shape[displayKey] = shape[targetKey];
-        }
-
-        if (dragging?.angleAnimationFrame) {
-            cancelAnimationFrame(dragging.angleAnimationFrame);
-            dragging.angleAnimationFrame = null;
-        }
-
-        const from = shape[displayKey];
-        const difference = Math.atan2(
-            Math.sin(shape[targetKey] - from),
-            Math.cos(shape[targetKey] - from)
-        );
-        const duration = 65;
-        let startTime = null;
-
-        const animate = timestamp => {
-            if (!dragging || dragging.shape !== shape || dragging.action !== action) {
-                shape[displayKey] = shape[targetKey];
-                updateCurve(shape, true);
-                return;
-            }
-
-            if (startTime === null) startTime = timestamp;
-            const progress = Math.min(1, (timestamp - startTime) / duration);
-            const eased = 1 - Math.pow(1 - progress, 3);
-
-            shape[displayKey] = from + difference * eased;
-            updateCurve(shape, true);
-
-            if (progress < 1) {
-                dragging.angleAnimationFrame = requestAnimationFrame(animate);
-            } else {
-                shape[displayKey] = shape[targetKey];
-                dragging.angleAnimationFrame = null;
-                updateCurve(shape, true);
-            }
-        };
-
-        dragging.angleAnimationFrame = requestAnimationFrame(animate);
+    function snapCurveHandleAngle(angle) {
+        const step = Math.PI / 90; // 2 degrees
+        return Math.round(angle / step) * step;
     }
 
     function bringShapeGuidesToFront(shape) {
@@ -4735,13 +4687,9 @@ function getSelectedFinishCategories() {
             if (guide) workspace.appendChild(guide);
         });
     }
-    function updateCurve(shape, visualOnly = false) {
-        const startAngle = Number.isFinite(shape._displayStartAngle)
-            ? shape._displayStartAngle
-            : shape.startAngle;
-        const endAngle = Number.isFinite(shape._displayEndAngle)
-            ? shape._displayEndAngle
-            : shape.endAngle;
+    function updateCurve(shape) {
+        const startAngle = shape.startAngle;
+        const endAngle = shape.endAngle;
 
         const startX = shape.cx + shape.radius * Math.cos(startAngle);
         const startY = shape.cy + shape.radius * Math.sin(startAngle);
@@ -4825,10 +4773,8 @@ function getSelectedFinishCategories() {
         }
 
         bringShapeGuidesToFront(shape);
-        if (!visualOnly) {
-            updateSVGSource();
-            syncSymmetryGroup(shape);
-        }
+        updateSVGSource();
+        syncSymmetryGroup(shape);
     }
 
     function updateBasicShape(shape) {
@@ -6054,12 +6000,6 @@ function getSelectedFinishCategories() {
                 )
                 : null;
 
-            // Only blue endpoint handles use visual easing; other handles stay unchanged.
-            if (action === "start" || action === "end") {
-                shape._displayStartAngle = shape.startAngle;
-                shape._displayEndAngle = shape.endAngle;
-            }
-
             dragging = {
                 shape,
                 type: "curve-handle",
@@ -6477,8 +6417,7 @@ function getSelectedFinishCategories() {
                     snappedPosition.x - shape.cx
                 );
 
-                shape.startAngle = snapAngle(angle);
-                animateCurveHandleAngle(shape, action);
+                shape.startAngle = snapCurveHandleAngle(angle);
             }
 
 
@@ -6490,8 +6429,7 @@ function getSelectedFinishCategories() {
                     position.x - shape.cx
                 );
 
-                shape.endAngle = snapAngle(angle);
-                animateCurveHandleAngle(shape, action);
+                shape.endAngle = snapCurveHandleAngle(angle);
             }
 
 
@@ -6985,16 +6923,6 @@ function getSelectedFinishCategories() {
 
         if (dragging.shape?.type === "curve") {
             const shape = dragging.shape;
-
-            if (completedDrag.type === "curve-handle" &&
-                (completedDrag.action === "start" || completedDrag.action === "end")) {
-                if (completedDrag.angleAnimationFrame) {
-                    cancelAnimationFrame(completedDrag.angleAnimationFrame);
-                }
-                delete shape._displayStartAngle;
-                delete shape._displayEndAngle;
-                updateCurve(shape);
-            }
 
             shape.circumferenceGuide.style.display = "none";
             shape.horizontalGuide.style.display = "none";
