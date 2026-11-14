@@ -6691,7 +6691,11 @@ function getSelectedFinishCategories() {
                     for (const movingShape of targets) {
                         for (const source of getShapeEndpoints(movingShape)) {
                             for (const stationaryShape of shapes) {
-                                if (movingShapes.has(stationaryShape)) continue;
+                                if (
+                                    movingShapes.has(stationaryShape) ||
+                                    (movingShape.symmetryGroupId &&
+                                        stationaryShape.symmetryGroupId === movingShape.symmetryGroupId)
+                                ) continue;
 
                                 for (const target of getShapeEndpoints(stationaryShape)) {
 
