@@ -338,15 +338,15 @@ async function renderResults(query = '') {
       await updateStats();
       badge.textContent = 'Manually reviewed';
       save.textContent = 'Saved';
-      apply.disabled = false;
-      apply.title = 'Set these saved categories as the manual categories for matching finished icons in Icon Maker PRO.';
+      apply.disabled = record.manualCategories.length === 0;
+      apply.title = apply.disabled ? 'Select at least one category before applying.' : 'Set these saved categories as the manual categories for matching finished icons in Icon Maker PRO.';
     });
     card.append(save);
 
     const apply = document.createElement('button');
     apply.textContent = 'Apply reviewed categories to Gallery';
     apply.style.marginLeft = '8px';
-    apply.disabled = !record.reviewedAt || !Array.isArray(record.manualCategories);
+    apply.disabled = !record.reviewedAt || !Array.isArray(record.manualCategories) || record.manualCategories.length === 0;
     apply.title = apply.disabled
       ? 'Save your category selection first.'
       : 'Set these categories as the manual categories for matching finished icons in Icon Maker PRO.';
