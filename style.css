@@ -4213,6 +4213,9 @@ body.light-theme #save-project-button:hover {
 .project-search-terms .project-search-term {
     flex: 0 0 auto;
 }
+.project-category-list .project-search-more {
+    align-self: center;
+}
 .project-search-more {
     flex: 0 0 auto;
     border: 1px solid var(--accent);
