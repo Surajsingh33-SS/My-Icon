@@ -9892,16 +9892,28 @@ function getSelectedFinishCategories() {
         const metadataRecord = iconMetadataCache
             ? getIconMetadataRecord(iconMetadataCache, project.name)
             : null;
-        const iconName = String(project.name || "").trim().toLowerCase().replace(/\s+/g, "-");
+        const iconName = normalizeHomeSearchIconName(project.name);
         const variantBaseName = iconName.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
         const inheritedRecord = variantBaseName !== iconName
             ? getIconMetadataRecord(iconMetadataCache, variantBaseName)
             : null;
+        const savedReview = homeSearchReviewByName.get(iconName);
+        const inheritedReview = variantBaseName !== iconName
+            ? homeSearchReviewByName.get(variantBaseName)
+            : null;
+        const metadataEdits = savedReview?.metadataEdits || {};
+        const inheritedEdits = inheritedReview?.metadataEdits || {};
         const metadataTerms = [
             ...(metadataRecord?.lucide?.tags || []),
             ...(metadataRecord?.ai?.searchTerms || []),
             ...(inheritedRecord?.lucide?.tags || []),
             ...(inheritedRecord?.ai?.searchTerms || []),
+            ...(Array.isArray(metadataEdits.tags) ? metadataEdits.tags : []),
+            ...(Array.isArray(metadataEdits.searchTerms) ? metadataEdits.searchTerms : []),
+            ...(Array.isArray(metadataEdits.useCases) ? metadataEdits.useCases : []),
+            ...(Array.isArray(inheritedEdits.tags) ? inheritedEdits.tags : []),
+            ...(Array.isArray(inheritedEdits.searchTerms) ? inheritedEdits.searchTerms : []),
+            ...(Array.isArray(inheritedEdits.useCases) ? inheritedEdits.useCases : []),
             ...getExpandedIconSearchTerms(iconName, metadataRecord || inheritedRecord)
         ];
         return [...new Set([
@@ -10499,6 +10511,11 @@ function getSelectedFinishCategories() {
     let iconMetadataCache = null;
     let iconMetadataLoadPromise = null;
     let aiReviewDatabasePromise = null;
+    let homeSearchReviewByName = new Map();
+
+    function normalizeHomeSearchIconName(value) {
+        return String(value || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
+    }
 
     function loadIconMetadata() {
         if (iconMetadataCache) return Promise.resolve(iconMetadataCache);
@@ -10560,11 +10577,32 @@ function getSelectedFinishCategories() {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction("results", "readwrite");
             transaction.objectStore("results").put(record);
-            transaction.oncomplete = () => resolve(true);
+            transaction.oncomplete = () => {
+                const key = normalizeHomeSearchIconName(record?.name);
+                if (key) homeSearchReviewByName.set(key, record);
+                renderHomeProjects();
+                resolve(true);
+            };
             transaction.onerror = () => reject(transaction.error);
             transaction.onabort = () => reject(transaction.error || new Error("Save was cancelled."));
         });
     }
+
+    // Load official metadata and local manual edits for homepage search on startup.
+    Promise.all([loadIconMetadata(), getAllAIReviewRecords()])
+        .then(([metadata, reviews]) => {
+            iconMetadataCache = metadata;
+            homeSearchReviewByName = new Map(
+                reviews.map(record => [
+                    normalizeHomeSearchIconName(record?.name),
+                    record
+                ]).filter(([name]) => name)
+            );
+            renderHomeProjects();
+        })
+        .catch(error => {
+            console.warn("Could not initialize homepage search metadata:", error);
+        });
 
     function createMetadataEditor(panel, iconName, record, baseRecord) {
         const section = document.createElement("details");
