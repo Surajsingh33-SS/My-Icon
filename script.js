@@ -10024,19 +10024,70 @@ function getSelectedFinishCategories() {
     // Curated query aliases avoid generic "options" matches for cog/settings.
     // ---------------------------------------------------------------------------
     const ICON_SEARCH_QUERY_ALIASES = Object.freeze({
-        cog: ["gear", "settings", "setting", "preferences", "preference", "configuration", "configure", "tune", "adjustment", "controls"],
-        gear: ["cog", "settings", "setting", "preferences", "preference", "configuration", "configure", "tune", "adjustment", "controls"],
-        settings: ["cog", "gear", "setting", "preferences", "preference", "configuration", "configure", "tune", "adjustment", "controls"],
-        setting: ["cog", "gear", "settings", "preferences", "preference", "configuration", "configure", "tune", "adjustment", "controls"],
+        // Settings: common names people use for the same control.
+        cog: ["gear", "settings", "setting", "preferences", "preference", "configuration", "configure", "tune", "adjustment"],
+        gear: ["cog", "settings", "setting", "preferences", "preference", "configuration", "configure", "tune", "adjustment"],
+        settings: ["cog", "gear", "setting", "preferences", "preference", "configuration", "configure", "tune"],
+        setting: ["cog", "gear", "settings", "preferences", "preference", "configuration", "configure", "tune"],
         preferences: ["settings", "setting", "cog", "gear", "configuration", "tune"],
         preference: ["settings", "setting", "cog", "gear", "configuration", "tune"],
-        configuration: ["settings", "setting", "preferences", "cog", "gear", "controls"],
+        configuration: ["settings", "setting", "preferences", "cog", "gear"],
         configure: ["settings", "setting", "preferences", "cog", "gear"],
         tune: ["settings", "setting", "cog", "gear", "adjustment"],
-        menu: ["hamburger", "navigation", "drawer", "nav"],
-        hamburger: ["menu", "navigation", "drawer"],
+
+        // Menu: burger and hamburger are common names for the menu icon.
+        burger: ["menu"],
+        hamburger: ["menu"],
+        menu: ["navigation", "panel-left", "panel-right"],
+
+        // Overflow / more-actions controls.
+        kebab: ["ellipsis", "ellipsis-vertical"],
         ellipsis: ["more", "overflow", "dots", "three dots", "kebab"],
-        ellipses: ["ellipse", "more", "overflow", "dots", "three dots", "kebab"]
+        ellipses: ["ellipse", "more", "overflow", "dots", "three dots", "kebab"],
+        overflow: ["ellipsis", "ellipsis-vertical", "kebab"],
+        dots: ["ellipsis", "ellipsis-vertical"],
+
+        // Search and discovery.
+        magnifier: ["search", "zoom-in", "zoom-out"],
+        magnifying: ["search", "zoom-in", "zoom-out"],
+        find: ["search", "search-check"],
+        lookup: ["search"],
+
+        // People and account controls.
+        avatar: ["user", "user-round", "circle-user", "profile"],
+        profile: ["user", "user-round", "circle-user", "avatar", "account"],
+        account: ["user", "user-round", "circle-user", "profile"],
+        person: ["user", "user-round", "contact", "users"],
+        user: ["person", "user-round", "circle-user", "profile", "avatar"],
+
+        // Common object-name alternatives.
+        house: ["home"],
+        home: ["house"],
+        envelope: ["mail"],
+        email: ["mail", "inbox", "send"],
+        mail: ["envelope", "email", "inbox"],
+        bin: ["trash", "trash-2", "delete"],
+        trash: ["bin", "delete"],
+        delete: ["trash", "trash-2", "bin"],
+        basket: ["shopping-basket", "shopping-cart", "cart"],
+        cart: ["shopping-cart", "shopping-basket"],
+        shopping: ["shopping-cart", "shopping-basket", "store"],
+        photo: ["image", "images"],
+        picture: ["image", "images"],
+        image: ["images", "photo", "picture"],
+        pencil: ["edit", "pen", "pen-line"],
+        edit: ["pencil", "pen", "pen-line"],
+        bell: ["notification", "notifications"],
+        notification: ["bell", "bell-ring"],
+        notifications: ["bell", "bell-ring"],
+        sliders: ["sliders-horizontal", "sliders-vertical", "settings"],
+        filter: ["funnel", "sliders-horizontal"],
+        refresh: ["reload", "rotate-cw", "refresh-cw"],
+        reload: ["refresh", "rotate-cw", "refresh-cw"],
+        download: ["cloud-download", "file-down", "save"],
+        export: ["download", "file-down"],
+        upload: ["cloud-upload", "file-up", "import"],
+        import: ["upload", "file-up"]
     });
 
     function normalizeIconSearchText(value) {
