@@ -274,7 +274,10 @@ async function renderResults(query = '') {
     card.append(aiTitle);
     const aiChips = document.createElement('div');
     aiChips.className = 'chips';
-    (record.aiSuggestions || []).forEach(item => {
+    (record.aiSuggestions || []).filter(item => {
+      const category = CATEGORY_DATA.find(entry => entry.name === item.name);
+      return category && item.score >= 0.52 && hasCategoryEvidence(record.name, category);
+    }).forEach(item => {
       const chip = makeChip(item.name, selected.includes(item.name));
       const score = document.createElement('small');
       score.textContent = ' ' + item.score.toFixed(3);
