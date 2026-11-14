@@ -7589,6 +7589,7 @@ function getSelectedFinishCategories() {
                     shape.cx = midX - (shape.cx - midX);
                     shape.startAngle = Math.PI - shape.startAngle;
                     shape.endAngle = Math.PI - shape.endAngle;
+                    shape.sweepFlag = shape.sweepFlag === 0 ? 1 : 0;
                     updateCurve(shape);
                 } else if (shape.type === "circle") {
                     shape.cx = midX - (shape.cx - midX);
@@ -7613,6 +7614,7 @@ function getSelectedFinishCategories() {
                     shape.cy = midY - (shape.cy - midY);
                     shape.startAngle = -shape.startAngle;
                     shape.endAngle = -shape.endAngle;
+                    shape.sweepFlag = shape.sweepFlag === 0 ? 1 : 0;
                     updateCurve(shape);
                 } else if (shape.type === "circle") {
                     shape.cy = midY - (shape.cy - midY);
