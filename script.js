@@ -9334,13 +9334,21 @@ function getSelectedFinishCategories() {
         renderHomeProjects();
     });
 
-    // Return from a single category jump to the top of the full category gallery.
+    // Return from a category jump to the normal, ungrouped gallery view.
     document.getElementById("category-gallery-back-button")?.addEventListener("click", () => {
         const categoryBackButton = document.getElementById("category-gallery-back-button");
         if (categoryBackButton) categoryBackButton.hidden = true;
 
-        const firstCategoryGroup = homeProjectGrid?.querySelector(".gallery-category-group");
-        firstCategoryGroup?.scrollIntoView({
+        // Restore the same view used by the All sorting mode.
+        galleryViewCategory = "all";
+        selectedCategoryFilter = null;
+        viewModeAllBtn?.classList.add("active");
+        viewModeCategoriesBtn?.classList.remove("active");
+
+        renderHomeProjects();
+
+        // Return to the beginning of the normal gallery.
+        homeProjectGrid?.scrollIntoView({
             behavior: "smooth",
             block: "start"
         });
