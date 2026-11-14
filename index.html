@@ -400,20 +400,24 @@
 
                 <div class="projects-manager-sections">
                     <div class="project-manager-group">
-                        <div class="manager-group-header">
+                        <button type="button" class="manager-group-header collapsible-manager-header"
+                            aria-expanded="false">
                             <h3 class="manager-section-title">Finished Projects</h3>
                             <span id="manager-finished-count" class="manager-count-badge">0</span>
-                        </div>
-                        <div class="management-cards-grid" id="finished-project-grid">
+                            <span class="manager-collapse-arrow" aria-hidden="true">⌄</span>
+                        </button>
+                        <div class="management-cards-grid" id="finished-project-grid" hidden>
                             <!-- Populated dynamically -->
                         </div>
                     </div>
 
                     <div class="project-manager-group">
-                        <div class="manager-group-header">
+                        <button type="button" class="manager-group-header collapsible-manager-header"
+                            aria-expanded="true">
                             <h3 class="manager-section-title">Unfinished Projects</h3>
                             <span id="manager-unfinished-count" class="manager-count-badge">0</span>
-                        </div>
+                            <span class="manager-collapse-arrow" aria-hidden="true">⌄</span>
+                        </button>
                         <div class="management-cards-grid" id="unfinished-project-grid">
                             <!-- Populated dynamically -->
                         </div>
