@@ -1552,7 +1552,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     display: flex;
     flex-direction: column;
 
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 .project-details-main {
@@ -1576,22 +1576,28 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* TOP ACTION TOOLBAR */
 
 .project-details-toolbar {
-    position: sticky;
-    top: 0;
-
+    position: relative;
     min-height: 64px;
     flex-shrink: 0;
-    padding: 12px 20px;
-
+    padding: 10px 18px;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
-
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-subtle);
-
     z-index: 5;
+}
+
+.project-toolbar-name {
+    min-width: 0;
+    margin: 0 auto 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .drawer-icon-btn,
@@ -1635,8 +1641,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* ICON INFORMATION */
 
-.project-info {
-    padding: 24px 28px;
+ .project-info {
+    min-width: 0;
+    padding: 16px 22px;
 
     display: flex;
     flex-direction: column;
@@ -3997,4 +4004,43 @@ body.light-theme #save-project-button:hover {
     flex: 0 0 auto;
     margin: 0;
     accent-color: var(--accent);
+}
+
+
+/* Compact, non-scrolling icon details drawer */
+.project-details,
+.project-content {
+    overflow: hidden;
+}
+
+.project-details-main {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+}
+
+.project-info {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.project-search-terms {
+    max-height: 84px;
+    overflow: hidden;
+}
+
+#project-category-editor {
+    position: absolute;
+    z-index: 20;
+    left: 16px;
+    right: 16px;
+    top: 100%;
+    max-height: min(240px, 45dvh);
+    overflow: auto;
+    box-shadow: 0 12px 32px rgba(0,0,0,.28);
+}
+
+#project-category-editor[hidden] {
+    display: none !important;
 }
