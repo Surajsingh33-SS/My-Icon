@@ -9925,6 +9925,108 @@ function getSelectedFinishCategories() {
         ].map(value => String(value).trim().toLowerCase()).filter(Boolean))];
     }
 
+    // ---------------------------------------------------------------------------
+    // STRICT, WEIGHTED ICON SEARCH
+    // Curated query aliases avoid generic "options" matches for cog/settings.
+    // ---------------------------------------------------------------------------
+    const ICON_SEARCH_QUERY_ALIASES = Object.freeze({
+        cog: ["gear", "settings", "setting", "preferences", "preference", "configuration", "configure", "tune", "adjustment", "controls"],
+        gear: ["cog", "settings", "setting", "preferences", "preference", "configuration", "configure", "tune", "adjustment", "controls"],
+        settings: ["cog", "gear", "setting", "preferences", "preference", "configuration", "configure", "tune", "adjustment", "controls"],
+        setting: ["cog", "gear", "settings", "preferences", "preference", "configuration", "configure", "tune", "adjustment", "controls"],
+        preferences: ["settings", "setting", "cog", "gear", "configuration", "tune"],
+        preference: ["settings", "setting", "cog", "gear", "configuration", "tune"],
+        configuration: ["settings", "setting", "preferences", "cog", "gear", "controls"],
+        configure: ["settings", "setting", "preferences", "cog", "gear"],
+        tune: ["settings", "setting", "cog", "gear", "adjustment"],
+        menu: ["hamburger", "navigation", "drawer", "nav"],
+        hamburger: ["menu", "navigation", "drawer"],
+        ellipsis: ["more", "overflow", "dots", "three dots", "kebab"],
+        ellipses: ["ellipse", "more", "overflow", "dots", "three dots", "kebab"]
+    });
+
+    function normalizeIconSearchText(value) {
+        return String(value ?? "")
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[_-]+/g, " ")
+            .replace(/[^a-z0-9]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function singularizeIconSearchToken(token) {
+        if (token.length > 4 && token.endsWith("ies")) return token.slice(0, -3) + "y";
+        if (token.length > 3 && token.endsWith("s") && !token.endsWith("ss")) return token.slice(0, -1);
+        return token;
+    }
+
+    function getIconSearchCandidates(token) {
+        const singular = singularizeIconSearchToken(token);
+        const hasOverride = Object.prototype.hasOwnProperty.call(ICON_SEARCH_QUERY_ALIASES, token)
+            || Object.prototype.hasOwnProperty.call(ICON_SEARCH_QUERY_ALIASES, singular);
+        const aliases = hasOverride
+            ? (ICON_SEARCH_QUERY_ALIASES[token] || ICON_SEARCH_QUERY_ALIASES[singular] || [])
+            : (RELATED_ICON_SEARCH_TERMS[token] || RELATED_ICON_SEARCH_TERMS[singular] || []);
+        return [...new Set([token, singular, ...aliases.map(normalizeIconSearchText)])].filter(Boolean);
+    }
+
+    function iconSearchPhraseMatches(haystack, phrase) {
+        const normalizedHaystack = normalizeIconSearchText(haystack);
+        const normalizedPhrase = normalizeIconSearchText(phrase);
+        if (!normalizedHaystack || !normalizedPhrase) return false;
+        return (` ${normalizedHaystack} `).includes(` ${normalizedPhrase} `);
+    }
+
+    function isOneEditAwayForIconSearch(a, b) {
+        if (Math.abs(a.length - b.length) > 1 || Math.min(a.length, b.length) < 5) return false;
+        let i = 0, j = 0, edits = 0;
+        while (i < a.length && j < b.length) {
+            if (a[i] === b[j]) { i++; j++; continue; }
+            if (++edits > 1) return false;
+            if (a.length > b.length) i++;
+            else if (b.length > a.length) j++;
+            else { i++; j++; }
+        }
+        if (i < a.length || j < b.length) edits++;
+        return edits === 1;
+    }
+
+    function scoreHomeProjectSearch(project, rawQuery) {
+        const query = normalizeIconSearchText(rawQuery);
+        if (!query) return 0;
+        const queryTokens = [...new Set(query.split(" ").filter(Boolean))];
+        if (!queryTokens.length) return 0;
+
+        const name = normalizeIconSearchText(project.name);
+        const nameTokens = name.split(" ").filter(Boolean);
+        const terms = getProjectSearchTerms(project).map(normalizeIconSearchText).filter(Boolean);
+        const categories = getProjectCategories(project).map(normalizeIconSearchText).filter(Boolean);
+        let totalScore = 0;
+
+        // Every query token must have evidence (AND matching).
+        for (const token of queryTokens) {
+            const candidates = getIconSearchCandidates(token);
+            let bestScore = 0;
+            for (const candidate of candidates) {
+                if (!candidate) continue;
+                if (name === candidate) bestScore = Math.max(bestScore, 120);
+                else if (iconSearchPhraseMatches(name, candidate)) bestScore = Math.max(bestScore, 96);
+                if (terms.some(term => term === candidate)) bestScore = Math.max(bestScore, 76);
+                else if (terms.some(term => iconSearchPhraseMatches(term, candidate))) bestScore = Math.max(bestScore, 66);
+                if (categories.some(category => iconSearchPhraseMatches(category, candidate))) bestScore = Math.max(bestScore, 28);
+                if (candidate.length >= 5 && nameTokens.some(nameToken => isOneEditAwayForIconSearch(candidate, nameToken))) {
+                    bestScore = Math.max(bestScore, 40);
+                }
+            }
+            if (bestScore === 0) return 0;
+            totalScore += bestScore;
+        }
+        if (iconSearchPhraseMatches(name, query)) totalScore += 30;
+        return Math.round(totalScore / queryTokens.length);
+    }
+
     function renderHomeProjects() {
         if (!homeProjectGrid) return;
         homeProjectGrid.innerHTML = "";
@@ -9997,26 +10099,25 @@ function getSelectedFinishCategories() {
             finished = finished.filter(project => getProjectCategories(project).includes(activeCategory));
         }
 
-        // Search Filter (only matches name, category, or specific keywords; no default "icon" match)
-        const query = homeSearchInput?.value.trim().toLowerCase();
-        if (clearSearchBtn) {
-            clearSearchBtn.style.display = query ? "block" : "none";
-        }
-
+        // Search Filter — strict relevance scoring, not broad substring matching.
+        const query = homeSearchInput?.value.trim() || "";
+        const searchScores = new Map();
+        if (clearSearchBtn) clearSearchBtn.style.display = query ? "block" : "none";
         if (query) {
-            const words = query.split(/\\s+/).filter(Boolean);
-            finished = finished.filter(p => {
-                const text = `${p.name || ""} ${getProjectCategories(p).join(" ")} ${getProjectSearchTerms(p).join(" ")}`.toLowerCase();
-                return words.every(word => {
-                    const related = RELATED_ICON_SEARCH_TERMS[word] || [];
-                    return [word, ...related].some(term => text.includes(String(term).toLowerCase()));
-                });
-            });
+            const ranked = finished
+                .map(project => ({ project, score: scoreHomeProjectSearch(project, query) }))
+                .filter(item => item.score > 0);
+            ranked.forEach(item => searchScores.set(item.project, item.score));
+            finished = ranked.map(item => item.project);
         }
 
         // Sorting
         const sortVal = homeSortSelect?.value || "newest";
         finished.sort((a, b) => {
+            if (query) {
+                const relevanceDifference = (searchScores.get(b) || 0) - (searchScores.get(a) || 0);
+                if (relevanceDifference !== 0) return relevanceDifference;
+            }
             const dateA = Date.parse(a.savedAt) || 0;
             const dateB = Date.parse(b.savedAt) || 0;
             const nameA = (a.name || "").toLowerCase();
