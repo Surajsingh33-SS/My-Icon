@@ -4644,8 +4644,7 @@ function getSelectedFinishCategories() {
 
 
     function snapAngle(angle) {
-        // Keep a small amount of angle snapping while allowing smoother handle movement.
-        const step = Math.PI / 90; // 2 degrees
+        const step = Math.PI / 18; // 10 degrees
         return Math.round(angle / step) * step;
     }
 
@@ -6470,14 +6469,12 @@ function getSelectedFinishCategories() {
                 const movement = dragging.startY - snappedPosition.y;
                 const newRadius = dragging.startRadius + movement;
 
-                // Use quarter-unit increments instead of whole-unit jumps.
-                const adjustedRadius = event.shiftKey
-                    ? newRadius
-                    : Math.round(newRadius * 4) / 4;
-
                 shape.radius = Math.max(
                     0.3,
-                    Math.min(artboardSize, adjustedRadius)
+                    Math.min(
+                        artboardSize,
+                        event.shiftKey ? newRadius : Math.round(newRadius)
+                    )
                 );
             }
 
