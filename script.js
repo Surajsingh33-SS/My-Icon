@@ -5693,7 +5693,7 @@ function getSelectedFinishCategories() {
             };
             addHandle(axis.x1, axis.y1, "start");
             addHandle(axis.x2, axis.y2, "end");
-            if (axis.uniform) addHandle((axis.x1 + axis.x2) / 2, (axis.y1 + axis.y2) / 2, "center");
+            addHandle((axis.x1 + axis.x2) / 2, (axis.y1 + axis.y2) / 2, "center");
         });
     }
 
@@ -7816,8 +7816,11 @@ function getSelectedFinishCategories() {
             btn.classList.toggle("active", isPlacingMirrorAxis);
 
             if (isPlacingMirrorAxis) {
-                showToast("Click 2 points on the canvas to place a custom mirror axis", "info");
+                showToast(mirrorAxisModeSelect?.value === "uniform"
+                    ? "Click a centre point, then a direction/length point."
+                    : "Click two endpoints to place a custom mirror axis", "info");
             } else {
+                if (historyBeforeAction) commitHistoryAction();
                 showToast("Custom mirror tool canceled", "info");
             }
         }
