@@ -2144,11 +2144,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
     background: var(--bg-surface);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-full);
-    position: absolute;
-    left: 52.3%;
+    position: fixed;
+    left: 50%;
     transform: translateX(-50%) scale(0.85);
-    transform-origin: right center;
-    z-index: 20;
+    transform-origin: center top;
+    z-index: 10000;
     box-shadow: var(--shadow-md);
     backdrop-filter: blur(12px);
     top: 14px;
