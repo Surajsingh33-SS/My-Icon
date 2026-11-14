@@ -9872,6 +9872,9 @@ function getSelectedFinishCategories() {
     // Common irregular forms plus conservative English singular/plural handling.
     const ICON_SEARCH_IRREGULAR_FORMS = Object.freeze({
         people: ["person"], person: ["people", "persons"], persons: ["person", "people"],
+        bus: ["buses"], buses: ["bus"], class: ["classes"], classes: ["class"],
+        glass: ["glasses"], glasses: ["glass"], dress: ["dresses"], dresses: ["dress"],
+        address: ["addresses"], addresses: ["address"], process: ["processes"], processes: ["process"],
         men: ["man"], man: ["men"], women: ["woman"], woman: ["women"],
         children: ["child"], child: ["children"], mice: ["mouse"], mouse: ["mice"],
         geese: ["goose"], goose: ["geese"], teeth: ["tooth"], tooth: ["teeth"],
@@ -9905,7 +9908,7 @@ function getSelectedFinishCategories() {
             if (!looksPlural) {
                 if (/[^aeiou]y$/.test(word)) variants.add(word.slice(0, -1) + "ies");
                 else if (/(ch|sh|x|z)$/.test(word)) variants.add(word + "es");
-                else if (word.endsWith("s") && !/(ss|ss|us|is)$/.test(word)) variants.add(word + "es");
+                else if (word.endsWith("s") && !/(ss|us|is)$/.test(word)) variants.add(word + "es");
                 else if (!/(s|ss|us|is)$/.test(word)) variants.add(word + "s");
             }
         }
