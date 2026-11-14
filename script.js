@@ -295,6 +295,7 @@
     const homeScreen = document.getElementById("home-screen");
     const homeEditButton = document.getElementById("home-edit-button");
     const homeSearchInput = document.getElementById("home-search-input");
+    const homeSearchScopeToggle = document.getElementById("home-search-scope-toggle");
     const clearSearchBtn = document.getElementById("clear-search-btn");
     const homeCategorySelect = document.getElementById("home-category-select");
     const homeSortSelect = document.getElementById("home-sort-select");
@@ -446,7 +447,8 @@
 
     let isRestoringProject = false;
     let isCreatingShapeCopy = false;
-    let activeHomeTab = "all"; // 'all' | 'recent' | 'favorites'
+    let activeHomeTab = "all";
+    let searchAllLucideIcons = false; // 'all' | 'recent' | 'favorites'
     let homeViewMode = "grid"; // 'grid' | 'list'
     let galleryViewCategory = "all"; // 'all' | 'categories'
     let selectedCategoryFilter = null;
@@ -10299,8 +10301,7 @@ function getSelectedFinishCategories() {
             finished = finished.filter(project => getProjectCategories(project).includes(activeCategory));
         }
 
-        // Search the complete Lucide library as well as saved projects.
-        // A query intentionally searches beyond the current All/Recent/Favorites tab.
+        // Saved-project search is the default. Full Lucide search is optional.
         const query = homeSearchInput?.value.trim() || "";
         let searchResults = [];
         if (clearSearchBtn) clearSearchBtn.style.display = query ? "block" : "none";
@@ -10308,35 +10309,9 @@ function getSelectedFinishCategories() {
         if (query) {
             try {
                 const searchContext = createHomeSearchContext(query);
-                const metadata = await loadIconMetadata();
-                if (!homeSearchReviewsLoaded) {
-                    if (!homeSearchReviewLoadPromise) {
-                        homeSearchReviewLoadPromise = getAllAIReviewRecords()
-                            .then(reviewRecords => {
-                                reviewRecords.forEach(record => {
-                                    const key = normalizeHomeSearchIconName(record?.name);
-                                    if (key) homeSearchReviewByName.set(key, record);
-                                });
-                                homeSearchProfileCache.clear();
-                                homeSearchReviewsLoaded = true;
-                            })
-                            .catch(reviewError => {
-                                homeSearchReviewLoadPromise = null;
-                                console.warn("Could not load local icon review metadata:", reviewError);
-                            });
-                    }
-                    await homeSearchReviewLoadPromise;
-                }
-
-                if (renderToken !== homeSearchRenderToken) return;
-
                 const allSavedProjects = projectManager.projects.filter(
                     project => project.status === "finished"
                 );
-                const savedNames = new Set(
-                    allSavedProjects.map(project => normalizeHomeSearchIconName(project.name))
-                );
-
                 const matchesActiveCategory = project => {
                     const categories = getProjectCategories(project);
                     if (selectedCategoryFilter) return categories.includes(selectedCategoryFilter);
@@ -10344,8 +10319,6 @@ function getSelectedFinishCategories() {
                     return true;
                 };
 
-                // Prepare lightweight candidates, then score them in small batches.
-                // Yielding to the browser between batches keeps keyboard input responsive.
                 const searchCandidates = [];
                 allSavedProjects.forEach(project => {
                     if (matchesActiveCategory(project)) {
@@ -10353,63 +10326,83 @@ function getSelectedFinishCategories() {
                     }
                 });
 
-                Object.keys(metadata).forEach(iconName => {
-                    if (savedNames.has(normalizeHomeSearchIconName(iconName))) return;
-                    const review = homeSearchReviewByName.get(normalizeHomeSearchIconName(iconName));
-                    const libraryProject = {
-                        name: iconName,
-                        manualCategories: Array.isArray(review?.manualCategories)
-                            ? review.manualCategories
-                            : null,
-                        autoCategories: []
-                    };
-                    if (matchesActiveCategory(libraryProject)) {
-                        searchCandidates.push({ type: "library", name: iconName, project: libraryProject });
+                if (searchAllLucideIcons) {
+                    const metadata = await loadIconMetadata();
+                    if (!homeSearchReviewsLoaded) {
+                        if (!homeSearchReviewLoadPromise) {
+                            homeSearchReviewLoadPromise = getAllAIReviewRecords()
+                                .then(reviewRecords => {
+                                    reviewRecords.forEach(record => {
+                                        const key = normalizeHomeSearchIconName(record?.name);
+                                        if (key) homeSearchReviewByName.set(key, record);
+                                    });
+                                    homeSearchProfileCache.clear();
+                                    homeSearchReviewsLoaded = true;
+                                })
+                                .catch(reviewError => {
+                                    homeSearchReviewLoadPromise = null;
+                                    console.warn("Could not load local icon review metadata:", reviewError);
+                                });
+                        }
+                        await homeSearchReviewLoadPromise;
                     }
-                });
+                    if (renderToken !== homeSearchRenderToken) return;
+
+                    const savedNames = new Set(
+                        allSavedProjects.map(project => normalizeHomeSearchIconName(project.name))
+                    );
+                    Object.keys(metadata).forEach(iconName => {
+                        if (savedNames.has(normalizeHomeSearchIconName(iconName))) return;
+                        const review = homeSearchReviewByName.get(normalizeHomeSearchIconName(iconName));
+                        const libraryProject = {
+                            name: iconName,
+                            manualCategories: Array.isArray(review?.manualCategories)
+                                ? review.manualCategories : null,
+                            autoCategories: []
+                        };
+                        if (matchesActiveCategory(libraryProject)) {
+                            searchCandidates.push({ type: "library", name: iconName, project: libraryProject });
+                        }
+                    });
+                }
 
                 const SEARCH_WORK_BATCH_SIZE = 64;
                 for (let offset = 0; offset < searchCandidates.length; offset += SEARCH_WORK_BATCH_SIZE) {
                     if (renderToken !== homeSearchRenderToken) return;
-
                     const batchEnd = Math.min(offset + SEARCH_WORK_BATCH_SIZE, searchCandidates.length);
                     for (let index = offset; index < batchEnd; index++) {
                         const candidate = searchCandidates[index];
                         const score = scoreHomeProjectSearch(candidate.project, searchContext);
                         if (score > 0) searchResults.push({ ...candidate, score });
                     }
-
                     if (batchEnd < searchCandidates.length) {
                         await new Promise(resolve => setTimeout(resolve, 0));
                     }
                 }
-
                 if (renderToken !== homeSearchRenderToken) return;
 
                 const sortVal = homeSortSelect?.value || "newest";
                 searchResults.sort((a, b) => {
                     const relevanceDifference = b.score - a.score;
                     if (relevanceDifference !== 0) return relevanceDifference;
-
                     const nameA = (a.project.name || "").toLowerCase();
                     const nameB = (b.project.name || "").toLowerCase();
                     if (sortVal === "az") return nameA.localeCompare(nameB);
                     if (sortVal === "za") return nameB.localeCompare(nameA);
-
                     const dateA = Date.parse(a.project.savedAt) || 0;
                     const dateB = Date.parse(b.project.savedAt) || 0;
                     return sortVal === "oldest" ? dateA - dateB : dateB - dateA;
                 });
             } catch (error) {
-                console.error("Could not search the Lucide icon library:", error);
+                console.error("Could not search the selected icon scope:", error);
                 if (renderToken !== homeSearchRenderToken) return;
-                homeProjectGrid.innerHTML =
-                    "<p class='home-no-results'>The icon library could not be loaded. Please try again.</p>";
+                homeProjectGrid.innerHTML = searchAllLucideIcons
+                    ? "<p class='home-no-results'>The icon library could not be loaded. Please try again.</p>"
+                    : "<p class='home-no-results'>Could not search your saved icons. Please try again.</p>";
                 updateProjectCounters();
                 return;
             }
         }
-
         // Sorting for the normal saved-project gallery (search results are ranked above).
         const sortVal = homeSortSelect?.value || "newest";
         if (!query) {
@@ -10587,40 +10580,36 @@ function getSelectedFinishCategories() {
 
 
 
-        if (query) {
+        if (query && searchAllLucideIcons) {
             const SEARCH_CARD_BATCH_SIZE = 48;
             let nextSearchResultIndex = 0;
-
             const appendNextSearchBatch = () => {
                 homeProjectGrid.querySelector(".home-search-load-more")?.remove();
                 const fragment = document.createDocumentFragment();
-                const batchEnd = Math.min(
-                    nextSearchResultIndex + SEARCH_CARD_BATCH_SIZE,
-                    searchResults.length
-                );
-
+                const batchEnd = Math.min(nextSearchResultIndex + SEARCH_CARD_BATCH_SIZE, searchResults.length);
                 for (; nextSearchResultIndex < batchEnd; nextSearchResultIndex++) {
                     const result = searchResults[nextSearchResultIndex];
-                    fragment.appendChild(
-                        result.type === "project"
-                            ? createHomeProjectCard(result.project)
-                            : createHomeLibrarySearchCard(result.name, result.project)
-                    );
+                    fragment.appendChild(result.type === "project"
+                        ? createHomeProjectCard(result.project)
+                        : createHomeLibrarySearchCard(result.name, result.project));
                 }
-
                 homeProjectGrid.appendChild(fragment);
-
                 if (nextSearchResultIndex < searchResults.length) {
                     const moreButton = document.createElement("button");
                     moreButton.type = "button";
                     moreButton.className = "home-search-load-more";
-                    moreButton.textContent = `Show more results (${searchResults.length - nextSearchResultIndex} remaining)`;
+                    moreButton.textContent = "Show more results (" +
+                        (searchResults.length - nextSearchResultIndex) + " remaining)";
                     moreButton.addEventListener("click", appendNextSearchBatch);
                     homeProjectGrid.appendChild(moreButton);
                 }
             };
-
             appendNextSearchBatch();
+        } else if (query) {
+            // Saved-icon search always renders every match; no Show more button.
+            const fragment = document.createDocumentFragment();
+            searchResults.forEach(result => fragment.appendChild(createHomeProjectCard(result.project)));
+            homeProjectGrid.appendChild(fragment);
         } else if (galleryViewCategory === "categories" && !selectedCategoryFilter) {
             const grouped = {};
 
@@ -10740,6 +10729,25 @@ function getSelectedFinishCategories() {
             } catch (e) { }
             renderHomeProjects();
         });
+    });
+
+    function updateHomeSearchScopeToggle() {
+        if (!homeSearchScopeToggle) return;
+        homeSearchScopeToggle.classList.toggle("active", searchAllLucideIcons);
+        homeSearchScopeToggle.setAttribute("aria-pressed", String(searchAllLucideIcons));
+        homeSearchScopeToggle.textContent = searchAllLucideIcons ? "All icons: On" : "All icons";
+        homeSearchScopeToggle.title = searchAllLucideIcons
+            ? "Search saved icons and the complete Lucide library"
+            : "Enable searching the complete Lucide library";
+    }
+
+    updateHomeSearchScopeToggle();
+    homeSearchScopeToggle?.addEventListener("click", () => {
+        searchAllLucideIcons = !searchAllLucideIcons;
+        updateHomeSearchScopeToggle();
+        clearTimeout(homeSearchDebounceTimer);
+        homeSearchDebounceTimer = null;
+        renderHomeProjects();
     });
 
     let homeSearchDebounceTimer = null;
