@@ -7586,17 +7586,9 @@ function getSelectedFinishCategories() {
                     shape.x2 = midX - (shape.x2 - midX);
                     updateLine(shape);
                 } else if (shape.type === "curve") {
-                    // Reflect both endpoints across the vertical centre axis.
-                    // Swap them so the angular span (and therefore largeArc)
-                    // stays unchanged while the SVG sweep direction reverses.
-                    const oldStartAngle = shape.startAngle;
-                    const oldEndAngle = shape.endAngle;
-
-                    shape.startAngle = Math.PI - oldEndAngle;
-                    shape.endAngle = Math.PI - oldStartAngle;
-                    shape.sweepFlag = shape.sweepFlag === 0 ? 1 : 0;
-
-                    // Keep cx, cy, and radius unchanged.
+                    shape.cx = midX - (shape.cx - midX);
+                    shape.startAngle = Math.PI - shape.startAngle;
+                    shape.endAngle = Math.PI - shape.endAngle;
                     updateCurve(shape);
                 } else if (shape.type === "circle") {
                     shape.cx = midX - (shape.cx - midX);
