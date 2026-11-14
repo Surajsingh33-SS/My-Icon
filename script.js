@@ -9983,15 +9983,8 @@ function getSelectedFinishCategories() {
             ...(Array.isArray(inheritedEdits.tags) ? inheritedEdits.tags : []),
             ...(Array.isArray(inheritedEdits.searchTerms) ? inheritedEdits.searchTerms : []),
             ...(Array.isArray(inheritedEdits.useCases) ? inheritedEdits.useCases : []),
-            // Curated visual descriptions and user-edited descriptions are useful
-            // search evidence, but skip generic generated "Icon named ..." text.
-            ...[
-                metadataRecord?.ai?.description,
-                inheritedRecord?.ai?.description,
-                metadataEdits.description,
-                inheritedEdits.description
-            ].filter(value => typeof value === "string" && value.trim() &&
-                !/^icon named\b/i.test(value.trim())),
+            // Keep prose descriptions out of the token index: common words in
+            // visual explanations can create unrelated matches (e.g. chevron for cog).
             ...getExpandedIconSearchTerms(iconName, metadataRecord || inheritedRecord)
         ];
         const allTerms = [...new Set([
