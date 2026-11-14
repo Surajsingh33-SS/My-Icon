@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Icon Maker — Batch AI Categorization</title>
+  <style>
+    :root{font-family:Segoe UI,Arial,sans-serif;color:#e8edf7;background:#111827}
+    *{box-sizing:border-box}body{margin:0;padding:24px;max-width:1100px;margin:auto}
+    h1{margin:0 0 8px}p{color:#aebbd0}.panel{background:#1b2638;border:1px solid #34445d;border-radius:12px;padding:18px;margin:16px 0}
+    button,input{font:inherit;border-radius:7px;padding:9px 12px;border:1px solid #52647e;background:#26364d;color:#fff}
+    button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:#4169d8;border-color:#4169d8}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.stats{display:flex;gap:22px;flex-wrap:wrap}
+    .stat strong{display:block;font-size:22px}.muted{color:#9eacc2;font-size:13px}progress{width:100%;height:14px}
+    #results{display:grid;gap:10px}.item{background:#202e43;border:1px solid #3b4c65;border-radius:9px;padding:14px}
+    .item h3{margin:0 0 8px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    label.chip{display:inline-flex;gap:6px;align-items:center;border:1px solid #52647e;border-radius:20px;padding:6px 10px;font-size:13px}
+    label.chip input{padding:0;margin:0}.tag{font-size:12px;color:#9db7e8}
+    #status{white-space:pre-wrap;color:#c6d4e9}.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <h1>Batch AI Categorization</h1>
+  <p>Analyze the Lucide metadata database in small batches. Results and review decisions are saved locally, so processing can resume later.</p>
+  <section class="panel">
+    <div class="controls">
+      <button id="load" class="primary">Load Local AI Model</button>
+      <button id="start" disabled>Start / Resume Batch</button>
+      <button id="pause" disabled>Pause</button>
+      <button id="reset">Clear AI results</button>
+    </div>
+    <p id="status">Ready. Load the local model to begin.</p>
+    <progress id="progress" max="2053" value="0"></progress>
+    <div class="stats">
+      <div class="stat"><strong id="total">2053</strong><span class="muted">Icons in metadata</span></div>
+      <div class="stat"><strong id="done">0</strong><span class="muted">AI analyzed</span></div>
+      <div class="stat"><strong id="reviewed">0</strong><span class="muted">Manually reviewed</span></div>
+      <div class="stat"><strong id="remaining">2053</strong><span class="muted">Remaining</span></div>
+    </div>
+    <p class="muted">Processing uses batches of 8 icons. Do not close the page during a batch; completed batches are saved automatically.</p>
+  </section>
+  <section class="panel">
+    <div class="controls">
+      <input id="search" type="search" placeholder="Find an icon, e.g. file-text">
+      <button id="show-all">Show latest results</button>
+    </div>
+    <p class="muted">Official Lucide mappings are preselected. AI matches are review suggestions only. Select the categories you want and save your decision.</p>
+    <div id="results"></div>
+  </section>
+  <script type="module" src="/ai-batch.js"></script>
+</body>
+</html>
