@@ -9415,17 +9415,57 @@ function getSelectedFinishCategories() {
                     : getProjectCategories(project).filter(category => category !== "Uncategorized")
             );
 
-            getAllIconCategories().forEach(category => {
+
+            const addCategoryRow = document.createElement("div");
+            addCategoryRow.style.cssText = "display:flex;gap:6px;margin:8px 0 10px;";
+            const newCategoryInput = document.createElement("input");
+            newCategoryInput.type = "text";
+            newCategoryInput.placeholder = "New category name";
+            newCategoryInput.setAttribute("aria-label", "New category name");
+            newCategoryInput.style.cssText = "min-width:0;flex:1;padding:6px 8px;border:1px solid var(--border-default);border-radius:6px;background:var(--bg-input);color:var(--text-primary);";
+            const addCategoryButton = document.createElement("button");
+            addCategoryButton.type = "button";
+            addCategoryButton.textContent = "Add";
+            addCategoryButton.className = "project-utility-button";
+            addCategoryRow.append(newCategoryInput, addCategoryButton);
+            panel.appendChild(addCategoryRow);
+
+            const choices = document.createElement("div");
+            panel.appendChild(choices);
+
+            const renderCategoryChoices = selectedValues => {
+                choices.replaceChildren();
+                getAllIconCategories().forEach(category => {
                 const label = document.createElement("label");
                 label.style.cssText = "display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;";
                 const checkbox = document.createElement("input");
                 checkbox.type = "checkbox";
                 checkbox.value = category;
-                checkbox.checked = selected.has(category);
+                checkbox.checked = selectedValues.includes(category);
                 const text = document.createElement("span");
                 text.textContent = category;
                 label.append(checkbox, text);
-                panel.appendChild(label);
+                choices.appendChild(label);
+                });
+            };
+            renderCategoryChoices([...selected]);
+
+            addCategoryButton.addEventListener("click", () => {
+                const name = newCategoryInput.value.trim();
+                if (!name) {
+                    newCategoryInput.focus();
+                    return;
+                }
+                if (!saveCustomCategory(name)) {
+                    showToast("That category is empty or already exists.", "error");
+                    return;
+                }
+                const currentlySelected = [...choices.querySelectorAll('input[type="checkbox"]:checked')]
+                    .map(input => input.value);
+                currentlySelected.push(name);
+                newCategoryInput.value = "";
+                renderCategoryChoices(currentlySelected);
+                showToast("Custom category added.", "success");
             });
 
             const actions = document.createElement("div");
@@ -9479,6 +9519,8 @@ function getSelectedFinishCategories() {
         });
         return { button, panel };
     }
+
+    ensureProjectCategoryEditor();
 
     // ====================================================================
     // AI + OFFICIAL LUCIDE METADATA IN THE ICON DETAILS DRAWER
