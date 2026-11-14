@@ -9979,18 +9979,72 @@ function getSelectedFinishCategories() {
         return (` ${normalizedHaystack} `).includes(` ${normalizedPhrase} `);
     }
 
-    function isOneEditAwayForIconSearch(a, b) {
-        if (Math.abs(a.length - b.length) > 1 || Math.min(a.length, b.length) < 5) return false;
-        let i = 0, j = 0, edits = 0;
-        while (i < a.length && j < b.length) {
-            if (a[i] === b[j]) { i++; j++; continue; }
-            if (++edits > 1) return false;
-            if (a.length > b.length) i++;
-            else if (b.length > a.length) j++;
-            else { i++; j++; }
+    // Conservative typo matching: one missing/extra letter, one adjacent
+    // transposition, or one substitution caused by a neighbouring keyboard key.
+    // This avoids treating unrelated words such as "sitting" and "setting" as alike.
+    function areAdjacentKeyboardKeysForIconSearch(a, b) {
+        const rows = [
+            "qwertyuiop",
+            "asdfghjkl",
+            "zxcvbnm"
+        ];
+        const positions = new Map();
+        rows.forEach((row, rowIndex) => {
+            [...row].forEach((key, columnIndex) => {
+                const offset = rowIndex === 1 ? 0.25 : rowIndex === 2 ? 0.75 : 0;
+                positions.set(key, { row: rowIndex, column: columnIndex + offset });
+            });
+        });
+
+        const first = positions.get(a);
+        const second = positions.get(b);
+        if (!first || !second) return false;
+        return Math.abs(first.row - second.row) <= 1 &&
+            Math.abs(first.column - second.column) <= 1.15;
+    }
+
+    function isSafeIconSearchTypo(queryWord, indexedWord) {
+        const a = normalizeIconSearchText(queryWord);
+        const b = normalizeIconSearchText(indexedWord);
+        if (!a || !b || a === b) return false;
+        if (Math.min(a.length, b.length) < 5 || Math.abs(a.length - b.length) > 1) return false;
+
+        // A single adjacent letter swap is a common typing mistake.
+        if (a.length === b.length) {
+            const mismatches = [];
+            for (let i = 0; i < a.length; i++) {
+                if (a[i] !== b[i]) mismatches.push(i);
+            }
+            if (mismatches.length === 2) {
+                const [first, second] = mismatches;
+                return second === first + 1 &&
+                    a[first] === b[second] &&
+                    a[second] === b[first];
+            }
+            if (mismatches.length !== 1) return false;
+            const index = mismatches[0];
+            return areAdjacentKeyboardKeysForIconSearch(a[index], b[index]);
         }
-        if (i < a.length || j < b.length) edits++;
-        return edits === 1;
+
+        // One omitted or accidentally repeated/extra character.
+        const shorter = a.length < b.length ? a : b;
+        const longer = a.length < b.length ? b : a;
+        let shortIndex = 0;
+        let longIndex = 0;
+        let skipped = false;
+
+        while (shortIndex < shorter.length && longIndex < longer.length) {
+            if (shorter[shortIndex] === longer[longIndex]) {
+                shortIndex++;
+                longIndex++;
+            } else if (!skipped) {
+                skipped = true;
+                longIndex++;
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     // Match a partial query token against the beginning of any indexed word.
@@ -10032,10 +10086,24 @@ function getSelectedFinishCategories() {
                 if (terms.some(term => iconSearchPrefixMatches(term, token))) bestScore = Math.max(bestScore, 44);
                 if (categories.some(category => iconSearchPrefixMatches(category, token))) bestScore = Math.max(bestScore, 22);
 
-                if (candidate.length >= 5 && nameTokens.some(nameToken => isOneEditAwayForIconSearch(candidate, nameToken))) {
-                    bestScore = Math.max(bestScore, 40);
+            }
+
+            // Fuzzy matching is deliberately a fallback, below exact and prefix
+            // matches. Compare the user's actual token against complete indexed
+            // words from the icon name and its search metadata (not aliases).
+            if (bestScore < 44) {
+                if (nameTokens.some(nameToken => isSafeIconSearchTypo(token, nameToken))) {
+                    bestScore = Math.max(bestScore, 42);
+                } else {
+                    const indexedWords = terms.flatMap(term =>
+                        term.split(" ").filter(word => word.length >= 5)
+                    );
+                    if (indexedWords.some(word => isSafeIconSearchTypo(token, word))) {
+                        bestScore = Math.max(bestScore, 38);
+                    }
                 }
             }
+
             if (bestScore === 0) return 0;
             totalScore += bestScore;
         }
