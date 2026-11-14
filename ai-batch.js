@@ -95,7 +95,7 @@ function evidenceTokens(value) {
   return String(value || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
-    .split(/\\s+/)
+    .split(/\s+/)
     .filter(token => token.length >= 4);
 }
 function hasCategoryEvidence(iconName, category) {
