@@ -1334,6 +1334,10 @@
             return false;
         }
 
+        const overrides = getCategoryOverrides();
+        overrides.deleted = overrides.deleted.filter(value => String(value).toLowerCase() !== name.toLowerCase());
+        saveCategoryOverrides(overrides);
+
         const customCategories = getCustomCategories();
         customCategories.push(name);
 
@@ -1355,7 +1359,9 @@
         if (action === "rename") {
             const nextName = String(newName || "").trim();
             if (!nextName || nextName.toLowerCase() === "uncategorized") return false;
-            if (allNames.some(value => value.toLowerCase() === nextName.toLowerCase() && value.toLowerCase() !== existing.toLowerCase())) return false;
+            const historicalNames = [...Object.keys(overrides.renames), ...Object.values(overrides.renames)];
+            if (allNames.some(value => value.toLowerCase() === nextName.toLowerCase() && value.toLowerCase() !== existing.toLowerCase()) ||
+                historicalNames.some(value => String(value).toLowerCase() === nextName.toLowerCase() && String(value).toLowerCase() !== existing.toLowerCase())) return false;
             overrides.renames[existing] = nextName;
             overrides.deleted = overrides.deleted.filter(value => String(value).toLowerCase() !== nextName.toLowerCase());
         } else if (action === "delete") { overrides.deleted = [...new Set([...overrides.deleted, existing])]; delete overrides.renames[existing]; }
