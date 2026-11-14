@@ -11294,7 +11294,14 @@ function getSelectedFinishCategories() {
                 }
             };
             if (!search.dataset.libraryBound) {
-                search.addEventListener("input", renderList);
+                let librarySearchDebounceTimer = null;
+                search.addEventListener("input", () => {
+                    clearTimeout(librarySearchDebounceTimer);
+                    librarySearchDebounceTimer = setTimeout(() => {
+                        librarySearchDebounceTimer = null;
+                        renderList();
+                    }, 130);
+                });
                 category.addEventListener("change", renderList);
                 search.dataset.libraryBound = "true";
             }
