@@ -338,6 +338,8 @@ async function renderResults(query = '') {
       await updateStats();
       badge.textContent = 'Manually reviewed';
       save.textContent = 'Saved';
+      apply.disabled = false;
+      apply.title = 'Set these saved categories as the manual categories for matching finished icons in Icon Maker PRO.';
     });
     card.append(save);
 
