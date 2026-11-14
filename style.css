@@ -3575,7 +3575,29 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .delete-confirm-dialog {
+    width: min(420px, calc(100vw - 32px));
     max-width: 420px;
+    padding: 24px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    animation: modalScaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.delete-confirm-dialog .dialog-header h3 {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.delete-confirm-dialog .dialog-header p {
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.delete-confirm-dialog .dialog-header strong {
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
 }
 
 .delete-warning-note {
