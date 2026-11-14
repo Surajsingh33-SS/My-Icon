@@ -1142,36 +1142,47 @@
     };
 
    // Automatically detect all matching categories from an icon's name.
-function detectIconCategories(iconName) {
-    const name = (iconName || "").toLowerCase()
-        .replace(/([a-z])([A-Z])/g, "$1 $2")
-        .replace(/[_-]+/g, " ")
-        .replace(/[^a-z0-9\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    if (!name) return ["Uncategorized"];
-
-    const searchableName = " " + name + " ";
-    const matches = new Set();
-
-    for (const [category, keywords] of Object.entries(ICON_CATEGORY_KEYWORDS)) {
-        for (const keyword of keywords) {
-            const normalizedKeyword = keyword.toLowerCase()
-                .replace(/[_-]+/g, " ")
-                .replace(/\s+/g, " ")
-                .trim();
-
-            // Match complete words/phrases, not accidental substrings.
-            if (searchableName.includes(" " + normalizedKeyword + " ")) {
-                matches.add(category);
+    const CATEGORY_OVERRIDES_STORAGE_KEY = "iconMakerCategoryOverridesV1";
+    let categoryOverridesCache = null;
+    function getCategoryOverrides() {
+        if (categoryOverridesCache) return categoryOverridesCache;
+        try {
+            const saved = JSON.parse(localStorage.getItem(CATEGORY_OVERRIDES_STORAGE_KEY) || "{}");
+            categoryOverridesCache = { renames: saved && typeof saved.renames === "object" && saved.renames ? saved.renames : {}, deleted: Array.isArray(saved && saved.deleted) ? saved.deleted : [] };
+            return categoryOverridesCache;
+        } catch (error) { console.warn("Could not load category overrides:", error); categoryOverridesCache = { renames: {}, deleted: [] }; return categoryOverridesCache; }
+    }
+    function resolveCategoryName(value) {
+        let name = String(value || "").trim();
+        if (!name) return null;
+        const overrides = getCategoryOverrides();
+        const seen = new Set();
+        while (overrides.renames[name] && !seen.has(name)) { seen.add(name); name = String(overrides.renames[name]).trim(); }
+        if (!name || overrides.deleted.some(item => String(item).toLowerCase() === name.toLowerCase())) return null;
+        return name;
+    }
+    function normalizeCategoryList(values) {
+        const result = [];
+        (Array.isArray(values) ? values : []).forEach(value => {
+            const resolved = resolveCategoryName(value);
+            if (resolved && resolved !== "Uncategorized" && !result.some(item => item.toLowerCase() === resolved.toLowerCase())) result.push(resolved);
+        });
+        return result;
+    }
+    function saveCategoryOverrides(overrides) { categoryOverridesCache = overrides; localStorage.setItem(CATEGORY_OVERRIDES_STORAGE_KEY, JSON.stringify(overrides)); }
+    function detectIconCategories(iconName) {
+        const name = (iconName || "").toLowerCase().replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+        if (!name) return ["Uncategorized"];
+        const searchableName = " " + name + " ";
+        const matches = new Set();
+        for (const [category, keywords] of Object.entries(ICON_CATEGORY_KEYWORDS)) {
+            for (const keyword of keywords) {
+                const normalizedKeyword = keyword.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+                if (searchableName.includes(" " + normalizedKeyword + " ")) { const resolved = resolveCategoryName(category); if (resolved) matches.add(resolved); }
             }
         }
+        return matches.size ? [...matches] : ["Uncategorized"];
     }
-
-    return matches.size ? [...matches] : ["Uncategorized"];
-}
-
     // Map official Lucide category labels to the editor's category vocabulary.
     const LUCIDE_CATEGORY_MAP = {
         "accessibility": "Accessibility",
@@ -1230,21 +1241,20 @@ function detectIconCategories(iconName) {
         if (!project || !iconMetadataCache) return [];
         const record = getIconMetadataRecord(iconMetadataCache, project.name);
         const official = Array.isArray(record?.lucide?.categories) ? record.lucide.categories : [];
-        return [...new Set(official.map(value => {
+        return normalizeCategoryList(official.map(value => {
             const key = String(value).toLowerCase().replace(/[-_]+/g, " ").trim();
             return LUCIDE_CATEGORY_MAP[key] || null;
-        }).filter(Boolean))];
+        }));
     }
 
     // Resolve effective categories. Manual choices always override automatic sources.
     function getProjectCategories(project) {
         if (!project) return ["Uncategorized"];
-        if (Array.isArray(project.manualCategories) && project.manualCategories.length)
-            return [...new Set(project.manualCategories.filter(Boolean))];
-
-        const savedAutomatic = Array.isArray(project.autoCategories)
-            ? project.autoCategories.filter(value => value && value !== "Uncategorized")
-            : [];
+        if (Array.isArray(project.manualCategories) && project.manualCategories.length) {
+            const manual = normalizeCategoryList(project.manualCategories);
+            return manual.length ? manual : ["Uncategorized"];
+        }
+        const savedAutomatic = normalizeCategoryList(project.autoCategories);
         const official = getOfficialProjectCategories(project);
         const detected = detectIconCategories(project.name || "")
             .filter(value => value !== "Uncategorized");
@@ -1291,11 +1301,7 @@ function detectIconCategories(iconName) {
     }
 
     function getAllIconCategories() {
-        return [
-            ...STANDARD_ICON_CATEGORIES,
-            ...getCustomCategories(),
-            "Uncategorized"
-        ];
+        return [...new Set([...normalizeCategoryList(STANDARD_ICON_CATEGORIES), ...normalizeCategoryList(getCustomCategories()), "Uncategorized"])];
     }
 
     function saveCustomCategory(categoryName) {
@@ -1322,7 +1328,110 @@ function detectIconCategories(iconName) {
         return true;
     }
 
-   function populateFinishCategories(selectedCategories = ["Uncategorized"]) {
+       async function applyCategoryChange(oldName, newName, action) {
+        const oldCategory = String(oldName || "").trim();
+        if (!oldCategory || oldCategory === "Uncategorized") return false;
+        const overrides = getCategoryOverrides();
+        const allNames = getAllIconCategories();
+        const existing = allNames.find(value => value.toLowerCase() === oldCategory.toLowerCase());
+        if (!existing) return false;
+        if (action === "rename") {
+            const nextName = String(newName || "").trim();
+            if (!nextName || nextName.toLowerCase() === "uncategorized") return false;
+            if (allNames.some(value => value.toLowerCase() === nextName.toLowerCase() && value.toLowerCase() !== existing.toLowerCase())) return false;
+            overrides.renames[existing] = nextName;
+            overrides.deleted = overrides.deleted.filter(value => String(value).toLowerCase() !== nextName.toLowerCase());
+        } else if (action === "delete") { overrides.deleted = [...new Set([...overrides.deleted, existing])]; delete overrides.renames[existing]; }
+        else return false;
+        saveCategoryOverrides(overrides);
+        const mapValues = values => !Array.isArray(values) ? values : [...new Set(values.map(value => String(value).toLowerCase() === existing.toLowerCase() ? (action === "rename" ? String(newName).trim() : null) : value).filter(Boolean))];
+        projectManager.projects.forEach(project => {
+            ["manualCategories", "categories", "autoCategories"].forEach(key => { if (Array.isArray(project[key])) project[key] = mapValues(project[key]); });
+            if (String(project.category || "").toLowerCase() === existing.toLowerCase()) project.category = action === "rename" ? String(newName).trim() : (project.categories?.[0] || "Uncategorized");
+        });
+        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projectManager));
+        const custom = getCustomCategories().filter(value => String(value).toLowerCase() !== existing.toLowerCase());
+        const isBuiltIn = STANDARD_ICON_CATEGORIES.some(value => value.toLowerCase() === existing.toLowerCase());
+        if (action === "rename" && !isBuiltIn) custom.push(String(newName).trim());
+        localStorage.setItem(CUSTOM_CATEGORIES_STORAGE_KEY, JSON.stringify([...new Set(custom)]));
+        const db = await openAIReviewDatabase();
+        await new Promise((resolve, reject) => {
+            const transaction = db.transaction("results", "readwrite");
+            const store = transaction.objectStore("results");
+            const request = store.getAll();
+            request.onsuccess = () => (request.result || []).forEach(record => {
+                if (Array.isArray(record.manualCategories)) record.manualCategories = mapValues(record.manualCategories);
+                store.put(record);
+            });
+            request.onerror = () => reject(request.error);
+            transaction.oncomplete = resolve;
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error("Category update was cancelled."));
+        });
+        const reviews = await getAllAIReviewRecords();
+        homeSearchReviewByName = new Map(reviews.map(record => [normalizeHomeSearchIconName(record?.name), record]).filter(([key]) => key));
+        if (selectedCategoryFilter && selectedCategoryFilter.toLowerCase() === existing.toLowerCase()) selectedCategoryFilter = action === "rename" ? String(newName).trim() : null;
+        if (homeCategorySelect && homeCategorySelect.value.toLowerCase() === existing.toLowerCase()) { homeCategorySelect.value = action === "rename" ? String(newName).trim() : "all"; homeCategorySelect.dispatchEvent(new Event("change", { bubbles: true })); }
+        homeSearchProfileCache.clear();
+        renderHomeProjects();
+        renderManagementTable();
+        renderIconLibraryView();
+        return true;
+    }
+
+    function ensureGlobalCategoryManager() {
+        const library = document.getElementById("home-view-icon-library");
+        if (!library || library.dataset.categoryManagerReady === "true") return;
+        const header = library.querySelector(".management-header");
+        if (!header) return;
+        library.dataset.categoryManagerReady = "true";
+        header.style.display = "flex"; header.style.alignItems = "center"; header.style.justifyContent = "space-between"; header.style.gap = "12px";
+        const openButton = document.createElement("button");
+        openButton.type = "button"; openButton.className = "project-utility-button"; openButton.textContent = "Manage categories";
+        openButton.style.cssText = "flex:0 0 auto;min-height:34px;padding:7px 12px;"; header.appendChild(openButton);
+        const overlay = document.createElement("div"); overlay.hidden = true;
+        overlay.style.cssText = "position:fixed;inset:0;z-index:10020;background:rgba(0,0,0,.68);display:flex;align-items:center;justify-content:center;padding:18px;";
+        const dialog = document.createElement("section");
+        dialog.style.cssText = "width:min(620px,100%);max-height:88dvh;overflow:auto;padding:20px;border:1px solid var(--border-default);border-radius:14px;background:var(--bg-surface);color:var(--text-primary);box-shadow:var(--shadow-lg);";
+        overlay.appendChild(dialog); library.appendChild(overlay);
+        const render = () => {
+            dialog.replaceChildren();
+            const top = document.createElement("div"); top.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;";
+            const title = document.createElement("h3"); title.textContent = "Category manager"; title.style.margin = "0";
+            const close = document.createElement("button"); close.type = "button"; close.className = "project-utility-button"; close.textContent = "Close"; close.addEventListener("click", () => { overlay.hidden = true; });
+            top.append(title, close); dialog.appendChild(top);
+            const note = document.createElement("p"); note.textContent = "Changes apply across saved projects and icon-library reviews. Renaming preserves assignments; deleting removes only the category assignment, never the icon."; note.style.cssText = "font-size:12px;line-height:1.5;color:var(--text-secondary);"; dialog.appendChild(note);
+            const addRow = document.createElement("div"); addRow.style.cssText = "display:flex;gap:8px;margin:14px 0;";
+            const input = document.createElement("input"); input.type = "text"; input.placeholder = "New category name"; input.style.cssText = "flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border-default);border-radius:7px;background:var(--bg-input);color:var(--text-primary);";
+            const add = document.createElement("button"); add.type = "button"; add.className = "project-utility-button"; add.textContent = "Add category";
+            add.addEventListener("click", () => { if (!saveCustomCategory(input.value)) { showToast("Enter a unique category name", "warning"); return; } render(); renderHomeProjects(); });
+            addRow.append(input, add); dialog.appendChild(addRow);
+            const list = document.createElement("div"); list.style.cssText = "display:grid;gap:6px;";
+            getAllIconCategories().filter(name => name !== "Uncategorized").forEach(name => {
+                const row = document.createElement("div"); row.style.cssText = "display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;";
+                const label = document.createElement("span"); label.textContent = name; label.style.cssText = "flex:1;min-width:0;font-size:12px;overflow-wrap:anywhere;";
+                const rename = document.createElement("button"); rename.type = "button"; rename.className = "project-utility-button"; rename.textContent = "Rename";
+                rename.addEventListener("click", async () => {
+                    const next = window.prompt("Rename category:", name); if (next === null) return;
+                    try { if (!await applyCategoryChange(name, next, "rename")) { showToast("That category name is invalid or already exists", "warning"); return; } showToast("Category renamed everywhere", "success"); render(); }
+                    catch (error) { showToast("Could not update every category record", "error"); console.error(error); }
+                });
+                const remove = document.createElement("button"); remove.type = "button"; remove.className = "project-utility-button"; remove.textContent = "Delete";
+                remove.addEventListener("click", async () => {
+                    if (!window.confirm("Delete \"" + name + "\" from all assignments? Icons and projects will remain.")) return;
+                    try { if (!await applyCategoryChange(name, null, "delete")) { showToast("Could not delete category", "warning"); return; } showToast("Category removed from assignments", "success"); render(); }
+                    catch (error) { showToast("Could not update every category record", "error"); console.error(error); }
+                });
+                row.append(label, rename, remove); list.appendChild(row);
+            });
+            dialog.appendChild(list);
+        };
+        openButton.addEventListener("click", () => { render(); overlay.hidden = false; });
+        overlay.addEventListener("click", event => { if (event.target === overlay) overlay.hidden = true; });
+        document.addEventListener("keydown", event => { if (event.key === "Escape" && !overlay.hidden) overlay.hidden = true; });
+    }
+
+function populateFinishCategories(selectedCategories = ["Uncategorized"]) {
     if (!finishIconCategory) return;
 
     const selected = Array.isArray(selectedCategories)
@@ -11386,7 +11495,7 @@ function getSelectedFinishCategories() {
             const names = Object.keys(metadata).sort((a, b) => a.localeCompare(b));
             const countBadge = document.getElementById("icon-library-count");
             if (countBadge) countBadge.textContent = names.length.toLocaleString();
-            const categories = [...new Set(names.flatMap(name => metadata[name]?.lucide?.categories || []))].sort();
+            const categories = getAllIconCategories().filter(value => value !== "Uncategorized").sort((a, b) => a.localeCompare(b));
             const currentCategory = category.value;
             category.replaceChildren(new Option("All official categories", "all"));
             categories.forEach(value => category.add(new Option(value, value)));
@@ -11409,8 +11518,7 @@ function getSelectedFinishCategories() {
                     return {
                         name,
                         score: searchContext ? scoreHomeProjectSearch(searchProject, searchContext) : 0,
-                        matchesCategory: selectedCategory === "all" ||
-                            (lucide.categories || []).includes(selectedCategory)
+                        matchesCategory: selectedCategory === "all" || normalizeCategoryList([...(lucide.categories || []).map(value => { const key = String(value).toLowerCase().replace(/[-_]+/g, " ").trim(); return LUCIDE_CATEGORY_MAP[key] || null; }), ...(review?.manualCategories || [])]).includes(selectedCategory)
                     };
                 }).filter(item =>
                     (!searchContext || item.score > 0) && item.matchesCategory
@@ -11518,7 +11626,8 @@ function getSelectedFinishCategories() {
         reviewTitle.style.marginTop = "18px";
         panel.appendChild(reviewTitle);
 
-        const official = baseRecord?.lucide?.categories || review?.officialCategories || [];
+        const officialRaw = baseRecord?.lucide?.categories || review?.officialCategories || [];
+        const official = normalizeCategoryList(officialRaw.map(value => { const key = String(value).toLowerCase().replace(/[-_]+/g, " ").trim(); return LUCIDE_CATEGORY_MAP[key] || value; }));
         const suggestions = review?.aiSuggestions || [];
         if (!review?.aiSuggestions?.length) {
             const note = document.createElement("p");
@@ -11587,6 +11696,7 @@ function getSelectedFinishCategories() {
                     showToast("Select at least one category before saving.", "error");
                     return;
                 }
+                chosenCategories.forEach(value => { if (!getAllIconCategories().some(category => category.toLowerCase() === value.toLowerCase())) saveCustomCategory(value); });
                 latest.manualCategories = chosenCategories;
                 latest.reviewedAt = new Date().toISOString();
                 await saveAIReviewRecord(latest);
@@ -12647,6 +12757,7 @@ if (finishCategoryManuallyChanged) {
     // 25. APP INITIALIZATION LIFECYCLE
     // ========================================================================
     loadProjectManager();
+    ensureGlobalCategoryManager();
     restoreProjectFromBrowser();
     renderHomeProjects();
     renderUnfinishedProjects();
