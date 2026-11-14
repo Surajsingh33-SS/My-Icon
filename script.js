@@ -10141,59 +10141,82 @@ function getSelectedFinishCategories() {
         return words.some(word => word.startsWith(normalizedPrefix));
     }
 
-    function scoreHomeProjectSearch(project, rawQuery) {
-        const query = normalizeIconSearchText(rawQuery);
-        if (!query) return 0;
-        const queryTokens = [...new Set(query.split(" ").filter(Boolean))];
-        if (!queryTokens.length) return 0;
+    // Cache normalized search data per icon so each keystroke does not rebuild it.
+    const homeSearchProfileCache = new Map();
+
+    function getHomeSearchProfile(project) {
+        const iconName = normalizeHomeSearchIconName(project.name);
+        const categoriesRaw = getProjectCategories(project);
+        const searchTermsRaw = Array.isArray(project.searchTerms) ? project.searchTerms : [];
+        const cacheKey = `${iconName}|${JSON.stringify([categoriesRaw, searchTermsRaw])}`;
+        const cached = homeSearchProfileCache.get(cacheKey);
+        if (cached) return cached;
 
         const name = normalizeIconSearchText(project.name);
         const nameTokens = name.split(" ").filter(Boolean);
         const terms = getProjectSearchTerms(project).map(normalizeIconSearchText).filter(Boolean);
-        const categories = getProjectCategories(project).map(normalizeIconSearchText).filter(Boolean);
+        const categories = categoriesRaw.map(normalizeIconSearchText).filter(Boolean);
+        const termWords = [...new Set(terms.flatMap(term => term.split(" ").filter(Boolean)))];
+        const profile = {
+            name,
+            namePadded: ` ${name} `,
+            nameTokens,
+            termSet: new Set(terms),
+            termPadded: terms.map(term => ` ${term} `),
+            termWords,
+            indexedWords: termWords.filter(word => word.length >= 5),
+            categoryPadded: categories.map(category => ` ${category} `),
+            categoryWords: [...new Set(categories.flatMap(category => category.split(" ").filter(Boolean)))]
+        };
+        homeSearchProfileCache.set(cacheKey, profile);
+        return profile;
+    }
+
+    function createHomeSearchContext(rawQuery) {
+        const query = normalizeIconSearchText(rawQuery);
+        const tokens = [...new Set(query.split(" ").filter(Boolean))];
+        return { query, tokens, candidates: tokens.map(token => getIconSearchCandidates(token)) };
+    }
+
+    function scoreHomeProjectSearch(project, context) {
+        const { query, tokens, candidates } = context;
+        if (!query || !tokens.length) return 0;
+        const profile = getHomeSearchProfile(project);
+        const { name, namePadded, nameTokens, termSet, termPadded, termWords, indexedWords, categoryPadded, categoryWords } = profile;
         let totalScore = 0;
 
-        // Every query token must have evidence (AND matching).
-        for (const token of queryTokens) {
-            const candidates = getIconSearchCandidates(token);
+        for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {
+            const token = tokens[tokenIndex];
             let bestScore = 0;
-            for (const candidate of candidates) {
+
+            for (const candidate of candidates[tokenIndex]) {
                 if (!candidate) continue;
                 if (name === candidate) bestScore = Math.max(bestScore, 120);
-                else if (iconSearchPhraseMatches(name, candidate)) bestScore = Math.max(bestScore, 96);
-                if (terms.some(term => term === candidate)) bestScore = Math.max(bestScore, 76);
-                else if (terms.some(term => iconSearchPhraseMatches(term, candidate))) bestScore = Math.max(bestScore, 66);
-                if (categories.some(category => iconSearchPhraseMatches(category, candidate))) bestScore = Math.max(bestScore, 28);
+                else if (namePadded.includes(` ${candidate} `)) bestScore = Math.max(bestScore, 96);
 
-                // Prefix matches make results appear while the user is still typing.
-                // Complete names/terms above always outrank these partial matches.
-                if (nameTokens.some(nameToken => nameToken.startsWith(token))) bestScore = Math.max(bestScore, 58);
-                if (terms.some(term => iconSearchPrefixMatches(term, token))) bestScore = Math.max(bestScore, 44);
-                if (categories.some(category => iconSearchPrefixMatches(category, token))) bestScore = Math.max(bestScore, 22);
+                if (termSet.has(candidate)) bestScore = Math.max(bestScore, 76);
+                else if (termPadded.some(term => term.includes(` ${candidate} `))) bestScore = Math.max(bestScore, 66);
+                if (categoryPadded.some(category => category.includes(` ${candidate} `))) bestScore = Math.max(bestScore, 28);
 
+                if (nameTokens.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 58);
+                if (termWords.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 44);
+                if (categoryWords.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 22);
             }
 
-            // Fuzzy matching is deliberately a fallback, below exact and prefix
-            // matches. Compare the user's actual token against complete indexed
-            // words from the icon name and its search metadata (not aliases).
             if (bestScore < 44) {
-                if (nameTokens.some(nameToken => isSafeIconSearchTypo(token, nameToken))) {
+                if (nameTokens.some(word => isSafeIconSearchTypo(token, word))) {
                     bestScore = Math.max(bestScore, 42);
-                } else {
-                    const indexedWords = terms.flatMap(term =>
-                        term.split(" ").filter(word => word.length >= 5)
-                    );
-                    if (indexedWords.some(word => isSafeIconSearchTypo(token, word))) {
-                        bestScore = Math.max(bestScore, 38);
-                    }
+                } else if (indexedWords.some(word => isSafeIconSearchTypo(token, word))) {
+                    bestScore = Math.max(bestScore, 38);
                 }
             }
 
             if (bestScore === 0) return 0;
             totalScore += bestScore;
         }
-        if (iconSearchPhraseMatches(name, query)) totalScore += 30;
-        return Math.round(totalScore / queryTokens.length);
+
+        if (namePadded.includes(` ${query} `)) totalScore += 30;
+        return Math.round(totalScore / tokens.length);
     }
 
     let homeSearchRenderToken = 0;
@@ -10284,6 +10307,7 @@ function getSelectedFinishCategories() {
 
         if (query) {
             try {
+                const searchContext = createHomeSearchContext(query);
                 const metadata = await loadIconMetadata();
                 if (!homeSearchReviewsLoaded) {
                     if (!homeSearchReviewLoadPromise) {
@@ -10293,6 +10317,7 @@ function getSelectedFinishCategories() {
                                     const key = normalizeHomeSearchIconName(record?.name);
                                     if (key) homeSearchReviewByName.set(key, record);
                                 });
+                                homeSearchProfileCache.clear();
                                 homeSearchReviewsLoaded = true;
                             })
                             .catch(reviewError => {
@@ -10325,7 +10350,7 @@ function getSelectedFinishCategories() {
 
                 allSavedProjects.forEach(project => {
                     if (!matchesActiveCategory(project)) return;
-                    const score = scoreHomeProjectSearch(project, query);
+                    const score = scoreHomeProjectSearch(project, searchContext);
                     if (score > 0) {
                         searchResults.push({ type: "project", project, score });
                     }
@@ -10346,7 +10371,7 @@ function getSelectedFinishCategories() {
                     };
 
                     if (!matchesActiveCategory(libraryProject)) return;
-                    const score = scoreHomeProjectSearch(libraryProject, query);
+                    const score = scoreHomeProjectSearch(libraryProject, searchContext);
                     if (score > 0) {
                         searchResults.push({
                             type: "library",
@@ -10689,11 +10714,20 @@ function getSelectedFinishCategories() {
         });
     });
 
-    homeSearchInput?.addEventListener("input", renderHomeProjects);
+    let homeSearchDebounceTimer = null;
+    homeSearchInput?.addEventListener("input", () => {
+        clearTimeout(homeSearchDebounceTimer);
+        homeSearchDebounceTimer = setTimeout(() => {
+            homeSearchDebounceTimer = null;
+            renderHomeProjects();
+        }, 130);
+    });
     homeSortSelect?.addEventListener("change", renderHomeProjects);
     homeCategorySelect?.addEventListener("change", renderHomeProjects);
 
     clearSearchBtn?.addEventListener("click", () => {
+        clearTimeout(homeSearchDebounceTimer);
+        homeSearchDebounceTimer = null;
         if (homeSearchInput) homeSearchInput.value = "";
         renderHomeProjects();
     });
@@ -11007,6 +11041,7 @@ function getSelectedFinishCategories() {
             transaction.oncomplete = () => {
                 const key = normalizeHomeSearchIconName(record?.name);
                 if (key) homeSearchReviewByName.set(key, record);
+                homeSearchProfileCache.clear();
                 renderHomeProjects();
                 resolve(true);
             };
@@ -11033,6 +11068,7 @@ function getSelectedFinishCategories() {
                 record
             ]).filter(([name]) => name)
         );
+        homeSearchProfileCache.clear();
         renderHomeProjects();
     });
 
@@ -11421,7 +11457,10 @@ function getSelectedFinishCategories() {
             const iconName = normalizeHomeSearchIconName(project.name);
             // Make the freshly loaded manual edits available to the same
             // complete term builder used by homepage search.
-            if (review) homeSearchReviewByName.set(iconName, review);
+            if (review) {
+                homeSearchReviewByName.set(iconName, review);
+                homeSearchProfileCache.clear();
+            }
 
             // Use the exact same metadata pipeline as homepage search. This
             // includes official tags, AI terms, manual edits, curated terms,
