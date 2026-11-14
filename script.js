@@ -9891,13 +9891,20 @@ function getSelectedFinishCategories() {
         if (!word || word.includes(" ")) return word ? [word] : [];
         const variants = new Set([word, ...(ICON_SEARCH_IRREGULAR_FORMS[word] || [])]);
         if (word.length >= 4) {
+            const looksPlural = word.endsWith("ies") ||
+                /(ches|shes|xes|zes|sses)$/.test(word) ||
+                (word.endsWith("s") && !/(ss|us|is)$/.test(word));
+
             if (word.endsWith("ies")) variants.add(word.slice(0, -3) + "y");
             else if (/(ches|shes|xes|zes|sses)$/.test(word)) variants.add(word.slice(0, -2));
             else if (word.endsWith("s") && !/(ss|us|is)$/.test(word)) variants.add(word.slice(0, -1));
 
-            if (/[^aeiou]y$/.test(word)) variants.add(word.slice(0, -1) + "ies");
-            else if (/(ch|sh|s|x|z)$/.test(word)) variants.add(word + "es");
-            else if (!/(s|ss|us|is)$/.test(word)) variants.add(word + "s");
+            if (!looksPlural) {
+                if (/[^aeiou]y$/.test(word)) variants.add(word.slice(0, -1) + "ies");
+                else if (/(ch|sh|x|z)$/.test(word)) variants.add(word + "es");
+                else if (word.endsWith("s") && !/(ss|us|is)$/.test(word)) variants.add(word + "es");
+                else if (!/(s|ss|us|is)$/.test(word)) variants.add(word + "s");
+            }
         } else if (word.length >= 3 && !/(s|ss)$/.test(word)) {
             variants.add(word + "s");
         }
