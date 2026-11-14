@@ -10111,26 +10111,32 @@ function getSelectedFinishCategories() {
             ? (ICON_SEARCH_QUERY_ALIASES[overrideKey] || [])
             : variants.flatMap(value => RELATED_ICON_SEARCH_TERMS[value] || []);
 
-        // Support incomplete synonym typing too: "bur", "burg", and "hamb"
-        // should already discover the menu icon before the full word is entered.
-        // Require at least 3 characters to avoid flooding short, ambiguous queries.
-        const partialAliasKeys = normalized.length >= 3
-            ? Object.keys(ICON_SEARCH_QUERY_ALIASES)
-                .filter(aliasKey => aliasKey.startsWith(normalized))
-            : [];
-        const partialAliases = partialAliasKeys.flatMap(aliasKey =>
-            ICON_SEARCH_QUERY_ALIASES[aliasKey] || []
-        );
+        // Treat an incomplete synonym as a lower-confidence discovery path.
+        // This keeps the target visible from the first character while its rank
+        // improves as the user types more of the synonym (b -> bu -> bur -> burg).
+        const partialAliases = Object.keys(ICON_SEARCH_QUERY_ALIASES)
+            .filter(aliasKey => aliasKey !== normalized && aliasKey.startsWith(normalized))
+            .flatMap(aliasKey => (ICON_SEARCH_QUERY_ALIASES[aliasKey] || []).map(alias => ({
+                alias,
+                // Keep partial synonyms below direct name-prefix matches.
+                score: Math.min(56, 22 + normalized.length * 8)
+            })));
 
         // Direct query words may match names and metadata. Synonyms are only
         // allowed to match icon names; otherwise broad tags such as "control"
         // make unrelated icons (for example chevron-up) appear for "cog".
         return {
             direct: [...new Set(variants.map(normalizeIconSearchText).filter(Boolean))],
-            aliases: [...new Set([...aliases, ...partialAliases]
+            aliases: [...new Set(aliases
                 .flatMap(alias => getIconSearchWordVariants(alias))
                 .map(normalizeIconSearchText)
-                .filter(Boolean))]
+                .filter(Boolean))],
+            partialAliases: partialAliases.map(({ alias, score }) => ({
+                terms: [...new Set(getIconSearchWordVariants(alias)
+                    .map(normalizeIconSearchText)
+                    .filter(Boolean))],
+                score
+            }))
         };
     }
 
@@ -10274,11 +10280,19 @@ function getSelectedFinishCategories() {
                 if (categoryPadded.some(category => category.includes(` ${candidate} `))) bestScore = Math.max(bestScore, 28);
             }
 
-            // Synonyms are a name-discovery aid, not permission to match every
-            // icon whose broad metadata happens to contain that synonym.
+            // A complete synonym is a strong name-discovery match.
+            // An incomplete synonym is weaker and becomes more relevant with
+            // each typed character, so it never outranks a direct name prefix.
             for (const alias of aliases) {
                 if (name === alias) bestScore = Math.max(bestScore, 120);
                 else if (namePadded.includes(` ${alias} `)) bestScore = Math.max(bestScore, 96);
+            }
+            for (const partial of candidates[tokenIndex].partialAliases || []) {
+                if (partial.terms.some(alias =>
+                    name === alias || namePadded.includes(` ${alias} `)
+                )) {
+                    bestScore = Math.max(bestScore, partial.score);
+                }
             }
 
             if (nameTokens.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 58);
