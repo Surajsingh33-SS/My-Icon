@@ -4181,3 +4181,5 @@ body.light-theme #save-project-button:hover {
 .project-details.expanded .related-project-grid {
     padding-bottom: 18px;
 }
+
+.sidebar-customization.global-preview-focus { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 10px; }
