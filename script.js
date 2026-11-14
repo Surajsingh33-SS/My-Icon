@@ -9580,20 +9580,27 @@ function getSelectedFinishCategories() {
             if (selectedHomeProject !== project) return;
             panel.replaceChildren(title);
             const record = getIconMetadataRecord(metadata, project.name);
-            if (record) {
-                const lucide = record.lucide || {};
-                const ai = record.ai || {};
-                if (ai.description) {
+            const lucide = record?.lucide || {};
+            const ai = record?.ai || {};
+            const edits = review?.metadataEdits || {};
+            const effectiveDescription = edits.description ?? ai.description ?? "";
+            const effectiveTags = edits.tags ?? lucide.tags ?? [];
+            const effectiveUseCases = edits.useCases ?? lucide.useCases ?? [];
+            const effectiveContributors = edits.contributors ?? lucide.contributors ?? [];
+            const effectiveSearchTerms = edits.searchTerms ?? ai.searchTerms ?? [];
+
+            if (record || review?.metadataEdits) {
+                if (effectiveDescription) {
                     const description = document.createElement("p");
-                    description.textContent = ai.description;
+                    description.textContent = effectiveDescription;
                     description.style.cssText = "font-size:12px;line-height:1.5;";
                     panel.appendChild(description);
                 }
                 renderMetadataList(panel, "Official Lucide categories", lucide.categories || []);
-                renderMetadataList(panel, "Tags", lucide.tags || []);
-                renderMetadataList(panel, "Use cases", lucide.useCases || []);
-                renderMetadataList(panel, "Contributors", lucide.contributors || []);
-                renderMetadataList(panel, "Search terms", ai.searchTerms || []);
+                renderMetadataList(panel, "Tags", effectiveTags);
+                renderMetadataList(panel, "Use cases", effectiveUseCases);
+                renderMetadataList(panel, "Contributors", effectiveContributors);
+                renderMetadataList(panel, "Search terms", effectiveSearchTerms);
             } else {
                 const missing = document.createElement("p");
                 missing.textContent = "No official Lucide metadata record was found for this icon name.";
