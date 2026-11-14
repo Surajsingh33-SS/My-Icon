@@ -273,7 +273,7 @@ function expandRelatedSearchTerms(values) {
     const expanded = [...values];
     for (const value of values) {
         const words = String(value || "").toLowerCase()
-            .replace(/[^a-z0-9]+/g, " ").trim().split(/\\s+/);
+            .replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/);
         for (const word of words) {
             if (RELATED_SEARCH_TERMS[word]) expanded.push(...RELATED_SEARCH_TERMS[word]);
         }
