@@ -9447,6 +9447,90 @@ function getSelectedFinishCategories() {
         });
     }
 
+    async function saveAIReviewRecord(record) {
+        const db = await openAIReviewDatabase();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction("results", "readwrite");
+            transaction.objectStore("results").put(record);
+            transaction.oncomplete = () => resolve(true);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error("Save was cancelled."));
+        });
+    }
+
+    function createMetadataEditor(panel, iconName, record, baseRecord) {
+        const section = document.createElement("details");
+        section.style.cssText = "margin-top:12px;padding-top:10px;border-top:1px solid var(--border-color,#64748b);";
+        const summary = document.createElement("summary");
+        summary.textContent = "Edit metadata";
+        summary.style.cssText = "cursor:pointer;font-weight:600;font-size:13px;";
+        section.appendChild(summary);
+
+        const fields = [
+            { key: "description", label: "Description", multiline: true },
+            { key: "tags", label: "Tags (comma separated)", multiline: true },
+            { key: "searchTerms", label: "Search terms (comma separated)", multiline: true },
+            { key: "useCases", label: "Use cases (comma separated)", multiline: true },
+            { key: "contributors", label: "Contributors (comma separated)", multiline: false }
+        ];
+        const controls = {};
+        fields.forEach(field => {
+            const label = document.createElement("label");
+            label.textContent = field.label;
+            label.style.cssText = "display:block;margin-top:9px;font-size:12px;font-weight:600;";
+            const input = document.createElement(field.multiline ? "textarea" : "input");
+            input.value = field.key === "description"
+                ? (record?.metadataEdits?.description ?? baseRecord?.ai?.description ?? "")
+                : (record?.metadataEdits?.[field.key] ?? (
+                    field.key === "tags" ? (baseRecord?.lucide?.tags || []).join(", ") :
+                    field.key === "searchTerms" ? (baseRecord?.ai?.searchTerms || []).join(", ") :
+                    field.key === "useCases" ? (baseRecord?.lucide?.useCases || []).join(", ") :
+                    (baseRecord?.lucide?.contributors || []).join(", ")
+                ));
+            input.style.cssText = "display:block;box-sizing:border-box;width:100%;margin-top:4px;padding:7px;border:1px solid var(--border-color,#64748b);border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:12px;";
+            if (field.multiline) input.rows = field.key === "description" ? 3 : 2;
+            controls[field.key] = input;
+            label.appendChild(input);
+            section.appendChild(label);
+        });
+
+        const save = document.createElement("button");
+        save.type = "button";
+        save.textContent = "Save metadata edits";
+        save.style.cssText = "margin-top:10px;padding:7px 10px;border:1px solid var(--border-color,#64748b);border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;";
+        save.addEventListener("click", async () => {
+            save.disabled = true;
+            try {
+                const latest = await getAIReviewRecord(iconName);
+                const next = latest || {
+                    name: iconName,
+                    officialCategories: [],
+                    aiSuggestions: [],
+                    analyzedAt: null,
+                    reviewedAt: null,
+                    manualCategories: null
+                };
+                const split = value => [...new Set(value.split(",").map(item => item.trim()).filter(Boolean))];
+                next.metadataEdits = {
+                    description: controls.description.value.trim(),
+                    tags: split(controls.tags.value),
+                    searchTerms: split(controls.searchTerms.value),
+                    useCases: split(controls.useCases.value),
+                    contributors: split(controls.contributors.value),
+                    updatedAt: new Date().toISOString()
+                };
+                await saveAIReviewRecord(next);
+                showToast("Metadata edits saved in this browser.", "success");
+            } catch (error) {
+                showToast("Could not save metadata: " + error.message, "error");
+            } finally {
+                save.disabled = false;
+            }
+        });
+        section.appendChild(save);
+        panel.appendChild(section);
+    }
+
     function getIconMetadataRecord(metadata, iconName) {
         if (!metadata || !iconName) return null;
         const normalized = iconName.trim().toLowerCase().replace(/\\s+/g, "-");
@@ -9516,6 +9600,13 @@ function getSelectedFinishCategories() {
                 missing.style.cssText = "font-size:12px;opacity:.75;";
                 panel.appendChild(missing);
             }
+
+            createMetadataEditor(
+                panel,
+                (project.name || "").trim().toLowerCase().replace(/\\s+/g, "-"),
+                review,
+                record
+            );
 
             const aiHeading = document.createElement("strong");
             aiHeading.textContent = "Icon Maker AI category suggestions";
