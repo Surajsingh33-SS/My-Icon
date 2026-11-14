@@ -250,6 +250,32 @@ async function renderResults(query = '') {
       aiChips.append(chip);
     });
     card.append(aiChips);
+    const customRow = document.createElement('div');
+    customRow.className = 'controls';
+    customRow.style.margin = '10px 0';
+    const customInput = document.createElement('input');
+    customInput.type = 'text';
+    customInput.placeholder = 'Add another category name';
+    customInput.setAttribute('aria-label', 'Custom category name');
+    const addCustom = document.createElement('button');
+    addCustom.textContent = 'Add category';
+    addCustom.addEventListener('click', () => {
+      const value = customInput.value.trim();
+      if (!value) return;
+      const alreadyExists = [...card.querySelectorAll('input[type="checkbox"]')]
+        .some(input => input.value.toLowerCase() === value.toLowerCase());
+      if (alreadyExists) {
+        customInput.value = '';
+        return;
+      }
+      const customChip = makeChip(value, true);
+      customChip.dataset.custom = 'true';
+      card.append(customChip);
+      customInput.value = '';
+    });
+    customRow.append(customInput, addCustom);
+    card.append(customRow);
+
     const save = document.createElement('button');
     save.className = 'primary';
     save.textContent = 'Save my categories';
