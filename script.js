@@ -414,6 +414,10 @@
     const toastContainer = document.getElementById("toast-container");
     const transformToolbar = document.getElementById("transform-toolbar");
     const clearCustomAxisBtn = document.getElementById("clear-custom-axis-btn");
+    // Keep the floating transform toolbar outside editor/sidebar stacking contexts.
+    if (transformToolbar && transformToolbar.parentElement !== document.body) {
+        document.body.appendChild(transformToolbar);
+    }
 
     // Settings View Controls
 
@@ -6128,7 +6132,21 @@ function getSelectedFinishCategories() {
                         Math.atan2(target.y - center.y, target.x - center.x),
                         Math.max(0.25, Math.hypot(target.x - center.x, target.y - center.y)));
                 } else if (customAxisDrag.action === "center") {
-                    translateCustomAxisGroup(customAxisDrag.groupId, dx, dy, customAxisDrag.original);
+                    // Centre handles magnetically snap to grid intersections (integer X/Y).
+                    const originalCenter = {
+                        x: (primary.x1 + primary.x2) / 2,
+                        y: (primary.y1 + primary.y2) / 2
+                    };
+                    const snappedCenter = {
+                        x: Math.round(originalCenter.x + dx),
+                        y: Math.round(originalCenter.y + dy)
+                    };
+                    translateCustomAxisGroup(
+                        customAxisDrag.groupId,
+                        snappedCenter.x - originalCenter.x,
+                        snappedCenter.y - originalCenter.y,
+                        customAxisDrag.original
+                    );
                 } else {
                     const axis = customMirrorAxes.find(item => item.id === customAxisDrag.axisId);
                     if (axis && customAxisDrag.action === "start") {
