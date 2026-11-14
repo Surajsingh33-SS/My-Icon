@@ -4176,11 +4176,11 @@ body.light-theme #save-project-button:hover {
 }
 .project-search-more {
     flex: 0 0 auto;
-    border: 1px solid var(--border-default);
+    border: 1px solid var(--accent);
     border-radius: var(--radius-full);
     padding: 4px 9px;
-    background: var(--bg-surface-raised);
-    color: var(--text-secondary);
+    background: var(--accent);
+    color: #ffffff;
     font: inherit;
     font-size: 11px;
     cursor: pointer;
@@ -4202,8 +4202,7 @@ body.light-theme #save-project-button:hover {
     font-size: 11px;
     cursor: pointer;
 }
-.project-utility-button:hover,
-.project-search-more:hover {
+.project-utility-button:hover {
     border-color: var(--accent);
     color: var(--accent);
 }
