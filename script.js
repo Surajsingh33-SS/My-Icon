@@ -8955,12 +8955,21 @@ function getSelectedFinishCategories() {
     // 19. HOMEPAGE GALLERY, TABS, SEARCH & DETAILS DRAWER
     // ========================================================================
     function getProjectSearchTerms(project) {
-        if (Array.isArray(project.searchTerms) && project.searchTerms.length) {
-            return project.searchTerms;
-        }
         const name = (project.name || "").trim().toLowerCase();
         const categories = getProjectCategories(project);
-        const baseTerms = [name, ...categories].map(value => String(value).trim().toLowerCase()).filter(Boolean);
+        const metadataRecord = iconMetadataCache
+            ? getIconMetadataRecord(iconMetadataCache, project.name)
+            : null;
+        const metadataTerms = [
+            ...(metadataRecord?.lucide?.tags || []),
+            ...(metadataRecord?.ai?.searchTerms || [])
+        ];
+        const baseTerms = [
+            name,
+            ...categories,
+            ...(Array.isArray(project.searchTerms) ? project.searchTerms : []),
+            ...metadataTerms
+        ].map(value => String(value).trim().toLowerCase()).filter(Boolean);
 
         // Expanded intelligent synonym matching
         if (["search", "magnifier", "magnifying glass", "find"].some(k => name.includes(k))) {
@@ -9792,136 +9801,97 @@ function getSelectedFinishCategories() {
 
     async function renderIconMetadataDetails(project) {
         if (!projectDetails || !project) return;
+
         let panel = document.getElementById("icon-ai-metadata-panel");
         if (!panel) {
             panel = document.createElement("section");
             panel.id = "icon-ai-metadata-panel";
-            panel.style.cssText = "margin:12px 0;padding:12px;border:1px solid var(--border-color,#64748b);border-radius:10px;";
             const anchor = projectSearchTerms || projectCategoryBadge?.parentElement;
             anchor?.insertAdjacentElement("afterend", panel);
         }
+
+        panel.className = "icon-metadata-compact";
         panel.replaceChildren();
-        const title = document.createElement("strong");
-        title.textContent = "Icon metadata & AI review";
-        panel.appendChild(title);
-        const loading = document.createElement("p");
-        loading.textContent = "Loading official metadata and saved AI review…";
-        loading.style.cssText = "font-size:12px;opacity:.75;";
-        panel.appendChild(loading);
 
         try {
             const [metadata, review] = await Promise.all([
-                loadIconMetadata(),
-                getAIReviewRecord((project.name || "").trim().toLowerCase().replace(/\\s+/g, "-"))
+                loadIconMetadata().catch(() => ({})),
+                getAIReviewRecord((project.name || "").trim().toLowerCase().replace(/\\s+/g, "-")).catch(() => null)
             ]);
             if (selectedHomeProject !== project) return;
-            panel.replaceChildren(title);
+
             const record = getIconMetadataRecord(metadata, project.name);
             const lucide = record?.lucide || {};
             const ai = record?.ai || {};
             const edits = review?.metadataEdits || {};
-            const effectiveDescription = edits.description ?? ai.description ?? "";
-            const effectiveTags = edits.tags ?? lucide.tags ?? [];
-            const effectiveUseCases = edits.useCases ?? lucide.useCases ?? [];
-            const effectiveContributors = edits.contributors ?? lucide.contributors ?? [];
-            const effectiveSearchTerms = edits.searchTerms ?? ai.searchTerms ?? [];
 
-            if (record || review?.metadataEdits) {
-                if (effectiveDescription) {
-                    const description = document.createElement("p");
-                    description.textContent = effectiveDescription;
-                    description.style.cssText = "font-size:12px;line-height:1.5;";
-                    panel.appendChild(description);
-                }
-                renderMetadataList(panel, "Official Lucide categories", lucide.categories || []);
-                renderMetadataList(panel, "Tags", effectiveTags);
-                renderMetadataList(panel, "Use cases", effectiveUseCases);
-                renderMetadataList(panel, "Contributors", effectiveContributors);
-                renderMetadataList(panel, "Search terms", effectiveSearchTerms);
-            } else {
-                const missing = document.createElement("p");
-                missing.textContent = "No official Lucide metadata record was found for this icon name.";
-                missing.style.cssText = "font-size:12px;opacity:.75;";
-                panel.appendChild(missing);
+            // Prefer the editable search terms, then official Lucide tags, then
+            // generated AI terms. Keep every unique term available to search.
+            const terms = [...new Set([
+                ...(Array.isArray(edits.searchTerms) ? edits.searchTerms : []),
+                ...(Array.isArray(lucide.tags) ? lucide.tags : []),
+                ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : []),
+                ...(Array.isArray(project.searchTerms) ? project.searchTerms : [])
+            ].map(value => String(value).trim()).filter(Boolean))];
+
+            // Keep these metadata terms available to the existing Home search.
+            project.searchTerms = [...new Set([
+                ...(Array.isArray(project.searchTerms) ? project.searchTerms : []),
+                ...terms
+            ])];
+
+            const categories = [...new Set([
+                ...getProjectCategories(project),
+                ...(Array.isArray(lucide.categories) ? lucide.categories : [])
+            ].map(value => String(value).trim()).filter(Boolean))];
+
+            if (terms.length) {
+                const termsRow = document.createElement("div");
+                termsRow.className = "icon-metadata-terms";
+                const visibleLimit = 9;
+                let expanded = false;
+
+                const renderTerms = () => {
+                    termsRow.replaceChildren();
+                    const shown = expanded ? terms : terms.slice(0, visibleLimit);
+                    const text = document.createElement("span");
+                    text.className = "icon-metadata-terms-text";
+                    text.textContent = shown.join("  •  ");
+                    termsRow.appendChild(text);
+
+                    if (terms.length > visibleLimit) {
+                        const toggle = document.createElement("button");
+                        toggle.type = "button";
+                        toggle.className = "icon-metadata-more";
+                        toggle.textContent = expanded ? "Show less" : `+${terms.length - visibleLimit}`;
+                        toggle.setAttribute("aria-expanded", String(expanded));
+                        toggle.addEventListener("click", () => {
+                            expanded = !expanded;
+                            renderTerms();
+                        });
+                        termsRow.appendChild(toggle);
+                    }
+                };
+                renderTerms();
+                panel.appendChild(termsRow);
             }
 
-            createMetadataEditor(
-                panel,
-                (project.name || "").trim().toLowerCase().replace(/\\s+/g, "-"),
-                review,
-                record
-            );
-
-            const aiHeading = document.createElement("strong");
-            aiHeading.textContent = "Icon Maker AI category suggestions";
-            aiHeading.style.cssText = "display:block;margin-top:14px;";
-            panel.appendChild(aiHeading);
-            if (!review?.aiSuggestions?.length) {
-                const note = document.createElement("p");
-                note.textContent = "No batch AI analysis is saved for this icon yet. Run the Batch AI Categorization page first.";
-                note.style.cssText = "font-size:12px;opacity:.75;";
-                panel.appendChild(note);
-                return;
+            if (categories.length) {
+                const categoryRow = document.createElement("div");
+                categoryRow.className = "icon-metadata-categories";
+                categories.forEach(category => {
+                    const chip = document.createElement("span");
+                    chip.className = "icon-metadata-category";
+                    chip.textContent = category;
+                    categoryRow.appendChild(chip);
+                });
+                panel.appendChild(categoryRow);
             }
-
-            const reviewStatus = document.createElement("p");
-            reviewStatus.textContent = review.reviewedAt
-                ? "Batch review saved. Choose Apply only if you want to use those reviewed categories for this project."
-                : "AI results are suggestions only. Select categories and apply them explicitly.";
-            reviewStatus.style.cssText = "font-size:12px;opacity:.75;";
-            panel.appendChild(reviewStatus);
-
-            const selected = new Set(
-                Array.isArray(review.manualCategories)
-                    ? review.manualCategories
-                    : (review.officialCategories || [])
-            );
-            const choices = document.createElement("div");
-            choices.style.cssText = "display:flex;flex-wrap:wrap;gap:7px;margin:8px 0;";
-            const candidates = [
-                ...(review.officialCategories || []),
-                ...(review.aiSuggestions || []).filter(item => isSupportedAICategorySuggestion(project.name, item, record)).map(item => item.name)
-            ].filter((value, index, all) => value && all.indexOf(value) === index);
-            candidates.forEach(category => {
-                const label = document.createElement("label");
-                label.style.cssText = "display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:5px 8px;border:1px solid var(--border-color,#64748b);border-radius:18px;cursor:pointer;";
-                const checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.value = category;
-                checkbox.checked = selected.has(category);
-                const name = document.createElement("span");
-                name.textContent = category;
-                label.append(checkbox, name);
-                choices.appendChild(label);
-            });
-            panel.appendChild(choices);
-
-            const apply = document.createElement("button");
-            apply.type = "button";
-            apply.textContent = "Apply selected AI categories to this icon";
-            apply.style.cssText = "margin-top:6px;padding:7px 10px;border:1px solid var(--border-color,#64748b);border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;";
-            apply.addEventListener("click", () => {
-                if (selectedHomeProject !== project) return;
-                const chosen = [...choices.querySelectorAll('input[type="checkbox"]:checked')]
-                    .map(input => input.value);
-                if (!setProjectManualCategories(project, chosen)) {
-                    showToast("Select at least one category before applying.", "error");
-                    return;
-                }
-                saveProjectManager();
-                if (projectCategoryBadge) {
-                    projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
-                }
-                renderHomeProjects();
-                renderManagementTable();
-                showToast("Selected AI categories applied as manual categories.", "success");
-            });
-            panel.appendChild(apply);
         } catch (error) {
-            panel.replaceChildren(title);
-            const message = document.createElement("p");
-            message.textContent = "Metadata or AI review could not be loaded: " + error.message;
-            message.style.cssText = "font-size:12px;opacity:.75;";
+            panel.replaceChildren();
+            const message = document.createElement("span");
+            message.className = "icon-metadata-empty";
+            message.textContent = "Icon search terms and categories are unavailable.";
             panel.appendChild(message);
         }
     }
