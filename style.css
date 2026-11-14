@@ -4093,3 +4093,91 @@ body.light-theme #save-project-button:hover {
     overflow: hidden;
     align-content: flex-start;
 }
+
+
+/* Drawer metadata controls and compact search-term overflow */
+.project-info > .project-search-terms {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    max-height: 32px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.project-search-terms.is-expanded {
+    flex-wrap: wrap;
+    align-content: flex-start;
+    white-space: normal;
+    max-height: none;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+}
+.project-search-terms .project-search-term {
+    flex: 0 0 auto;
+}
+.project-search-more {
+    flex: 0 0 auto;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-full);
+    padding: 4px 9px;
+    background: var(--bg-surface-raised);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+.project-drawer-utility-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+.project-utility-button {
+    border: 1px solid var(--border-default);
+    border-radius: 7px;
+    padding: 6px 10px;
+    background: var(--bg-surface-raised);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+.project-utility-button:hover,
+.project-search-more:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.project-category-editor {
+    min-height: 0;
+    max-height: min(32dvh, 240px);
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid var(--border-default);
+    border-radius: 9px;
+    background: var(--bg-surface-raised);
+}
+.project-category-editor[hidden] { display: none; }
+.project-details.expanded {
+    height: 55dvh;
+    max-height: 55dvh;
+    overflow-y: auto;
+    display: block;
+}
+.project-details.expanded .project-details-main {
+    height: 55dvh;
+    min-height: 55dvh;
+    flex: none;
+}
+.project-details.expanded .project-related {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    flex: none;
+}
+.project-details.expanded .related-project-grid {
+    padding-bottom: 18px;
+}
