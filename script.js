@@ -9869,6 +9869,59 @@ function getSelectedFinishCategories() {
         ])];
     }
 
+    // Common irregular forms plus conservative English singular/plural handling.
+    const ICON_SEARCH_IRREGULAR_FORMS = Object.freeze({
+        people: ["person"], person: ["people"], persons: ["person", "people"],
+        men: ["man"], man: ["men"], women: ["woman"], woman: ["women"],
+        children: ["child"], child: ["children"], mice: ["mouse"], mouse: ["mice"],
+        geese: ["goose"], goose: ["geese"], teeth: ["tooth"], tooth: ["teeth"],
+        feet: ["foot"], foot: ["feet"], leaves: ["leaf"], leaf: ["leaves"],
+        knives: ["knife"], knife: ["knives"], wolves: ["wolf"], wolf: ["wolves"],
+        shelves: ["shelf"], shelf: ["shelves"], lives: ["life"], life: ["lives"],
+        wives: ["wife"], wife: ["wives"], indices: ["index"], index: ["indices"],
+        matrices: ["matrix"], matrix: ["matrices"], vertices: ["vertex"], vertex: ["vertices"],
+        analyses: ["analysis"], analysis: ["analyses"], bases: ["basis"], basis: ["bases"],
+        crises: ["crisis"], crisis: ["crises"], theses: ["thesis"], thesis: ["theses"],
+        diagnoses: ["diagnosis"], diagnosis: ["diagnoses"], statuses: ["status"], status: ["statuses"],
+        series: ["series"], species: ["species"], news: ["news"]
+    });
+
+    function getIconSearchWordVariants(value) {
+        const word = normalizeIconSearchText(value);
+        if (!word || word.includes(" ")) return word ? [word] : [];
+        const variants = new Set([word, ...(ICON_SEARCH_IRREGULAR_FORMS[word] || [])]);
+        if (word.length >= 4) {
+            if (word.endsWith("ies")) variants.add(word.slice(0, -3) + "y");
+            else if (/(ches|shes|xes|zes|sses)$/.test(word)) variants.add(word.slice(0, -2));
+            else if (word.endsWith("s") && !/(ss|us|is)$/.test(word)) variants.add(word.slice(0, -1));
+
+            if (/[^aeiou]y$/.test(word)) variants.add(word.slice(0, -1) + "ies");
+            else if (/(ch|sh|s|x|z)$/.test(word)) variants.add(word + "es");
+            else if (!/(s|ss|us|is)$/.test(word)) variants.add(word + "s");
+        } else if (word.length >= 3 && !/(s|ss)$/.test(word)) {
+            variants.add(word + "s");
+        }
+        return [...variants];
+    }
+
+    function expandIconSearchTermVariants(values, relatedTerms) {
+        const expanded = [...values];
+        for (const value of values) {
+            const normalized = normalizeIconSearchText(value);
+            if (!normalized) continue;
+            for (const word of normalized.split(" ")) {
+                const variants = getIconSearchWordVariants(word);
+                expanded.push(...variants);
+                for (const variant of variants) {
+                    if (relatedTerms[variant]) expanded.push(...relatedTerms[variant]);
+                }
+                if (relatedTerms[word]) expanded.push(...relatedTerms[word]);
+            }
+        }
+        return [...new Set(expanded.map(value => normalizeIconSearchText(value))
+            .filter(value => value && value.length > 1))];
+    }
+
     function getExpandedIconSearchTerms(iconName, record = null) {
         const normalized = String(iconName || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
         const baseName = normalized.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
@@ -9880,12 +9933,7 @@ function getSelectedFinishCategories() {
             ...(lucide.tags || []), ...(lucide.useCases || []), ...aliases,
             ...(ai.searchTerms || []), ...getCuratedIconSearchTerms(normalized)
         ];
-        const expanded = [...source];
-        for (const value of source) {
-            const words = String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/);
-            for (const word of words) if (RELATED_ICON_SEARCH_TERMS[word]) expanded.push(...RELATED_ICON_SEARCH_TERMS[word]);
-        }
-        return [...new Set(expanded.map(value => String(value || "").trim().toLowerCase()).filter(value => value && value.length > 1))];
+        return expandIconSearchTermVariants(source, RELATED_ICON_SEARCH_TERMS);
     }
 
     function getProjectSearchTerms(project) {
@@ -9957,20 +10005,19 @@ function getSelectedFinishCategories() {
             .trim();
     }
 
-    function singularizeIconSearchToken(token) {
-        if (token.length > 4 && token.endsWith("ies")) return token.slice(0, -3) + "y";
-        if (token.length > 3 && token.endsWith("s") && !token.endsWith("ss")) return token.slice(0, -1);
-        return token;
-    }
-
     function getIconSearchCandidates(token) {
-        const singular = singularizeIconSearchToken(token);
-        const hasOverride = Object.prototype.hasOwnProperty.call(ICON_SEARCH_QUERY_ALIASES, token)
-            || Object.prototype.hasOwnProperty.call(ICON_SEARCH_QUERY_ALIASES, singular);
-        const aliases = hasOverride
-            ? (ICON_SEARCH_QUERY_ALIASES[token] || ICON_SEARCH_QUERY_ALIASES[singular] || [])
-            : (RELATED_ICON_SEARCH_TERMS[token] || RELATED_ICON_SEARCH_TERMS[singular] || []);
-        return [...new Set([token, singular, ...aliases.map(normalizeIconSearchText)])].filter(Boolean);
+        const normalized = normalizeIconSearchText(token);
+        const variants = getIconSearchWordVariants(normalized);
+        const overrideKey = variants.find(value =>
+            Object.prototype.hasOwnProperty.call(ICON_SEARCH_QUERY_ALIASES, value)
+        );
+        const aliases = overrideKey
+            ? (ICON_SEARCH_QUERY_ALIASES[overrideKey] || [])
+            : variants.flatMap(value => RELATED_ICON_SEARCH_TERMS[value] || []);
+        return [...new Set([
+            ...variants,
+            ...aliases.flatMap(alias => getIconSearchWordVariants(alias))
+        ].map(normalizeIconSearchText).filter(Boolean))];
     }
 
     function iconSearchPhraseMatches(haystack, phrase) {
