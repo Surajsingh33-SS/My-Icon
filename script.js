@@ -9393,6 +9393,204 @@ function getSelectedFinishCategories() {
         return { button, panel };
     }
 
+    // ====================================================================
+    // AI + OFFICIAL LUCIDE METADATA IN THE ICON DETAILS DRAWER
+    // Batch review data is shared through IndexedDB on the same local origin.
+    // Nothing is applied to a project until the user explicitly clicks Apply.
+    // ====================================================================
+    let iconMetadataCache = null;
+    let iconMetadataLoadPromise = null;
+    let aiReviewDatabasePromise = null;
+
+    function loadIconMetadata() {
+        if (iconMetadataCache) return Promise.resolve(iconMetadataCache);
+        if (!iconMetadataLoadPromise) {
+            iconMetadataLoadPromise = fetch("./icon-metadata.json")
+                .then(response => {
+                    if (!response.ok) throw new Error("Metadata file could not be loaded.");
+                    return response.json();
+                })
+                .then(data => {
+                    iconMetadataCache = data;
+                    return data;
+                })
+                .catch(error => {
+                    iconMetadataLoadPromise = null;
+                    throw error;
+                });
+        }
+        return iconMetadataLoadPromise;
+    }
+
+    function openAIReviewDatabase() {
+        if (aiReviewDatabasePromise) return aiReviewDatabasePromise;
+        aiReviewDatabasePromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open("icon-maker-ai-categorization", 1);
+            request.onupgradeneeded = () => {
+                if (!request.result.objectStoreNames.contains("results")) {
+                    request.result.createObjectStore("results", { keyPath: "name" });
+                }
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        return aiReviewDatabasePromise;
+    }
+
+    async function getAIReviewRecord(iconName) {
+        const db = await openAIReviewDatabase();
+        return new Promise((resolve, reject) => {
+            const request = db.transaction("results", "readonly")
+                .objectStore("results").get(iconName);
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    function getIconMetadataRecord(metadata, iconName) {
+        if (!metadata || !iconName) return null;
+        const normalized = iconName.trim().toLowerCase().replace(/\\s+/g, "-");
+        return metadata[normalized] || metadata[normalized.replace(/_/g, "-")] || null;
+    }
+
+    function renderMetadataList(parent, headingText, values) {
+        if (!Array.isArray(values) || !values.length) return;
+        const heading = document.createElement("strong");
+        heading.textContent = headingText;
+        heading.style.cssText = "display:block;margin:10px 0 6px;";
+        const list = document.createElement("div");
+        list.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;";
+        values.forEach(value => {
+            const chip = document.createElement("span");
+            chip.textContent = String(value);
+            chip.style.cssText = "font-size:11px;padding:4px 8px;border:1px solid var(--border-color,#64748b);border-radius:20px;opacity:.9;";
+            list.appendChild(chip);
+        });
+        parent.append(heading, list);
+    }
+
+    async function renderIconMetadataDetails(project) {
+        if (!projectDetails || !project) return;
+        let panel = document.getElementById("icon-ai-metadata-panel");
+        if (!panel) {
+            panel = document.createElement("section");
+            panel.id = "icon-ai-metadata-panel";
+            panel.style.cssText = "margin:12px 0;padding:12px;border:1px solid var(--border-color,#64748b);border-radius:10px;";
+            const anchor = projectSearchTerms || projectCategoryBadge?.parentElement;
+            anchor?.insertAdjacentElement("afterend", panel);
+        }
+        panel.replaceChildren();
+        const title = document.createElement("strong");
+        title.textContent = "Icon metadata & AI review";
+        panel.appendChild(title);
+        const loading = document.createElement("p");
+        loading.textContent = "Loading official metadata and saved AI review…";
+        loading.style.cssText = "font-size:12px;opacity:.75;";
+        panel.appendChild(loading);
+
+        try {
+            const [metadata, review] = await Promise.all([
+                loadIconMetadata(),
+                getAIReviewRecord((project.name || "").trim().toLowerCase().replace(/\\s+/g, "-"))
+            ]);
+            if (selectedHomeProject !== project) return;
+            panel.replaceChildren(title);
+            const record = getIconMetadataRecord(metadata, project.name);
+            if (record) {
+                const lucide = record.lucide || {};
+                const ai = record.ai || {};
+                if (ai.description) {
+                    const description = document.createElement("p");
+                    description.textContent = ai.description;
+                    description.style.cssText = "font-size:12px;line-height:1.5;";
+                    panel.appendChild(description);
+                }
+                renderMetadataList(panel, "Official Lucide categories", lucide.categories || []);
+                renderMetadataList(panel, "Tags", lucide.tags || []);
+                renderMetadataList(panel, "Use cases", lucide.useCases || []);
+                renderMetadataList(panel, "Contributors", lucide.contributors || []);
+                renderMetadataList(panel, "Search terms", ai.searchTerms || []);
+            } else {
+                const missing = document.createElement("p");
+                missing.textContent = "No official Lucide metadata record was found for this icon name.";
+                missing.style.cssText = "font-size:12px;opacity:.75;";
+                panel.appendChild(missing);
+            }
+
+            const aiHeading = document.createElement("strong");
+            aiHeading.textContent = "Icon Maker AI category suggestions";
+            aiHeading.style.cssText = "display:block;margin-top:14px;";
+            panel.appendChild(aiHeading);
+            if (!review?.aiSuggestions?.length) {
+                const note = document.createElement("p");
+                note.textContent = "No batch AI analysis is saved for this icon yet. Run the Batch AI Categorization page first.";
+                note.style.cssText = "font-size:12px;opacity:.75;";
+                panel.appendChild(note);
+                return;
+            }
+
+            const reviewStatus = document.createElement("p");
+            reviewStatus.textContent = review.reviewedAt
+                ? "Batch review saved. Choose Apply only if you want to use those reviewed categories for this project."
+                : "AI results are suggestions only. Select categories and apply them explicitly.";
+            reviewStatus.style.cssText = "font-size:12px;opacity:.75;";
+            panel.appendChild(reviewStatus);
+
+            const selected = new Set(
+                Array.isArray(review.manualCategories)
+                    ? review.manualCategories
+                    : (review.officialCategories || [])
+            );
+            const choices = document.createElement("div");
+            choices.style.cssText = "display:flex;flex-wrap:wrap;gap:7px;margin:8px 0;";
+            const candidates = [
+                ...(review.officialCategories || []),
+                ...(review.aiSuggestions || []).map(item => item.name)
+            ].filter((value, index, all) => value && all.indexOf(value) === index);
+            candidates.forEach(category => {
+                const label = document.createElement("label");
+                label.style.cssText = "display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:5px 8px;border:1px solid var(--border-color,#64748b);border-radius:18px;cursor:pointer;";
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.value = category;
+                checkbox.checked = selected.has(category);
+                const name = document.createElement("span");
+                name.textContent = category;
+                label.append(checkbox, name);
+                choices.appendChild(label);
+            });
+            panel.appendChild(choices);
+
+            const apply = document.createElement("button");
+            apply.type = "button";
+            apply.textContent = "Apply selected AI categories to this icon";
+            apply.style.cssText = "margin-top:6px;padding:7px 10px;border:1px solid var(--border-color,#64748b);border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;";
+            apply.addEventListener("click", () => {
+                if (selectedHomeProject !== project) return;
+                const chosen = [...choices.querySelectorAll('input[type="checkbox"]:checked')]
+                    .map(input => input.value);
+                if (!setProjectManualCategories(project, chosen)) {
+                    showToast("Select at least one category before applying.", "error");
+                    return;
+                }
+                saveProjectManager();
+                if (projectCategoryBadge) {
+                    projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+                }
+                renderHomeProjects();
+                renderManagementTable();
+                showToast("Selected AI categories applied as manual categories.", "success");
+            });
+            panel.appendChild(apply);
+        } catch (error) {
+            panel.replaceChildren(title);
+            const message = document.createElement("p");
+            message.textContent = "Metadata or AI review could not be loaded: " + error.message;
+            message.style.cssText = "font-size:12px;opacity:.75;";
+            panel.appendChild(message);
+        }
+    }
+
     function showProjectPreview(project) {
         if (!project || !projectDetails) return;
 
@@ -9441,6 +9639,7 @@ function getSelectedFinishCategories() {
         }
 
         renderRelatedProjects(project);
+        renderIconMetadataDetails(project);
 
         projectDetails.classList.add("show");
         projectDetails.setAttribute("aria-hidden", "false");
