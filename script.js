@@ -1215,7 +1215,7 @@ function detectIconCategories(iconName) {
             ? project.autoCategories.filter(value => value && value !== "Uncategorized")
             : [];
         const official = getOfficialProjectCategories(project);
-        const detected = detectIconCategories(project.name || [])
+        const detected = detectIconCategories(project.name || "")
             .filter(value => value !== "Uncategorized");
 
         const combined = [...new Set([...savedAutomatic, ...official, ...detected])];
