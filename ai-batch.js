@@ -88,14 +88,46 @@ function cosine(a, b) {
   for (let i = 0; i < a.length; i++) score += a[i] * b[i];
   return score;
 }
-function rankCategories(embedding, official) {
+// Similarity alone is not proof that an icon belongs in a category.
+// Require both a strong semantic match and corroborating words in official
+// Lucide metadata. When evidence is weak, return no extra category.
+function evidenceTokens(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(/\\s+/)
+    .filter(token => token.length >= 4);
+}
+function hasCategoryEvidence(iconName, category) {
+  const record = ICON_METADATA[iconName] || {};
+  const lucide = record.lucide || {};
+  const evidence = new Set(evidenceTokens([
+    iconName.replace(/[-_]/g, ' '),
+    ...(lucide.tags || []),
+    ...(lucide.useCases || []),
+    ...((lucide.aliases || []).map(alias => alias.name))
+  ].join(' ')));
+  const categoryWords = evidenceTokens(category.name);
+  const descriptionWords = evidenceTokens(category.description);
+  const meaningful = categoryWords.filter(word => !['icons','icon','for','and','with','the','into','from','that','this'].includes(word));
+  // Exact category wording is strongest; descriptive overlap must be specific.
+  if (meaningful.some(word => evidence.has(word))) return true;
+  const overlap = descriptionWords.filter(word => evidence.has(word));
+  return overlap.length >= 2;
+}
+function rankCategories(embedding, official, iconName) {
   const officialSet = new Set(official);
-  return CATEGORY_DATA.map((category, index) => ({
+  const ranked = CATEGORY_DATA.map((category, index) => ({
     name: category.name,
-    score: cosine(embedding, categoryEmbeddings[index])
-  })).sort((a, b) => b.score - a.score)
-    .filter(item => !officialSet.has(item.name))
-    .slice(0, 5);
+    score: cosine(embedding, categoryEmbeddings[index]),
+    category
+  })).sort((a, b) => b.score - a.score);
+  const eligible = ranked.filter(item =>
+    !officialSet.has(item.name) &&
+    item.score >= 0.52 &&
+    hasCategoryEvidence(iconName, item.category)
+  );
+  return eligible.slice(0, 3).map(({ name, score }) => ({ name, score }));
 }
 
 async function loadModel() {
@@ -150,7 +182,7 @@ async function analyzeBatch(names) {
     return {
       name,
       officialCategories: existingOfficial,
-      aiSuggestions: rankCategories(vectors[index], existingOfficial),
+      aiSuggestions: rankCategories(vectors[index], existingOfficial, name),
       analyzedAt: new Date().toISOString(),
       reviewedAt: null,
       manualCategories: null
