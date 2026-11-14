@@ -4249,3 +4249,8 @@ body.light-theme #save-project-button:hover {
     flex: 1 1 auto;
     min-height: 0;
 }
+
+/* Keep utility buttons directly above Export; only Export absorbs spare vertical space. */
+.project-info > .project-drawer-utility-row {
+    margin-top: 0;
+}
