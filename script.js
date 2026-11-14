@@ -9390,6 +9390,21 @@ function getSelectedFinishCategories() {
         return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
     }
 
+    function renderProjectCategoryBadges(project) {
+        if (!projectCategoryBadge) return;
+
+        projectCategoryBadge.replaceChildren();
+        const categories = getProjectCategories(project);
+        const visibleCategories = categories.length ? categories : ["Uncategorized"];
+
+        visibleCategories.forEach(category => {
+            const badge = document.createElement("span");
+            badge.className = "project-category";
+            badge.textContent = category;
+            projectCategoryBadge.appendChild(badge);
+        });
+    }
+
     function ensureProjectCategoryEditor() {
         const button = document.getElementById("project-edit-categories");
         const panel = document.getElementById("project-category-editor");
@@ -9487,7 +9502,7 @@ function getSelectedFinishCategories() {
                 }
                 saveProjectManager();
                 closePanel();
-                projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+                renderProjectCategoryBadges(project);
                 renderHomeProjects();
                 renderManagementTable();
                 showToast("Manual categories saved.", "success");
@@ -9501,7 +9516,7 @@ function getSelectedFinishCategories() {
                 refreshProjectAutomaticCategories(project);
                 saveProjectManager();
                 closePanel();
-                projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+                renderProjectCategoryBadges(project);
                 renderHomeProjects();
                 renderManagementTable();
                 showToast("Automatic categories restored.", "success");
@@ -9991,7 +10006,7 @@ function getSelectedFinishCategories() {
             renderDrawerSearchTerms(terms);
 
             if (projectCategoryBadge) {
-                projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+                renderProjectCategoryBadges(project);
             }
         } catch (error) {
             console.warn("Could not enrich drawer search terms:", error);
@@ -10020,7 +10035,7 @@ function getSelectedFinishCategories() {
         projectRelatedPage?.setAttribute("aria-hidden", "true");
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
-        if (projectCategoryBadge) projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+        if (projectCategoryBadge) renderProjectCategoryBadges(project);
         ensureProjectCategoryEditor();
         if (projectDateBadge) projectDateBadge.textContent = `Saved ${new Date(project.savedAt).toLocaleDateString()}`;
 
