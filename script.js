@@ -10111,12 +10111,23 @@ function getSelectedFinishCategories() {
             ? (ICON_SEARCH_QUERY_ALIASES[overrideKey] || [])
             : variants.flatMap(value => RELATED_ICON_SEARCH_TERMS[value] || []);
 
+        // Support incomplete synonym typing too: "bur", "burg", and "hamb"
+        // should already discover the menu icon before the full word is entered.
+        // Require at least 3 characters to avoid flooding short, ambiguous queries.
+        const partialAliasKeys = normalized.length >= 3
+            ? Object.keys(ICON_SEARCH_QUERY_ALIASES)
+                .filter(aliasKey => aliasKey.startsWith(normalized))
+            : [];
+        const partialAliases = partialAliasKeys.flatMap(aliasKey =>
+            ICON_SEARCH_QUERY_ALIASES[aliasKey] || []
+        );
+
         // Direct query words may match names and metadata. Synonyms are only
         // allowed to match icon names; otherwise broad tags such as "control"
         // make unrelated icons (for example chevron-up) appear for "cog".
         return {
             direct: [...new Set(variants.map(normalizeIconSearchText).filter(Boolean))],
-            aliases: [...new Set(aliases
+            aliases: [...new Set([...aliases, ...partialAliases]
                 .flatMap(alias => getIconSearchWordVariants(alias))
                 .map(normalizeIconSearchText)
                 .filter(Boolean))]
