@@ -9817,6 +9817,47 @@ function getSelectedFinishCategories() {
         "refresh-ccw": ["reload", "refresh", "sync", "rotate back", "update"]
     };
 
+    const RELATED_ICON_SEARCH_TERMS = {
+        add:["create","new","plus","insert","append"], alert:["warning","caution","attention","notice"],
+        archive:["storage","backup","old files"], arrow:["direction","navigate","navigation"],
+        audio:["sound","music","volume","listen","speaker"], bag:["shopping bag","purchase","retail"],
+        bank:["banking","finance","money","payment"], book:["reading","read","library","publication","pages"],
+        calendar:["date","schedule","planner","appointment","event"], camera:["photograph","photography","snapshot","capture","picture"],
+        chart:["graph","analytics","statistics","data visualization","report"], check:["done","complete","completed","success","approved","confirm"],
+        circle:["round","circular","ellipse","shape"], clipboard:["copy","paste","notes","board"],
+        clock:["time","watch","duration","schedule"], close:["exit","dismiss","cancel","remove","clear"],
+        cloud:["online storage","internet","sync","weather"], code:["programming","developer","software","source code","script"],
+        comment:["chat","feedback","reply","discussion","message"], copy:["duplicate","clone","replicate","clipboard"],
+        credit:["card","payment","billing","checkout","finance"], database:["data","storage","records","server","backend"],
+        delete:["remove","erase","discard","trash","bin"], download:["export","save file","retrieve"],
+        edit:["modify","change","update","pencil","write"], email:["mail","envelope","inbox","message","correspondence"],
+        eye:["view","visibility","preview","show","visible"], file:["document","attachment","paper","record"],
+        filter:["sort","refine","adjust","narrow results"], folder:["directory","files","collection","organize"],
+        gear:["settings","preferences","configuration","options","tune"], globe:["world","earth","international","website","language"],
+        heart:["love","favorite","like","health","wellness"], home:["house","homepage","main page","residence","dashboard"],
+        image:["photo","picture","photograph","graphic","visual"], info:["information","details","about","help","description"],
+        key:["password","access","authentication","security","credential"], link:["url","hyperlink","connection","attach"],
+        lock:["secure","security","private","protected","locked"], location:["place","map","address","position","geolocation"],
+        mail:["email","envelope","inbox","message"], map:["location","navigation","directions","place","geography"],
+        menu:["navigation","hamburger menu","sidebar","options"], message:["chat","conversation","comment","text","communication"],
+        mic:["microphone","recording","voice","audio","speech"], minus:["subtract","decrease","remove","negative","less"],
+        moon:["night","dark mode","sleep","lunar"], music:["audio","song","sound","track","playlist"],
+        pencil:["edit","write","draw","modify"], phone:["telephone","call","contact","mobile","communication"],
+        play:["start","begin","run","media","video"], plus:["add","create","new","increase","positive"],
+        printer:["print","paper","document","hard copy"], refresh:["reload","retry","sync","update","rotate"],
+        save:["store","download","disk","preserve"], search:["find","lookup","look up","discover","magnifier","magnifying glass"],
+        send:["submit","dispatch","deliver","forward","outgoing message"],
+        settings:["preferences","configuration","options","controls","customize","gear","cog"],
+        share:["send","forward","distribute","social","share link"], shield:["protection","security","safe","defense","privacy"],
+        shopping:["cart","basket","store","purchase","checkout","retail"], star:["favorite","rating","bookmark","featured","important"],
+        sun:["day","light","brightness","weather","light mode"], tag:["label","category","keyword","classification"],
+        text:["typography","writing","font","word","content"], trash:["delete","remove","discard","bin","garbage","waste","rubbish"],
+        unlock:["open lock","access","unlocked","release"], upload:["import","attach","send file","transfer","submit"],
+        user:["person","profile","account","avatar","member","individual","contact"],
+        video:["movie","film","recording","media","playback"], wallet:["money","cash","payment","finance","purse"],
+        wifi:["wireless","internet","network","connection","signal"]
+    };
+
     function getCuratedIconSearchTerms(iconName) {
         const normalized = String(iconName || "").trim().toLowerCase().replace(/\s+/g, "-");
         const baseName = normalized.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
@@ -9824,6 +9865,25 @@ function getSelectedFinishCategories() {
             ...(CURATED_ICON_SEARCH_TERMS[normalized] || []),
             ...(CURATED_ICON_SEARCH_TERMS[baseName] || [])
         ])];
+    }
+
+    function getExpandedIconSearchTerms(iconName, record = null) {
+        const normalized = String(iconName || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
+        const baseName = normalized.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
+        const lucide = record?.lucide || {};
+        const ai = record?.ai || {};
+        const aliases = (lucide.aliases || []).map(alias => typeof alias === "string" ? alias : alias?.name);
+        const source = [
+            normalized, normalized.replace(/-/g, " "), baseName, baseName.replace(/-/g, " "),
+            ...(lucide.tags || []), ...(lucide.useCases || []), ...aliases,
+            ...(ai.searchTerms || []), ...getCuratedIconSearchTerms(normalized)
+        ];
+        const expanded = [...source];
+        for (const value of source) {
+            const words = String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/);
+            for (const word of words) if (RELATED_ICON_SEARCH_TERMS[word]) expanded.push(...RELATED_ICON_SEARCH_TERMS[word]);
+        }
+        return [...new Set(expanded.map(value => String(value || "").trim().toLowerCase()).filter(value => value && value.length > 1))];
     }
 
     function getProjectSearchTerms(project) {
@@ -9842,7 +9902,7 @@ function getSelectedFinishCategories() {
             ...(metadataRecord?.ai?.searchTerms || []),
             ...(inheritedRecord?.lucide?.tags || []),
             ...(inheritedRecord?.ai?.searchTerms || []),
-            ...getCuratedIconSearchTerms(iconName)
+            ...getExpandedIconSearchTerms(iconName, metadataRecord || inheritedRecord)
         ];
         return [...new Set([
             name,
@@ -10521,7 +10581,7 @@ function getSelectedFinishCategories() {
                 ? (record?.metadataEdits?.description ?? baseRecord?.ai?.description ?? "")
                 : (record?.metadataEdits?.[field.key] ?? (
                     field.key === "tags" ? (baseRecord?.lucide?.tags || []).join(", ") :
-                    field.key === "searchTerms" ? [...new Set([...(baseRecord?.ai?.searchTerms || []), ...getCuratedIconSearchTerms(iconName)])].join(", ") :
+                    field.key === "searchTerms" ? getExpandedIconSearchTerms(iconName, baseRecord).join(", ") :
                     field.key === "useCases" ? (baseRecord?.lucide?.useCases || []).join(", ") :
                     (baseRecord?.lucide?.contributors || []).join(", ")
                 ));
@@ -10625,7 +10685,7 @@ function getSelectedFinishCategories() {
                     const searchable = [
                         name, ...(lucide.tags || []), ...(lucide.categories || []),
                         ...(lucide.useCases || []), ...(ai.searchTerms || []),
-                        ...getCuratedIconSearchTerms(name), ai.description || ""
+                        ...getExpandedIconSearchTerms(name, record), ai.description || ""
                     ].join(" ").toLowerCase();
                     return (!query || searchable.includes(query)) &&
                         (selectedCategory === "all" || (lucide.categories || []).includes(selectedCategory));
@@ -10708,7 +10768,7 @@ function getSelectedFinishCategories() {
         addList("Tags", edits.tags ?? baseRecord?.lucide?.tags);
         addList("Use cases", edits.useCases ?? baseRecord?.lucide?.useCases);
         addList("Contributors", edits.contributors ?? baseRecord?.lucide?.contributors);
-        addList("Search terms", edits.searchTerms ?? baseRecord?.ai?.searchTerms);
+        addList("Search terms", edits.searchTerms ?? getExpandedIconSearchTerms(name, baseRecord));
 
         const divider = document.createElement("hr");
         divider.style.cssText = "border:0;border-top:1px solid var(--border-subtle);margin:16px 0;";
