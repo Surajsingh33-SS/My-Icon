@@ -10035,7 +10035,8 @@ function getSelectedFinishCategories() {
         const globalPreview = document.querySelector(".sidebar-customization");
         if (!sidebarScroll || !globalPreview) return;
         sidebarScroll.scrollTo({ top: 0, behavior: "smooth" });
-        globalPreview.scrollIntoView({ behavior: "smooth", block: "start" });
+        globalPreview?.classList.add("global-preview-focus");
+        window.setTimeout(() => globalPreview?.classList.remove("global-preview-focus"), 900);
     });
 
     // Export the currently previewed icon
