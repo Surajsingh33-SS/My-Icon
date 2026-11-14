@@ -10311,8 +10311,74 @@ function getSelectedFinishCategories() {
             totalScore += bestScore;
         }
 
-        if (namePadded.includes(` ${query} `)) totalScore += 30;
+        // Multi-word name relevance: reward words that form one coherent
+        // phrase in the icon name, rather than treating every word independently.
+        // This also supports live typing such as "arrow lef" -> "arrow-left".
+        const phraseScore = getIconSearchNamePhraseScore(nameTokens, tokens);
+        if (phraseScore > 0) totalScore += phraseScore;
+
+        // Keep the historical exact-phrase boost for single-token / normalized
+        // phrase edge cases, but avoid double-counting multi-word name matches.
+        if (tokens.length === 1 && namePadded.includes(` ${query} `)) {
+            totalScore += 30;
+        }
+
         return Math.round(totalScore / tokens.length);
+    }
+
+    function getIconSearchNamePhraseScore(nameTokens, queryTokens) {
+        if (!Array.isArray(nameTokens) || !Array.isArray(queryTokens) || queryTokens.length < 2) {
+            return 0;
+        }
+
+        // First preference: all query words match consecutive name words in order.
+        // Exact completed phrases outrank phrases with an unfinished final word.
+        for (let start = 0; start <= nameTokens.length - queryTokens.length; start++) {
+            let matches = true;
+            let exact = true;
+
+            for (let offset = 0; offset < queryTokens.length; offset++) {
+                const queryWord = queryTokens[offset];
+                const nameWord = nameTokens[start + offset];
+
+                if (!queryWord || !nameWord || !nameWord.startsWith(queryWord)) {
+                    matches = false;
+                    break;
+                }
+
+                if (queryWord !== nameWord) exact = false;
+            }
+
+            if (!matches) continue;
+
+            if (exact && start === 0 && queryTokens.length === nameTokens.length) {
+                return 112; // Exact full icon name: "arrow left".
+            }
+
+            if (exact) {
+                return 88; // Exact ordered phrase within a longer icon name.
+            }
+
+            return start === 0 ? 72 : 58; // Ordered phrase with a partial word.
+        }
+
+        // Second preference: query words appear in order, but are not adjacent.
+        // This is useful without allowing unrelated/reversed matches to outrank
+        // a genuine consecutive phrase.
+        let nextNameIndex = 0;
+        let orderedMatches = 0;
+
+        for (const queryWord of queryTokens) {
+            const foundAt = nameTokens.findIndex(
+                (nameWord, index) => index >= nextNameIndex && nameWord.startsWith(queryWord)
+            );
+
+            if (foundAt === -1) return 0;
+            orderedMatches++;
+            nextNameIndex = foundAt + 1;
+        }
+
+        return orderedMatches === queryTokens.length ? 24 : 0;
     }
 
     let homeSearchRenderToken = 0;
