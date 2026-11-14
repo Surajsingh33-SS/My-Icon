@@ -10059,10 +10059,17 @@ function getSelectedFinishCategories() {
         const aliases = overrideKey
             ? (ICON_SEARCH_QUERY_ALIASES[overrideKey] || [])
             : variants.flatMap(value => RELATED_ICON_SEARCH_TERMS[value] || []);
-        return [...new Set([
-            ...variants,
-            ...aliases.flatMap(alias => getIconSearchWordVariants(alias))
-        ].map(normalizeIconSearchText).filter(Boolean))];
+
+        // Direct query words may match names and metadata. Synonyms are only
+        // allowed to match icon names; otherwise broad tags such as "control"
+        // make unrelated icons (for example chevron-up) appear for "cog".
+        return {
+            direct: [...new Set(variants.map(normalizeIconSearchText).filter(Boolean))],
+            aliases: [...new Set(aliases
+                .flatMap(alias => getIconSearchWordVariants(alias))
+                .map(normalizeIconSearchText)
+                .filter(Boolean))]
+        };
     }
 
     function iconSearchPhraseMatches(haystack, phrase) {
@@ -10193,7 +10200,9 @@ function getSelectedFinishCategories() {
             const token = tokens[tokenIndex];
             let bestScore = 0;
 
-            for (const candidate of candidates[tokenIndex]) {
+            const { direct, aliases } = candidates[tokenIndex];
+
+            for (const candidate of direct) {
                 if (!candidate) continue;
                 if (name === candidate) bestScore = Math.max(bestScore, 120);
                 else if (namePadded.includes(` ${candidate} `)) bestScore = Math.max(bestScore, 96);
@@ -10201,11 +10210,18 @@ function getSelectedFinishCategories() {
                 if (termSet.has(candidate)) bestScore = Math.max(bestScore, 76);
                 else if (termPadded.some(term => term.includes(` ${candidate} `))) bestScore = Math.max(bestScore, 66);
                 if (categoryPadded.some(category => category.includes(` ${candidate} `))) bestScore = Math.max(bestScore, 28);
-
-                if (nameTokens.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 58);
-                if (termWords.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 44);
-                if (categoryWords.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 22);
             }
+
+            // Synonyms are a name-discovery aid, not permission to match every
+            // icon whose broad metadata happens to contain that synonym.
+            for (const alias of aliases) {
+                if (name === alias) bestScore = Math.max(bestScore, 120);
+                else if (namePadded.includes(` ${alias} `)) bestScore = Math.max(bestScore, 96);
+            }
+
+            if (nameTokens.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 58);
+            if (termWords.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 44);
+            if (categoryWords.some(word => word.startsWith(token))) bestScore = Math.max(bestScore, 22);
 
             if (bestScore < 44) {
                 if (nameTokens.some(word => isSafeIconSearchTypo(token, word))) {
