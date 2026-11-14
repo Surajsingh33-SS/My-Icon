@@ -355,6 +355,33 @@ function generateSearchTerms(
 }
 
 // ==========================================
+// Curated descriptions clarify icons whose names or common uses are ambiguous.
+// Keep these visual-first: describe what is drawn, then list reasonable meanings
+// without treating every possible use as a category assignment.
+const CURATED_ICON_DESCRIPTIONS = {
+    "activity": "A single continuous pulse-like line with sharp peaks and dips. Commonly represents activity, a heartbeat or vital-sign trace, live monitoring, and system status. It is a symbolic waveform, not a full numerical chart.",
+    "brain": "A side-view outline of a human brain with distinct folded lobes. Represents the human brain, thinking, cognition, memory, neuroscience, and mental processes. It does not by itself depict artificial intelligence or electronic circuitry.",
+    "brain-circuit": "A human brain outline combined with electronic circuit traces and connection nodes. Represents artificial intelligence, neural networks, machine learning, computational thinking, and the connection between biology and technology.",
+    "brain-cog": "A human brain outline paired with a mechanical gear. Represents cognitive processing, intelligent systems, brain-related settings, neuroscience tools, and the configuration of AI or thinking systems.",
+    "badge-check": "A certification-style badge or seal containing a check mark. Represents verified status, approval, authenticity, credentials, certification, and trusted identity. It is distinct from a simple standalone check mark.",
+    "circle-help": "A question mark centered inside a circular outline. Represents help, FAQs, guidance, support, uncertainty, and information about how something works.",
+    "file-question": "A document or file symbol marked with a question mark. Represents an unknown file, document-related help, file information, missing details, or a question about a document.",
+    "cloud": "A simple outline of a cloud with no rain or other weather detail. Depending on interface context, it can represent cloud computing, online storage, synchronization, internet services, or a general cloud/weather concept; the shape alone does not specify which one.",
+    "cloud-rain": "A cloud with falling raindrops beneath it. Primarily represents rain, rainy weather, precipitation, and weather forecasts rather than online cloud storage.",
+    "layers": "Several offset, overlapping flat shapes or sheets forming a stack. Represents layers, stacking order, grouped visual elements, depth, and layer-based design or editing interfaces.",
+    "house": "A simple house silhouette with a roof and building body. Represents a home, residential building, household, or home navigation. It is a physical place symbol rather than a generic office building.",
+    "settings": "A toothed gear symbol used as an interface control. Represents settings, preferences, configuration, options, and system controls.",
+    "cog": "A mechanical toothed wheel or gear. Represents a mechanism, engineering, machinery, and—when used in an interface—settings or configuration.",
+    "shield-check": "A shield outline containing a check mark. Represents protection, security verification, safe status, and confirmed protection; the shield is the primary visual meaning.",
+    "file-check": "A document or file symbol containing a check mark. Represents a reviewed, approved, validated, or completed document or file.",
+    "cloud-check": "A cloud symbol containing a check mark. Represents successful cloud synchronization, cloud backup completion, or a confirmed online-storage state.",
+    "message-circle-question": "A circular speech or message bubble containing a question mark. Represents asking a question, customer support, help conversations, and questions sent through chat.",
+    "user-check": "A person or user silhouette paired with a check mark. Represents a confirmed user, verified account, approved member, or successful user validation.",
+    "calendar-check": "A calendar page containing a check mark. Represents a confirmed date, scheduled event, completed calendar task, or approved appointment.",
+    "lock-keyhole": "A closed padlock with a visible keyhole. Represents locked access, privacy, restricted entry, and protected information.",
+    "database": "A stack of horizontal cylindrical database layers. Represents structured data storage, databases, records, and backend data systems; it is not simply a generic stack of visual layers."
+};
+
 // 6. GENERATE DESCRIPTION
 // ==========================================
 
@@ -363,6 +390,9 @@ function generateDescription(
     tags,
     useCases
 ) {
+    const curated = CURATED_ICON_DESCRIPTIONS[iconName];
+    if (curated) return curated;
+
     const readableName = cleanName(iconName);
 
     if (useCases.length) {
