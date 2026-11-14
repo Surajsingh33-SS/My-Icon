@@ -10339,48 +10339,52 @@ function getSelectedFinishCategories() {
 
                 const matchesActiveCategory = project => {
                     const categories = getProjectCategories(project);
-                    if (selectedCategoryFilter) {
-                        return categories.includes(selectedCategoryFilter);
-                    }
-                    if (activeCategory !== "all") {
-                        return categories.includes(activeCategory);
-                    }
+                    if (selectedCategoryFilter) return categories.includes(selectedCategoryFilter);
+                    if (activeCategory !== "all") return categories.includes(activeCategory);
                     return true;
                 };
 
+                // Prepare lightweight candidates, then score them in small batches.
+                // Yielding to the browser between batches keeps keyboard input responsive.
+                const searchCandidates = [];
                 allSavedProjects.forEach(project => {
-                    if (!matchesActiveCategory(project)) return;
-                    const score = scoreHomeProjectSearch(project, searchContext);
-                    if (score > 0) {
-                        searchResults.push({ type: "project", project, score });
+                    if (matchesActiveCategory(project)) {
+                        searchCandidates.push({ type: "project", name: project.name, project });
                     }
                 });
 
                 Object.keys(metadata).forEach(iconName => {
                     if (savedNames.has(normalizeHomeSearchIconName(iconName))) return;
-
-                    const review = homeSearchReviewByName.get(
-                        normalizeHomeSearchIconName(iconName)
-                    );
+                    const review = homeSearchReviewByName.get(normalizeHomeSearchIconName(iconName));
                     const libraryProject = {
                         name: iconName,
                         manualCategories: Array.isArray(review?.manualCategories)
-                            ? [...review.manualCategories]
+                            ? review.manualCategories
                             : null,
                         autoCategories: []
                     };
-
-                    if (!matchesActiveCategory(libraryProject)) return;
-                    const score = scoreHomeProjectSearch(libraryProject, searchContext);
-                    if (score > 0) {
-                        searchResults.push({
-                            type: "library",
-                            name: iconName,
-                            project: libraryProject,
-                            score
-                        });
+                    if (matchesActiveCategory(libraryProject)) {
+                        searchCandidates.push({ type: "library", name: iconName, project: libraryProject });
                     }
                 });
+
+                const SEARCH_WORK_BATCH_SIZE = 64;
+                for (let offset = 0; offset < searchCandidates.length; offset += SEARCH_WORK_BATCH_SIZE) {
+                    if (renderToken !== homeSearchRenderToken) return;
+
+                    const batchEnd = Math.min(offset + SEARCH_WORK_BATCH_SIZE, searchCandidates.length);
+                    for (let index = offset; index < batchEnd; index++) {
+                        const candidate = searchCandidates[index];
+                        const score = scoreHomeProjectSearch(candidate.project, searchContext);
+                        if (score > 0) searchResults.push({ ...candidate, score });
+                    }
+
+                    if (batchEnd < searchCandidates.length) {
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+
+                if (renderToken !== homeSearchRenderToken) return;
 
                 const sortVal = homeSortSelect?.value || "newest";
                 searchResults.sort((a, b) => {
@@ -10584,15 +10588,39 @@ function getSelectedFinishCategories() {
 
 
         if (query) {
-            searchResults.forEach(result => {
-                if (result.type === "project") {
-                    homeProjectGrid.appendChild(createHomeProjectCard(result.project));
-                } else {
-                    homeProjectGrid.appendChild(
-                        createHomeLibrarySearchCard(result.name, result.project)
+            const SEARCH_CARD_BATCH_SIZE = 48;
+            let nextSearchResultIndex = 0;
+
+            const appendNextSearchBatch = () => {
+                homeProjectGrid.querySelector(".home-search-load-more")?.remove();
+                const fragment = document.createDocumentFragment();
+                const batchEnd = Math.min(
+                    nextSearchResultIndex + SEARCH_CARD_BATCH_SIZE,
+                    searchResults.length
+                );
+
+                for (; nextSearchResultIndex < batchEnd; nextSearchResultIndex++) {
+                    const result = searchResults[nextSearchResultIndex];
+                    fragment.appendChild(
+                        result.type === "project"
+                            ? createHomeProjectCard(result.project)
+                            : createHomeLibrarySearchCard(result.name, result.project)
                     );
                 }
-            });
+
+                homeProjectGrid.appendChild(fragment);
+
+                if (nextSearchResultIndex < searchResults.length) {
+                    const moreButton = document.createElement("button");
+                    moreButton.type = "button";
+                    moreButton.className = "home-search-load-more";
+                    moreButton.textContent = `Show more results (${searchResults.length - nextSearchResultIndex} remaining)`;
+                    moreButton.addEventListener("click", appendNextSearchBatch);
+                    homeProjectGrid.appendChild(moreButton);
+                }
+            };
+
+            appendNextSearchBatch();
         } else if (galleryViewCategory === "categories" && !selectedCategoryFilter) {
             const grouped = {};
 
