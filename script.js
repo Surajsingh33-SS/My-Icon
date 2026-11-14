@@ -7616,9 +7616,15 @@ function getSelectedFinishCategories() {
                     shape.y2 = midY - (shape.y2 - midY);
                     updateLine(shape);
                 } else if (shape.type === "curve") {
-                    shape.cy = midY - (shape.cy - midY);
-                    shape.startAngle = -shape.startAngle;
-                    shape.endAngle = -shape.endAngle;
+                    // Reflect the arc around its own horizontal centre line (y = cy).
+                    // Keep the circular centre and radius unchanged.
+                    // Swap the reflected endpoints so the arc size and direction remain correct.
+                    const oldStartAngle = shape.startAngle;
+                    const oldEndAngle = shape.endAngle;
+
+                    shape.startAngle = -oldEndAngle;
+                    shape.endAngle = -oldStartAngle;
+
                     updateCurve(shape);
                 } else if (shape.type === "circle") {
                     shape.cy = midY - (shape.cy - midY);
