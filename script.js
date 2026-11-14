@@ -334,6 +334,18 @@
     const managerFinishedCount = document.getElementById("manager-finished-count");
     const managerUnfinishedCount = document.getElementById("manager-unfinished-count");
 
+    // Project Manager collapsible sections
+    document.querySelectorAll(".collapsible-manager-header").forEach(header => {
+        header.addEventListener("click", () => {
+            const grid = header.nextElementSibling;
+            if (!grid) return;
+
+            const isExpanded = header.getAttribute("aria-expanded") === "true";
+            header.setAttribute("aria-expanded", String(!isExpanded));
+            grid.hidden = isExpanded;
+        });
+    });
+
     // Global Customization Controls
     const globalIconColor = document.getElementById("global-icon-color");
     const globalColorValue = document.getElementById("global-color-value");
