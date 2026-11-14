@@ -2607,6 +2607,12 @@ function getSelectedFinishCategories() {
         // Save the exact axes used when this group was created.
         const savedAxes = structuredClone(axes);
 
+        // Standard live H/V axes retain their full combination behavior.
+        // Custom axes are applied as a chain: each new axis reflects the
+        // shape produced by the immediately previous custom axis.
+        const liveAxes = savedAxes.filter(axis => axis.type !== "custom");
+        const customAxes = savedAxes.filter(axis => axis.type === "custom");
+
         sourceShape.symmetryGroupId = groupId;
         sourceShape.symmetryMember = "original";
         sourceShape.symmetryTransforms = [];
@@ -2619,7 +2625,9 @@ function getSelectedFinishCategories() {
                 transforms: []
             }];
 
-            savedAxes.forEach(axis => {
+            // Preserve the existing horizontal/vertical live symmetry
+            // combinations (for example, the four-way H + V result).
+            liveAxes.forEach(axis => {
                 const additions = combinations.map(item => {
                     const reflected = structuredClone(item.data);
                     reflectShapeData(reflected, axis);
@@ -2634,6 +2642,29 @@ function getSelectedFinishCategories() {
                 });
 
                 combinations = combinations.concat(additions);
+            });
+
+            // Custom axes work sequentially instead of all reflecting
+            // the original shape. Axis 2 reflects axis 1's copy, axis 3
+            // reflects axis 2's copy, and so on.
+            let adjacentShapes = combinations;
+
+            customAxes.forEach(axis => {
+                const additions = adjacentShapes.map(item => {
+                    const reflected = structuredClone(item.data);
+                    reflectShapeData(reflected, axis);
+
+                    return {
+                        data: reflected,
+                        transforms: [
+                            ...item.transforms,
+                            structuredClone(axis)
+                        ]
+                    };
+                });
+
+                combinations = combinations.concat(additions);
+                adjacentShapes = additions;
             });
 
             combinations.slice(1).forEach((item, index) => {
