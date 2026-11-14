@@ -2652,7 +2652,7 @@ function getSelectedFinishCategories() {
     function getSymmetryGeometryKey(data) {
         const ignored = new Set([
             "id", "name", "color", "fill", "hidden", "locked",
-            "width", "strokeWidth", "cap", "opacity",
+            "strokeWidth", "cap", "opacity",
             "symmetryGroupId", "symmetryMember", "symmetryTransforms",
             "element", "handles"
         ]);
