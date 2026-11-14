@@ -849,6 +849,17 @@
                         </svg>
                         <span>Custom Axis</span>
                     </button>
+                    <label class="mirror-axis-control" title="Custom mirror-axis arrangement">
+                        <span>Mode</span>
+                        <select id="mirror-axis-mode" aria-label="Custom axis mode">
+                            <option value="uniform">Uniform</option>
+                            <option value="free">Free</option>
+                        </select>
+                    </label>
+                    <label class="mirror-axis-control" title="Number of equally spaced axes">
+                        <span>Count</span>
+                        <input id="mirror-axis-count" type="number" min="2" max="24" step="1" value="3" aria-label="Number of uniform axes">
+                    </label>
                 </div>
 
                 <div class="toolbar-divider"></div>
