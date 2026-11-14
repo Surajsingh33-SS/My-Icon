@@ -5401,7 +5401,11 @@ function getSelectedFinishCategories() {
         let closestDist = snapDistance;
 
         for (const shape of shapes) {
-            if (shape === currentShape || shape.hidden || shape.locked) continue;
+            if (
+                shape === currentShape ||
+                (currentShape.symmetryGroupId && shape.symmetryGroupId === currentShape.symmetryGroupId) ||
+                shape.hidden || shape.locked
+            ) continue;
             for (const pt of getShapeEndpoints(shape)) {
                 const dist = Math.hypot(x - pt.x, y - pt.y);
                 if (dist <= closestDist) {
@@ -6384,7 +6388,10 @@ function getSelectedFinishCategories() {
         if (dragging.type === "curve-handle") {
 
             const action = dragging.action;
-            const snappedPosition = getSnappedPoint(
+            // Yellow rotation handles use the raw pointer position for continuous rotation.
+            const snappedPosition = (
+                action === "rotate-a" || action === "rotate-b"
+            ) ? position : getSnappedPoint(
                 position.x,
                 position.y,
                 shape,
@@ -6435,9 +6442,7 @@ function getSelectedFinishCategories() {
                     Math.cos(rotation)
                 );
 
-                // Snap rotation to 10 degrees
-                rotation = snapAngle(rotation);
-
+                // Rotation remains continuous; do not quantise it to 10-degree steps.
                 const pivot = dragging.pivot;
 
                 const dx = dragging.startCx - pivot.x;
