@@ -9882,8 +9882,9 @@ function getSelectedFinishCategories() {
         projectSearchTerms.classList.remove("is-expanded");
 
         const cleanTerms = [...new Set(terms.map(term => String(term).trim()).filter(Boolean))];
-        const expanded = projectSearchTerms.dataset.expanded === "true";
-        const visibleTerms = expanded ? cleanTerms : cleanTerms.slice(0, 1);
+        const canExpand = cleanTerms.length > 7;
+        const expanded = canExpand && projectSearchTerms.dataset.expanded === "true";
+        const visibleTerms = expanded || !canExpand ? cleanTerms : cleanTerms.slice(0, 7);
 
         visibleTerms.forEach(term => {
             const chip = document.createElement("span");
@@ -9892,8 +9893,8 @@ function getSelectedFinishCategories() {
             projectSearchTerms.appendChild(chip);
         });
 
-        const hiddenCount = cleanTerms.length - visibleTerms.length;
-        if (hiddenCount > 0 || expanded) {
+        if (canExpand) {
+            const hiddenCount = cleanTerms.length - 7;
             const more = document.createElement("button");
             more.type = "button";
             more.className = "project-search-more";
