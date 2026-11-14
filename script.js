@@ -9588,6 +9588,186 @@ function getSelectedFinishCategories() {
     // ========================================================================
     // 19. HOMEPAGE GALLERY, TABS, SEARCH & DETAILS DRAWER
     // ========================================================================
+    // Curated, icon-specific vocabulary. Keep terms precise: broad name-based
+    // guessing creates noisy results (for example, every arrow matching "back").
+    const CURATED_ICON_SEARCH_TERMS = {
+        settings: ["setting", "preferences", "configuration", "configure", "options", "controls", "customize", "customization", "adjustments", "tune", "gear", "cog", "setup"],
+        "settings-2": ["setting", "preferences", "configuration", "options", "controls", "customize", "adjustments", "gear", "cog"],
+        "settings-3": ["setting", "preferences", "configuration", "options", "controls", "customize", "adjustments", "gear", "cog"],
+        cog: ["gear", "settings", "preferences", "configuration", "mechanism", "machinery"],
+        "sliders-horizontal": ["filters", "filter", "adjustments", "tune", "controls", "preferences", "configuration", "settings", "equalizer"],
+        "sliders-vertical": ["filters", "filter", "adjustments", "tune", "controls", "preferences", "configuration", "settings", "equalizer"],
+        search: ["find", "lookup", "look up", "discover", "magnifier", "magnifying glass", "inspect", "query", "searching"],
+        "search-check": ["find", "lookup", "verified search", "search result", "inspect"],
+        "search-x": ["clear search", "remove search", "cancel search", "no results"],
+        home: ["house", "homepage", "home page", "main page", "start page", "dashboard", "residence"],
+        house: ["home", "homepage", "residence", "dwelling", "property"],
+        bell: ["notification", "alert", "reminder", "announcement", "updates", "ringer"],
+        "bell-ring": ["notification", "alert", "reminder", "ringing bell", "announcement", "alarm"],
+        "bell-dot": ["notification", "unread alert", "new update", "reminder", "badge"],
+        trash: ["delete", "remove", "discard", "bin", "garbage", "waste", "recycle bin"],
+        "trash-2": ["delete", "remove", "discard", "bin", "garbage", "waste", "recycle bin"],
+        menu: ["navigation", "hamburger", "hamburger menu", "sidebar", "navigation menu", "options"],
+        "menu-square": ["navigation", "hamburger menu", "sidebar", "options"],
+        eye: ["view", "visibility", "visible", "preview", "show", "display", "watch"],
+        "eye-off": ["hide", "hidden", "invisible", "conceal", "visibility off", "hide preview"],
+        lock: ["locked", "secure", "security", "privacy", "protection", "restricted"],
+        unlock: ["unlocked", "open lock", "access", "release", "not locked"],
+        "lock-open": ["unlocked", "open lock", "access", "release", "not locked"],
+        download: ["save", "export", "retrieve", "receive", "get file", "download file"],
+        upload: ["import", "send", "transfer", "attach", "submit", "add file", "upload file"],
+        share: ["sharing", "distribute", "forward", "send", "social", "share link"],
+        "share-2": ["sharing", "distribute", "forward", "send", "social", "share link"],
+        clock: ["time", "watch", "duration", "hour", "minute", "timepiece"],
+        timer: ["countdown", "stopwatch", "duration", "time limit", "time tracking"],
+        stopwatch: ["timer", "countdown", "elapsed time", "duration", "stop watch"],
+        calendar: ["date", "schedule", "event", "planner", "appointment", "day", "month"],
+        "calendar-days": ["date", "schedule", "events", "planner", "appointments", "month view"],
+        "calendar-check": ["scheduled", "appointment", "event confirmed", "date complete"],
+        user: ["person", "profile", "account", "avatar", "member", "individual", "contact"],
+        "user-round": ["person", "profile", "account", "avatar", "member", "individual", "contact"],
+        users: ["people", "group", "team", "members", "community", "multiple users"],
+        "user-plus": ["add user", "new user", "invite", "create account", "add member"],
+        "user-round-plus": ["add user", "new user", "invite", "create account", "add member"],
+        "user-minus": ["remove user", "delete member", "remove account"],
+        "user-check": ["verified user", "approved account", "confirmed member"],
+        mail: ["email", "e-mail", "message", "envelope", "inbox", "correspondence"],
+        "mail-open": ["open email", "read message", "opened envelope", "inbox"],
+        "mail-check": ["email sent", "message delivered", "verified email"],
+        send: ["submit", "dispatch", "deliver", "forward", "paper plane", "outgoing message"],
+        "message-circle": ["chat", "conversation", "speech bubble", "talk", "messaging"],
+        "message-square": ["chat", "conversation", "speech bubble", "comment", "messaging"],
+        messages: ["chat", "conversation", "discussion", "multiple messages", "messaging"],
+        phone: ["call", "telephone", "dial", "contact", "voice call"],
+        "phone-call": ["calling", "telephone call", "ringing phone", "voice call"],
+        camera: ["photo", "photography", "picture", "snapshot", "capture image"],
+        image: ["photo", "picture", "photograph", "graphic", "visual", "media"],
+        images: ["photos", "pictures", "gallery", "album", "photographs"],
+        gallery: ["photos", "images", "pictures", "album", "media library"],
+        file: ["document", "paper", "attachment", "file item"],
+        "file-text": ["document", "text file", "notes", "paper", "written file"],
+        folder: ["directory", "files", "documents", "file storage"],
+        "folder-open": ["open directory", "browse files", "file browser", "documents"],
+        copy: ["duplicate", "clone", "replicate", "copy item", "clipboard"],
+        clipboard: ["copy", "paste", "notes", "board", "clipboard"],
+        "clipboard-copy": ["copy", "duplicate", "clipboard", "copy to clipboard"],
+        pencil: ["edit", "modify", "write", "draw", "annotate"],
+        pen: ["write", "draw", "signature", "edit", "ink"],
+        "pen-line": ["write", "edit", "annotate", "draw line"],
+        edit: ["modify", "change", "update", "pencil", "revise"],
+        "edit-2": ["modify", "change", "update", "pencil", "revise"],
+        "plus": ["add", "create", "new", "insert", "increase"],
+        minus: ["remove", "subtract", "decrease", "reduce", "less"],
+        x: ["close", "cancel", "dismiss", "clear", "remove"],
+        check: ["confirm", "done", "complete", "approve", "tick", "success"],
+        "check-circle": ["success", "completed", "verified", "approved", "confirm"],
+        "circle-check": ["success", "completed", "verified", "approved", "confirm"],
+        "alert-circle": ["warning", "caution", "attention", "error", "important"],
+        info: ["information", "details", "help", "about", "description"],
+        "help-circle": ["help", "support", "question", "faq", "assistance"],
+        filter: ["筛选", "refine", "narrow results", "filtering", "funnel"],
+        "list-filter": ["filter", "refine", "narrow results", "sort list"],
+        "arrow-up-down": ["sort", "reorder", "ascending descending", "swap order"],
+        "refresh-cw": ["refresh", "reload", "sync", "update", "repeat"],
+        "rotate-cw": ["rotate", "turn", "clockwise", "spin", "orientation"],
+        undo: ["undo", "ย้อนกลับ", "reverse action", "step back", "revert"],
+        redo: ["redo", "repeat action", "restore action", "step forward"],
+        "external-link": ["open in new tab", "open externally", "outbound link", "launch"],
+        link: ["url", "hyperlink", " 연결", "connect", "web address"],
+        unlink: ["remove link", "disconnect", "unlink", "break connection"],
+        star: ["favorite", "favourite", "rating", "bookmark", "featured"],
+        heart: ["like", "love", "favorite", "favourite", "reaction"],
+        bookmark: ["save", "saved item", "reading list", "favorite", "mark"],
+        tag: ["label", "keyword", "category", "classification", "hashtag"],
+        "map-pin": ["location", "place", "marker", "address", "destination", "gps"],
+        map: ["navigation", "directions", "geography", "location", "street map"],
+        globe: ["world", "earth", "internet", "web", "global", "planet"],
+        wifi: ["wireless", "internet", "network", "connection", "signal"],
+        bluetooth: ["wireless", "device pairing", "connectivity", "short range connection"],
+        battery: ["power level", "charge", "energy", "battery status"],
+        power: ["on off", "shutdown", "start", "stop", "power button"],
+        sun: ["light", "day", "sunny", "brightness", "light mode"],
+        moon: ["night", "dark mode", "dark theme", "lunar", "night mode"],
+        "cloud-rain": ["rain", "rainy", "precipitation", "weather", "shower"],
+        thermometer: ["temperature", "heat", "cold", "degrees", "weather"],
+        play: ["start", "begin", "run", "play media", "resume"],
+        pause: ["stop temporarily", "hold", "suspend", "pause media"],
+        volume: ["sound", "audio", "loudness", "speaker level"],
+        "volume-2": ["sound", "audio", "loud", "speaker", "volume control"],
+        mic: ["microphone", "record voice", "audio input", "speech"],
+        headphones: ["headset", "audio", "listen", "music", "earphones"],
+        music: ["song", "audio", "soundtrack", "track", "melody"],
+        video: ["movie", "film", "recording", "video clip", "media"],
+        maximize: ["fullscreen", "expand", "enlarge", "zoom in"],
+        minimize: ["collapse", "shrink", "reduce", "zoom out"],
+        grid: ["layout", "tiles", "matrix", "rows and columns", "grid view"],
+        "layout-grid": ["grid view", "tiles", "dashboard", "arrangement", "layout"],
+        layers: ["stack", "overlapping", "layer panel", "z order", "arrangement"],
+        "panel-left": ["sidebar", "left panel", "navigation drawer", "layout"],
+        "panel-right": ["right sidebar", "properties panel", "inspector", "layout"],
+        code: ["programming", "developer", "source code", "markup", "software"],
+        terminal: ["command line", "console", "shell", "cli", "prompt"],
+        database: ["data", "storage", "records", "sql", "data store"],
+        shield: ["protection", "security", "safety", "defense", "privacy"],
+        "shield-check": ["verified", "secure", "protected", "safety check", "trusted"],
+        key: ["password", "access", "credential", "unlock", "authentication"],
+        wallet: ["money", "cash", "payment", "purse", "finance"],
+        "credit-card": ["payment", "bank card", "debit card", "purchase", "checkout"],
+        "shopping-cart": ["cart", "basket", "checkout", "buy", "purchase", "ecommerce"],
+        "shopping-bag": ["bag", "purchase", "store", "retail", "shopping"],
+        package: ["box", "parcel", "shipment", "delivery", "product"],
+        truck: ["delivery", "shipping", "transport", "freight", "vehicle"],
+        car: ["vehicle", "automobile", "driving", "transport"],
+        plane: ["airplane", "aircraft", "flight", "travel", "aviation"],
+        coffee: ["cafe", "caffeine", "cup", "drink", "beverage"],
+        utensils: ["cutlery", "fork", "knife", "spoon", "dining", "restaurant"],
+        book: ["reading", "publication", "literature", "volume", "textbook"],
+        "book-open": ["read", "reading", "open book", "literature", "study"],
+        "graduation-cap": ["education", "graduate", "school", "university", "learning"],
+        lightbulb: ["idea", "inspiration", "tip", "suggestion", "innovation"],
+        zap: ["lightning", "electricity", "energy", "power", "fast"],
+        wrench: ["repair", "maintenance", "tool", "spanner", "fix"],
+        hammer: ["repair", "construction", "build", "tool", "carpentry"],
+        bug: ["error", "debug", "insect", "issue", "software bug"],
+        "git-branch": ["version control", "branching", "source control", "git"],
+        "git-commit": ["version control", "save point", "revision", "git"],
+        "chart-bar": ["bar graph", "statistics", "analytics", "data visualization", "report"],
+        "chart-line": ["line graph", "trend", "analytics", "statistics", "data visualization"],
+        "chart-pie": ["pie chart", "proportion", "percentage", "analytics", "statistics"],
+        activity: ["pulse", "health", "monitoring", "metrics", "trend"],
+        fingerprint: ["identity", "biometric", "authentication", "touch id", "verification"],
+        "qr-code": ["scan code", "quick response code", "barcode alternative", "matrix code"],
+        scan: ["scanner", "scanning", "capture", "read code", "document scan"],
+        "scan-search": ["visual search", "find image", "search image", "inspect"],
+        printer: ["print", "printing", "paper output", "hard copy"],
+        monitor: ["display", "screen", "desktop", "computer monitor"],
+        laptop: ["notebook computer", "portable computer", "pc", "computer"],
+        smartphone: ["mobile", "cell phone", "phone", "handset", "device"],
+        tablet: ["ipad", "touchscreen device", "mobile device", "slate"],
+        mouse: ["computer mouse", "pointer device", "input device"],
+        keyboard: ["typing", "keys", "input device", "keypad"],
+        cursor: ["pointer", "caret", "text cursor", "mouse pointer"],
+        "mouse-pointer": ["cursor", "pointer", "click", "selection"],
+        move: ["drag", "reposition", "relocate", "translate", "movement"],
+        crosshair: ["target", "aim", "precision", "center point", "reticle"],
+        target: ["aim", "goal", "bullseye", "focus", "objective"],
+        compass: ["direction", "navigation", "orientation", "bearing"],
+        navigation: ["directions", "route", "compass", "wayfinding", "location"],
+        route: ["path", "directions", "navigation", "journey", "trip"],
+        flag: ["marker", "milestone", "report", "bookmark", "destination"],
+        pin: ["location", "marker", "map pin", "place"],
+        "map-pinned": ["location", "map marker", "saved place", "destination"]
+    };
+
+    function getCuratedIconSearchTerms(iconName) {
+        const normalized = String(iconName || "").trim().toLowerCase().replace(/\\s+/g, "-");
+        const baseName = normalized.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
+        return [...new Set([
+            ...(CURATED_ICON_SEARCH_TERMS[normalized] || []),
+            ...(CURATED_ICON_SEARCH_TERMS[baseName] || [])
+        ])];
+    }
+
     function getProjectSearchTerms(project) {
         const name = (project.name || "").trim().toLowerCase();
         const categories = getProjectCategories(project);
@@ -9603,30 +9783,15 @@ function getSelectedFinishCategories() {
             ...(metadataRecord?.lucide?.tags || []),
             ...(metadataRecord?.ai?.searchTerms || []),
             ...(inheritedRecord?.lucide?.tags || []),
-            ...(inheritedRecord?.ai?.searchTerms || [])
+            ...(inheritedRecord?.ai?.searchTerms || []),
+            ...getCuratedIconSearchTerms(iconName)
         ];
-        const baseTerms = [
+        return [...new Set([
             name,
             ...categories,
             ...(Array.isArray(project.searchTerms) ? project.searchTerms : []),
             ...metadataTerms
-        ].map(value => String(value).trim().toLowerCase()).filter(Boolean);
-
-        // Expanded intelligent synonym matching
-        if (["search", "magnifier", "magnifying glass", "find"].some(k => name.includes(k))) {
-            return [...baseTerms, "magnifier", "scan", "lookup", "query", "zoom", "inspect"];
-        }
-        if (["arrow", "nav", "chevron", "direction"].some(k => name.includes(k))) {
-            return [...baseTerms, "direction", "pointer", "chevron", "next", "back"];
-        }
-        if (["home", "house", "building"].some(k => name.includes(k))) {
-            return [...baseTerms, "main", "dashboard", "house", "estate"];
-        }
-        if (["user", "profile", "account", "person"].some(k => name.includes(k))) {
-            return [...baseTerms, "avatar", "member", "customer", "contact"];
-        }
-
-        return baseTerms;
+        ].map(value => String(value).trim().toLowerCase()).filter(Boolean))];
     }
 
     function renderHomeProjects() {
@@ -10298,7 +10463,7 @@ function getSelectedFinishCategories() {
                 ? (record?.metadataEdits?.description ?? baseRecord?.ai?.description ?? "")
                 : (record?.metadataEdits?.[field.key] ?? (
                     field.key === "tags" ? (baseRecord?.lucide?.tags || []).join(", ") :
-                    field.key === "searchTerms" ? (baseRecord?.ai?.searchTerms || []).join(", ") :
+                    field.key === "searchTerms" ? [...new Set([...(baseRecord?.ai?.searchTerms || []), ...getCuratedIconSearchTerms(iconName)])].join(", ") :
                     field.key === "useCases" ? (baseRecord?.lucide?.useCases || []).join(", ") :
                     (baseRecord?.lucide?.contributors || []).join(", ")
                 ));
@@ -10401,7 +10566,8 @@ function getSelectedFinishCategories() {
                     const ai = record.ai || {};
                     const searchable = [
                         name, ...(lucide.tags || []), ...(lucide.categories || []),
-                        ...(lucide.useCases || []), ...(ai.searchTerms || []), ai.description || ""
+                        ...(lucide.useCases || []), ...(ai.searchTerms || []),
+                        ...getCuratedIconSearchTerms(name), ai.description || ""
                     ].join(" ").toLowerCase();
                     return (!query || searchable.includes(query)) &&
                         (selectedCategory === "all" || (lucide.categories || []).includes(selectedCategory));
@@ -10664,6 +10830,7 @@ function getSelectedFinishCategories() {
                 ...(Array.isArray(record?.ai?.searchTerms) ? record.ai.searchTerms : []),
                 ...(Array.isArray(inheritedRecord?.lucide?.tags) ? inheritedRecord.lucide.tags : []),
                 ...(Array.isArray(inheritedRecord?.ai?.searchTerms) ? inheritedRecord.ai.searchTerms : []),
+                ...getCuratedIconSearchTerms(iconName),
                 ...(Array.isArray(project.searchTerms) ? project.searchTerms : []),
                 ...(project.name ? [project.name.replace(/[-_]+/g, " ")] : [])
             ].map(value => String(value).trim()).filter(Boolean))];
