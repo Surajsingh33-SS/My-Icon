@@ -10207,7 +10207,10 @@ function getSelectedFinishCategories() {
         const isCategoryRows =
             galleryViewCategory === "categories" && !selectedCategoryFilter;
 
-        homeProjectGrid.classList.toggle("categories-layout", isCategoryRows);
+        homeProjectGrid.classList.toggle(
+            "categories-layout",
+            isCategoryRows && !homeSearchInput?.value.trim()
+        );
 
         const allFinished = projectManager.projects.filter(p => p.status === "finished");
         let finished = [...allFinished];
