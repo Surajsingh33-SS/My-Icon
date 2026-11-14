@@ -9386,45 +9386,35 @@ function getSelectedFinishCategories() {
     }
 
     function ensureProjectCategoryEditor() {
-        if (!projectCategoryBadge?.parentElement) return null;
+        const button = document.getElementById("project-edit-categories");
+        const panel = document.getElementById("project-category-editor");
+        if (!button || !panel) return null;
 
-        let button = document.getElementById("project-edit-categories");
-        let panel = document.getElementById("project-category-editor");
-
-        if (!button) {
-            button = document.createElement("button");
-            button.type = "button";
-            button.id = "project-edit-categories";
-            button.textContent = "Edit categories";
-            button.style.cssText = "margin-left:8px;padding:5px 9px;border:1px solid var(--border-color,#64748b);border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;";
-            projectCategoryBadge.parentElement.appendChild(button);
-        }
-
-        if (!panel) {
-            panel = document.createElement("div");
-            panel.id = "project-category-editor";
-            panel.hidden = true;
-            panel.style.cssText = "margin-top:10px;padding:12px;border:1px solid var(--border-color,#64748b);border-radius:10px;max-height:240px;overflow:auto;background:var(--panel-bg,rgba(127,127,127,.08));";
-            projectCategoryBadge.parentElement.appendChild(panel);
-        }
+        if (button.dataset.bound === "true") return { button, panel };
+        button.dataset.bound = "true";
 
         const closePanel = () => { panel.hidden = true; };
-        button.onclick = () => {
+        button.addEventListener("click", () => {
             if (!panel.hidden) {
                 closePanel();
                 return;
             }
             const project = selectedHomeProject;
             if (!project) return;
-            panel.innerHTML = "";
 
+            panel.replaceChildren();
             const heading = document.createElement("strong");
             heading.textContent = "Choose all categories that apply";
             heading.style.display = "block";
             heading.style.marginBottom = "9px";
             panel.appendChild(heading);
 
-            const selected = new Set(getProjectCategories(project));
+            const selected = new Set(
+                Array.isArray(project.manualCategories) && project.manualCategories.length
+                    ? project.manualCategories
+                    : getProjectCategories(project).filter(category => category !== "Uncategorized")
+            );
+
             getAllIconCategories().forEach(category => {
                 const label = document.createElement("label");
                 label.style.cssText = "display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;";
@@ -9440,60 +9430,53 @@ function getSelectedFinishCategories() {
 
             const actions = document.createElement("div");
             actions.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;";
-
             const save = document.createElement("button");
             save.type = "button";
             save.textContent = "Save categories";
-            save.onclick = () => {
-                const chosen = [...panel.querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
+            save.addEventListener("click", () => {
+                const chosen = [...panel.querySelectorAll('input[type="checkbox"]:checked')]
+                    .map(input => input.value);
                 if (!setProjectManualCategories(project, chosen)) {
-                    showToast("Select at least one category.", "error");
+                    showToast("Select at least one category, or choose Use automatic.", "error");
                     return;
                 }
                 saveProjectManager();
-                panel.hidden = true;
+                closePanel();
                 projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
                 renderHomeProjects();
                 renderManagementTable();
                 showToast("Manual categories saved.", "success");
-            };
+            });
 
             const automatic = document.createElement("button");
             automatic.type = "button";
             automatic.textContent = "Use automatic";
-            automatic.onclick = () => {
+            automatic.addEventListener("click", () => {
                 project.manualCategories = null;
                 refreshProjectAutomaticCategories(project);
                 saveProjectManager();
-                panel.hidden = true;
+                closePanel();
                 projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
                 renderHomeProjects();
                 renderManagementTable();
                 showToast("Automatic categories restored.", "success");
-            };
+            });
 
             const cancel = document.createElement("button");
             cancel.type = "button";
             cancel.textContent = "Cancel";
-            cancel.onclick = () => { panel.hidden = true; };
-
+            cancel.addEventListener("click", closePanel);
             actions.append(save, automatic, cancel);
             panel.appendChild(actions);
             panel.hidden = false;
-        };
+        });
 
-        if (!panel.dataset.dismissHandlers) {
-            panel.dataset.dismissHandlers = "true";
-            document.addEventListener("pointerdown", event => {
-                if (panel.hidden) return;
-                if (panel.contains(event.target) || button.contains(event.target)) return;
-                closePanel();
-            });
-            document.addEventListener("keydown", event => {
-                if (event.key === "Escape" && !panel.hidden) closePanel();
-            });
-        }
-
+        document.addEventListener("pointerdown", event => {
+            if (!panel.hidden && !panel.contains(event.target) && !button.contains(event.target)) closePanel();
+        });
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape" && !panel.hidden) closePanel();
+        });
         return { button, panel };
     }
 
@@ -9893,6 +9876,37 @@ function getSelectedFinishCategories() {
         return overlap.length >= 2;
     }
 
+    function renderDrawerSearchTerms(terms = []) {
+        if (!projectSearchTerms) return;
+        projectSearchTerms.replaceChildren();
+        projectSearchTerms.classList.remove("is-expanded");
+
+        const cleanTerms = [...new Set(terms.map(term => String(term).trim()).filter(Boolean))];
+        const expanded = projectSearchTerms.dataset.expanded === "true";
+        const visibleTerms = expanded ? cleanTerms : cleanTerms.slice(0, 1);
+
+        visibleTerms.forEach(term => {
+            const chip = document.createElement("span");
+            chip.className = "project-search-term";
+            chip.textContent = term;
+            projectSearchTerms.appendChild(chip);
+        });
+
+        const hiddenCount = cleanTerms.length - visibleTerms.length;
+        if (hiddenCount > 0 || expanded) {
+            const more = document.createElement("button");
+            more.type = "button";
+            more.className = "project-search-more";
+            more.textContent = expanded ? "Show less" : `+${hiddenCount} more`;
+            more.addEventListener("click", () => {
+                projectSearchTerms.dataset.expanded = expanded ? "false" : "true";
+                renderDrawerSearchTerms(cleanTerms);
+            });
+            projectSearchTerms.appendChild(more);
+        }
+        if (expanded) projectSearchTerms.classList.add("is-expanded");
+    }
+
     async function renderIconMetadataDetails(project) {
         if (!project || !projectSearchTerms) return;
 
@@ -9926,14 +9940,7 @@ function getSelectedFinishCategories() {
             ].map(value => String(value).trim()).filter(Boolean))];
 
             project.searchTerms = terms;
-            projectSearchTerms.replaceChildren();
-
-            terms.forEach(term => {
-                const chip = document.createElement("span");
-                chip.className = "project-search-term";
-                chip.textContent = term;
-                projectSearchTerms.appendChild(chip);
-            });
+            renderDrawerSearchTerms(terms);
 
             if (projectCategoryBadge) {
                 projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
@@ -9988,14 +9995,8 @@ function getSelectedFinishCategories() {
 
         // Render search tags
         if (projectSearchTerms) {
-            projectSearchTerms.innerHTML = "";
-            const terms = getProjectSearchTerms(project);
-            terms.forEach(t => {
-                const tag = document.createElement("span");
-                tag.className = "project-search-term";
-                tag.textContent = t;
-                projectSearchTerms.appendChild(tag);
-            });
+            projectSearchTerms.dataset.expanded = "false";
+            renderDrawerSearchTerms(getProjectSearchTerms(project));
         }
 
         if (projectMoreSearchButton) {
@@ -10011,6 +10012,7 @@ function getSelectedFinishCategories() {
 
     function closeProjectPreview() {
         projectDetails?.classList.remove("show", "expanded");
+        projectSearchTerms && (projectSearchTerms.dataset.expanded = "false");
         projectDetails?.setAttribute("aria-hidden", "true");
 
         if (projectRelated) projectRelated.hidden = true; // ADD THIS
@@ -10026,7 +10028,16 @@ function getSelectedFinishCategories() {
 
         projectRelated.hidden = false;
         projectDetails.classList.add("expanded");
+        projectDetails.scrollTop = 0;
     });
+    document.getElementById("project-global-preview-button")?.addEventListener("click", () => {
+        const sidebarScroll = document.querySelector(".sidebar-scroll-area");
+        const globalPreview = document.querySelector(".sidebar-customization");
+        if (!sidebarScroll || !globalPreview) return;
+        sidebarScroll.scrollTo({ top: 0, behavior: "smooth" });
+        globalPreview.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
     // Export the currently previewed icon
     document.getElementById("project-export-button")?.addEventListener("click", () => {
         topbarExportBtn?.click();
