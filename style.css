@@ -1719,8 +1719,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
     padding: 4px 9px;
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
-    background: var(--accent);
-    color: var(--text-primary);
+    background: var(--accent-light);
+    color: var(--accent);
     cursor: pointer;
     transition:
         background 0.18s ease,
