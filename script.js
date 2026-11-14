@@ -9273,6 +9273,7 @@ function getSelectedFinishCategories() {
                 .forEach(catName => {
                     const groupContainer = document.createElement("div");
                     groupContainer.className = "gallery-category-group";
+                    groupContainer.dataset.category = catName;
 
                     const header = document.createElement("div");
                     header.className = "gallery-category-header";
@@ -9398,9 +9399,38 @@ function getSelectedFinishCategories() {
         const visibleCategories = categories.length ? categories : ["Uncategorized"];
 
         visibleCategories.forEach(category => {
-            const badge = document.createElement("span");
+            const badge = document.createElement("button");
+            badge.type = "button";
             badge.className = "project-category";
             badge.textContent = category;
+            badge.title = `Show the gallery's "${category}" category`;
+            badge.addEventListener("click", () => {
+                // Switch to the grouped gallery and remove any other category filter.
+                galleryViewCategory = "categories";
+                selectedCategoryFilter = null;
+
+                if (viewModeCategoriesBtn) viewModeCategoriesBtn.classList.add("active");
+                viewModeAllBtn?.classList.remove("active");
+
+                // A toolbar category filter would otherwise hide the category groups.
+                if (homeCategorySelect) {
+                    homeCategorySelect.value = "all";
+                    homeCategoryDropdown?.refresh();
+                }
+
+                renderHomeProjects();
+                closeProjectPreview();
+
+                // Scroll to the matching category after the gallery has been rebuilt.
+                const targetGroup = Array.from(
+                    homeProjectGrid?.querySelectorAll(".gallery-category-group") || []
+                ).find(group => group.dataset.category === category);
+
+                targetGroup?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+            });
             projectCategoryBadge.appendChild(badge);
         });
     }
