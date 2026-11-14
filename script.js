@@ -9800,18 +9800,11 @@ function getSelectedFinishCategories() {
     }
 
     async function renderIconMetadataDetails(project) {
-        if (!projectDetails || !project) return;
+        if (!project || !projectSearchTerms) return;
 
-        let panel = document.getElementById("icon-ai-metadata-panel");
-        if (!panel) {
-            panel = document.createElement("section");
-            panel.id = "icon-ai-metadata-panel";
-            const anchor = projectSearchTerms || projectCategoryBadge?.parentElement;
-            anchor?.insertAdjacentElement("afterend", panel);
-        }
-
-        panel.className = "icon-metadata-compact";
-        panel.replaceChildren();
+        // Reuse the existing search-term chips and category badge in the drawer.
+        // Do not create a second metadata panel.
+        document.getElementById("icon-ai-metadata-panel")?.remove();
 
         try {
             const [metadata, review] = await Promise.all([
@@ -9821,78 +9814,32 @@ function getSelectedFinishCategories() {
             if (selectedHomeProject !== project) return;
 
             const record = getIconMetadataRecord(metadata, project.name);
-            const lucide = record?.lucide || {};
-            const ai = record?.ai || {};
             const edits = review?.metadataEdits || {};
-
-            // Prefer the editable search terms, then official Lucide tags, then
-            // generated AI terms. Keep every unique term available to search.
             const terms = [...new Set([
                 ...(Array.isArray(edits.searchTerms) ? edits.searchTerms : []),
-                ...(Array.isArray(lucide.tags) ? lucide.tags : []),
-                ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : []),
+                ...(Array.isArray(record?.lucide?.tags) ? record.lucide.tags : []),
+                ...(Array.isArray(record?.ai?.searchTerms) ? record.ai.searchTerms : []),
                 ...(Array.isArray(project.searchTerms) ? project.searchTerms : [])
             ].map(value => String(value).trim()).filter(Boolean))];
 
-            // Keep these metadata terms available to the existing Home search.
-            project.searchTerms = [...new Set([
-                ...(Array.isArray(project.searchTerms) ? project.searchTerms : []),
-                ...terms
-            ])];
+            project.searchTerms = terms;
 
-            const categories = [...new Set([
-                ...getProjectCategories(project),
-                ...(Array.isArray(lucide.categories) ? lucide.categories : [])
-            ].map(value => String(value).trim()).filter(Boolean))];
+            projectSearchTerms.replaceChildren();
+            terms.forEach(term => {
+                const chip = document.createElement("span");
+                chip.className = "project-search-term";
+                chip.textContent = term;
+                projectSearchTerms.appendChild(chip);
+            });
 
-            if (terms.length) {
-                const termsRow = document.createElement("div");
-                termsRow.className = "icon-metadata-terms";
-                const visibleLimit = 9;
-                let expanded = false;
-
-                const renderTerms = () => {
-                    termsRow.replaceChildren();
-                    const shown = expanded ? terms : terms.slice(0, visibleLimit);
-                    const text = document.createElement("span");
-                    text.className = "icon-metadata-terms-text";
-                    text.textContent = shown.join("  •  ");
-                    termsRow.appendChild(text);
-
-                    if (terms.length > visibleLimit) {
-                        const toggle = document.createElement("button");
-                        toggle.type = "button";
-                        toggle.className = "icon-metadata-more";
-                        toggle.textContent = expanded ? "Show less" : `+${terms.length - visibleLimit}`;
-                        toggle.setAttribute("aria-expanded", String(expanded));
-                        toggle.addEventListener("click", () => {
-                            expanded = !expanded;
-                            renderTerms();
-                        });
-                        termsRow.appendChild(toggle);
-                    }
-                };
-                renderTerms();
-                panel.appendChild(termsRow);
-            }
-
-            if (categories.length) {
-                const categoryRow = document.createElement("div");
-                categoryRow.className = "icon-metadata-categories";
-                categories.forEach(category => {
-                    const chip = document.createElement("span");
-                    chip.className = "icon-metadata-category";
-                    chip.textContent = category;
-                    categoryRow.appendChild(chip);
-                });
-                panel.appendChild(categoryRow);
+            // Keep the existing category presentation and manual-category priority.
+            if (projectCategoryBadge) {
+                projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
             }
         } catch (error) {
-            panel.replaceChildren();
-            const message = document.createElement("span");
-            message.className = "icon-metadata-empty";
-            message.textContent = "Icon search terms and categories are unavailable.";
-            panel.appendChild(message);
+            // The drawer's existing project terms/categories remain visible if
+            // the optional metadata file or local AI review database is unavailable.
+            console.warn("Could not enrich drawer search terms:", error);
         }
     }
 
