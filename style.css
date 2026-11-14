@@ -1558,11 +1558,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .project-details-main {
     display: flex;
     width: 100%;
-
-    /* Keep preview at exactly the same height */
-    flex: 0 0 55dvh;
-    height: 55dvh;
-
+    flex: 1 1 auto;
+    height: auto;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
@@ -1641,7 +1638,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* ICON INFORMATION */
 
- .project-info {
+.project-info {
+    flex: 1 1 0;
     min-width: 0;
     min-height: 0;
     height: 100%;
@@ -1655,6 +1653,30 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .project-info > .project-export-button {
     margin-top: auto;
     flex: 0 0 auto;
+}
+
+.project-info > .project-meta-row,
+.project-info > .project-search-terms {
+    width: 100%;
+    flex: 0 0 auto;
+}
+
+.project-info > .project-category-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.project-info > .project-search-terms {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.project-info > .project-export-button {
+    margin-top: auto;
 }
 
 .project-info-heading {
