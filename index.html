@@ -161,7 +161,7 @@
                             <circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path>
                         </svg>
                         <span>Icon Library</span>
-                        <span class="sidebar-badge">2053</span>
+                        <span class="sidebar-badge" id="icon-library-count">0</span>
                     </button>
 
                     <button class="sidebar-option" data-home-view="projects">
@@ -371,7 +371,7 @@
                         <option value="all">All official categories</option>
                     </select>
                 </div>
-                <div style="display:grid;grid-template-columns:minmax(220px, 0.8fr) minmax(300px, 1.2fr);gap:16px;min-height:420px;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px;min-height:420px;">
                     <div id="icon-library-results" style="max-height:65vh;overflow:auto;border:1px solid var(--border-subtle);border-radius:10px;padding:8px;">
                         <p class="home-empty">Loading icon metadata…</p>
                     </div>
