@@ -1145,14 +1145,81 @@ function detectIconCategories(iconName) {
     return matches.size ? [...matches] : ["Uncategorized"];
 }
 
-    // Resolve effective categories. A null manualCategories value means automatic mode.
+    // Map official Lucide category labels to the editor's category vocabulary.
+    const LUCIDE_CATEGORY_MAP = {
+        "accessibility": "Accessibility",
+        "account": "Accounts & access",
+        "accounts": "Accounts & access",
+        "animals": "Animals",
+        "arrows": "Arrows",
+        "buildings": "Buildings",
+        "charts": "Charts",
+        "communication": "Communication",
+        "connectivity": "Connectivity",
+        "cursors": "Cursors",
+        "design": "Design",
+        "development": "Coding & development",
+        "coding": "Coding & development",
+        "devices": "Devices",
+        "emoji": "Emoji",
+        "files": "File icons",
+        "file": "File icons",
+        "finance": "Finance",
+        "food": "Food & beverage",
+        "gaming": "Gaming",
+        "home": "Home",
+        "layout": "Layout",
+        "letters": "Letters & digits",
+        "mail": "Mail",
+        "mathematics": "Mathematics",
+        "medical": "Medical",
+        "multimedia": "Multimedia",
+        "nature": "Nature",
+        "navigation": "Navigation & places",
+        "notifications": "Notifications",
+        "people": "People",
+        "photography": "Photography",
+        "science": "Science",
+        "seasons": "Seasons",
+        "security": "Security",
+        "shapes": "Shapes",
+        "shopping": "Shopping",
+        "social": "Social",
+        "sports": "Sports",
+        "sustainability": "Sustainability",
+        "text formatting": "Text formatting",
+        "time": "Time & calendar",
+        "tools": "Tools",
+        "transportation": "Transportation",
+        "travel": "Travel",
+        "weather": "Weather"
+    };
+
+    function getOfficialProjectCategories(project) {
+        if (!project || !iconMetadataCache) return [];
+        const record = getIconMetadataRecord(iconMetadataCache, project.name);
+        const official = Array.isArray(record?.lucide?.categories) ? record.lucide.categories : [];
+        return [...new Set(official.map(value => {
+            const key = String(value).toLowerCase().replace(/[-_]+/g, " ").trim();
+            return LUCIDE_CATEGORY_MAP[key] || null;
+        }).filter(Boolean))];
+    }
+
+    // Resolve effective categories. Manual choices always override automatic sources.
     function getProjectCategories(project) {
         if (!project) return ["Uncategorized"];
         if (Array.isArray(project.manualCategories) && project.manualCategories.length)
             return [...new Set(project.manualCategories.filter(Boolean))];
-        if (Array.isArray(project.autoCategories) && project.autoCategories.length)
-            return [...new Set(project.autoCategories.filter(Boolean))];
-        return detectIconCategories(project.name || "");
+
+        const savedAutomatic = Array.isArray(project.autoCategories)
+            ? project.autoCategories.filter(value => value && value !== "Uncategorized")
+            : [];
+        const official = getOfficialProjectCategories(project);
+        const detected = detectIconCategories(project.name || [])
+            .filter(value => value !== "Uncategorized");
+
+        const combined = [...new Set([...savedAutomatic, ...official, ...detected])];
+        return combined.length ? combined : ["Uncategorized"];
     }
 
     function setProjectManualCategories(project, categories) {
@@ -1167,7 +1234,10 @@ function detectIconCategories(iconName) {
 
     function refreshProjectAutomaticCategories(project) {
         if (!project) return;
-        project.autoCategories = detectIconCategories(project.name || "");
+        const detected = detectIconCategories(project.name || "")
+            .filter(value => value !== "Uncategorized");
+        const official = getOfficialProjectCategories(project);
+        project.autoCategories = [...new Set([...official, ...detected])];
         if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
             project.categories = [...project.autoCategories];
             project.categorySource = "automatic";
@@ -8960,9 +9030,16 @@ function getSelectedFinishCategories() {
         const metadataRecord = iconMetadataCache
             ? getIconMetadataRecord(iconMetadataCache, project.name)
             : null;
+        const iconName = String(project.name || "").trim().toLowerCase().replace(/\\s+/g, "-");
+        const variantBaseName = iconName.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
+        const inheritedRecord = variantBaseName !== iconName
+            ? getIconMetadataRecord(iconMetadataCache, variantBaseName)
+            : null;
         const metadataTerms = [
             ...(metadataRecord?.lucide?.tags || []),
-            ...(metadataRecord?.ai?.searchTerms || [])
+            ...(metadataRecord?.ai?.searchTerms || []),
+            ...(inheritedRecord?.lucide?.tags || []),
+            ...(inheritedRecord?.ai?.searchTerms || [])
         ];
         const baseTerms = [
             name,
@@ -9859,6 +9936,18 @@ function getSelectedFinishCategories() {
             console.warn("Could not enrich drawer search terms:", error);
         }
     }
+
+    // Load official metadata once so category fallback and search terms are
+    // available throughout the home gallery, not only after opening a drawer.
+    loadIconMetadata().then(() => {
+        projectManager.projects.forEach(project => {
+            if (project.status !== "finished") return;
+            if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
+                refreshProjectAutomaticCategories(project);
+            }
+        });
+        renderHomeProjects();
+    }).catch(error => console.warn("Official icon metadata unavailable:", error));
 
     function showProjectPreview(project) {
         if (!project || !projectDetails) return;
