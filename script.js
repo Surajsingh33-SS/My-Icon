@@ -323,6 +323,7 @@
     const sidebarOptions = document.querySelectorAll(".sidebar-option");
     const homeViewSections = {
         gallery: document.getElementById("home-view-gallery"),
+        "icon-library": document.getElementById("home-view-icon-library"),
         projects: document.getElementById("home-view-projects"),
         settings: document.getElementById("home-view-settings")
     };
@@ -9553,6 +9554,186 @@ function getSelectedFinishCategories() {
         parent.append(heading, list);
     }
 
+    let iconLibraryRenderToken = 0;
+    let iconLibrarySelectedName = "";
+
+    async function renderIconLibraryView() {
+        const token = ++iconLibraryRenderToken;
+        const results = document.getElementById("icon-library-results");
+        const details = document.getElementById("icon-library-details");
+        const search = document.getElementById("icon-library-search");
+        const category = document.getElementById("icon-library-category");
+        if (!results || !details || !search || !category) return;
+
+        results.innerHTML = "<p class='home-empty'>Loading icon metadata…</p>";
+        try {
+            const metadata = await loadIconMetadata();
+            if (token !== iconLibraryRenderToken) return;
+            const names = Object.keys(metadata).sort((a, b) => a.localeCompare(b));
+            const categories = [...new Set(names.flatMap(name => metadata[name]?.lucide?.categories || []))].sort();
+            const currentCategory = category.value;
+            category.replaceChildren(new Option("All official categories", "all"));
+            categories.forEach(value => category.add(new Option(value, value)));
+            category.value = categories.includes(currentCategory) ? currentCategory : "all";
+
+            const renderList = () => {
+                const query = search.value.trim().toLowerCase();
+                const selectedCategory = category.value;
+                const matches = names.filter(name => {
+                    const record = metadata[name] || {};
+                    const lucide = record.lucide || {};
+                    const ai = record.ai || {};
+                    const searchable = [
+                        name, ...(lucide.tags || []), ...(lucide.categories || []),
+                        ...(lucide.useCases || []), ...(ai.searchTerms || []), ai.description || ""
+                    ].join(" ").toLowerCase();
+                    return (!query || searchable.includes(query)) &&
+                        (selectedCategory === "all" || (lucide.categories || []).includes(selectedCategory));
+                });
+                results.replaceChildren();
+                const count = document.createElement("p");
+                count.className = "muted";
+                count.textContent = matches.length + " of " + names.length + " icons";
+                results.appendChild(count);
+                matches.slice(0, 500).forEach(name => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = name;
+                    button.style.cssText = "display:block;width:100%;text-align:left;padding:9px 10px;margin:2px 0;border:0;border-radius:7px;background:" +
+                        (name === iconLibrarySelectedName ? "var(--accent-light)" : "transparent") +
+                        ";color:var(--text-primary);cursor:pointer;font:inherit;font-size:12px;";
+                    button.addEventListener("click", () => {
+                        iconLibrarySelectedName = name;
+                        renderList();
+                        renderIconLibraryDetails(name, metadata[name]);
+                    });
+                    results.appendChild(button);
+                });
+                if (matches.length > 500) {
+                    const note = document.createElement("p");
+                    note.className = "muted";
+                    note.textContent = "Showing the first 500 matches. Refine your search to see more.";
+                    results.appendChild(note);
+                }
+                if (!matches.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "home-empty";
+                    empty.textContent = "No icons match this search.";
+                    results.appendChild(empty);
+                }
+            };
+            if (!search.dataset.libraryBound) {
+                search.addEventListener("input", renderList);
+                category.addEventListener("change", renderList);
+                search.dataset.libraryBound = "true";
+            }
+            renderList();
+            if (iconLibrarySelectedName && metadata[iconLibrarySelectedName]) {
+                renderIconLibraryDetails(iconLibrarySelectedName, metadata[iconLibrarySelectedName]);
+            }
+        } catch (error) {
+            results.textContent = "Could not load icon metadata: " + error.message;
+        }
+    }
+
+    async function renderIconLibraryDetails(name, baseRecord) {
+        const panel = document.getElementById("icon-library-details");
+        if (!panel) return;
+        panel.replaceChildren();
+        const heading = document.createElement("h3");
+        heading.textContent = name;
+        panel.appendChild(heading);
+        const description = document.createElement("p");
+        description.textContent = baseRecord?.ai?.description || "No description has been added yet.";
+        description.style.cssText = "font-size:13px;line-height:1.5;";
+        panel.appendChild(description);
+
+        const addList = (label, values) => {
+            if (!Array.isArray(values) || !values.length) return;
+            const title = document.createElement("strong");
+            title.textContent = label;
+            title.style.cssText = "display:block;margin:12px 0 6px;font-size:12px;";
+            const value = document.createElement("p");
+            value.textContent = values.join(", ");
+            value.style.cssText = "font-size:12px;line-height:1.5;margin:0;";
+            panel.append(title, value);
+        };
+        addList("Official Lucide categories", baseRecord?.lucide?.categories);
+        addList("Official tags", baseRecord?.lucide?.tags);
+        addList("Use cases", baseRecord?.lucide?.useCases);
+        addList("Contributors", baseRecord?.lucide?.contributors);
+        addList("Search terms", baseRecord?.ai?.searchTerms);
+
+        const divider = document.createElement("hr");
+        divider.style.cssText = "border:0;border-top:1px solid var(--border-subtle);margin:16px 0;";
+        panel.appendChild(divider);
+        const metadataTitle = document.createElement("h4");
+        metadataTitle.textContent = "Editable metadata";
+        panel.appendChild(metadataTitle);
+        let review = null;
+        try { review = await getAIReviewRecord(name); } catch (error) {
+            const warning = document.createElement("p");
+            warning.textContent = "Local review storage is unavailable: " + error.message;
+            panel.appendChild(warning);
+        }
+        if (iconLibrarySelectedName !== name) return;
+        createMetadataEditor(panel, name, review, baseRecord);
+
+        const reviewTitle = document.createElement("h4");
+        reviewTitle.textContent = "AI category suggestions";
+        reviewTitle.style.marginTop = "18px";
+        panel.appendChild(reviewTitle);
+        if (!review?.aiSuggestions?.length) {
+            const note = document.createElement("p");
+            note.textContent = "This icon has not been analyzed yet. Run the batch analyzer to generate suggestions.";
+            note.style.cssText = "font-size:12px;opacity:.8;";
+            panel.appendChild(note);
+            return;
+        }
+        const selected = new Set(Array.isArray(review.manualCategories)
+            ? review.manualCategories : (review.officialCategories || []));
+        const checkboxes = [];
+        const group = document.createElement("div");
+        group.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;";
+        const addCategory = (value, source) => {
+            const label = document.createElement("label");
+            label.style.cssText = "display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border:1px solid var(--border-subtle);border-radius:18px;font-size:12px;";
+            const input = document.createElement("input");
+            input.type = "checkbox";
+            input.value = value;
+            input.checked = selected.has(value);
+            const text = document.createElement("span");
+            text.textContent = value + (source ? " · " + source : "");
+            label.append(input, text);
+            group.appendChild(label);
+            checkboxes.push(input);
+        };
+        (review.officialCategories || []).forEach(value => addCategory(value, "Lucide"));
+        review.aiSuggestions.forEach(item => {
+            if (!(review.officialCategories || []).includes(item.name)) addCategory(item.name, "AI suggestion");
+        });
+        panel.appendChild(group);
+        const saveCategories = document.createElement("button");
+        saveCategories.type = "button";
+        saveCategories.className = "btn btn-primary";
+        saveCategories.textContent = "Save selected categories";
+        saveCategories.addEventListener("click", async () => {
+            saveCategories.disabled = true;
+            try {
+                const latest = await getAIReviewRecord(name) || review;
+                latest.manualCategories = [...new Set(checkboxes.filter(input => input.checked).map(input => input.value))];
+                latest.reviewedAt = new Date().toISOString();
+                await saveAIReviewRecord(latest);
+                showToast("Category choices saved locally for " + name + ".", "success");
+            } catch (error) {
+                showToast("Could not save categories: " + error.message, "error");
+            } finally {
+                saveCategories.disabled = false;
+            }
+        });
+        panel.appendChild(saveCategories);
+    }
+
     async function renderIconMetadataDetails(project) {
         if (!projectDetails || !project) return;
         let panel = document.getElementById("icon-ai-metadata-panel");
@@ -9962,6 +10143,8 @@ function getSelectedFinishCategories() {
             renderManagementTable();
         } else if (viewName === "gallery") {
             renderHomeProjects();
+        } else if (viewName === "icon-library") {
+            renderIconLibraryView();
         }
     }
 
