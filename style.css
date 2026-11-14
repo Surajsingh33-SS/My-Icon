@@ -1204,7 +1204,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     top: calc(100% + 6px);
     bottom: auto;
     left: 50%;
-    transform: translateX(-50%) translateY(-4px);
+    transform: translateX(calc(-50% + var(--tooltip-shift-x, 0px))) translateY(-4px);
     padding: 4px 8px;
     background: var(--accent);
     color: var(--accent-contrast, #ffffff);
@@ -1229,7 +1229,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .home-project-card:hover .home-card-tooltip {
     opacity: 1;
     visibility: visible;
-    transform: translateX(-50%) translateY(0);
+    transform: translateX(calc(-50% + var(--tooltip-shift-x, 0px))) translateY(0);
 }
 
 .home-card-fav-star {
