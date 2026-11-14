@@ -9767,6 +9767,29 @@ function getSelectedFinishCategories() {
         panel.appendChild(saveCategories);
     }
 
+    // Keep AI-only category suggestions conservative in the editor too.
+    // Official Lucide categories remain authoritative; AI candidates need
+    // corroborating words from the icon's official metadata.
+    function isSupportedAICategorySuggestion(iconName, suggestion, baseRecord) {
+        if (!suggestion || !suggestion.name || Number(suggestion.score) < 0.52) return false;
+        const lucide = baseRecord?.lucide || {};
+        const tokens = new Set([
+            String(iconName || "").replace(/[-_]/g, " "),
+            ...(lucide.tags || []),
+            ...(lucide.useCases || []),
+            ...((lucide.aliases || []).map(alias => alias.name || ""))
+        ].join(" ").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/).filter(token => token.length >= 4));
+        const category = suggestion.name.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/)
+            .filter(token => token.length >= 4 && !["icons", "icon", "with", "from", "into"].includes(token));
+        if (category.some(token => tokens.has(token))) return true;
+        const categoryData = window.ICON_CATEGORY_DATA;
+        if (!Array.isArray(categoryData)) return false;
+        const definition = categoryData.find(item => item.name === suggestion.name)?.description || "";
+        const overlap = definition.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/)
+            .filter(token => token.length >= 4 && tokens.has(token));
+        return overlap.length >= 2;
+    }
+
     async function renderIconMetadataDetails(project) {
         if (!projectDetails || !project) return;
         let panel = document.getElementById("icon-ai-metadata-panel");
@@ -9857,7 +9880,7 @@ function getSelectedFinishCategories() {
             choices.style.cssText = "display:flex;flex-wrap:wrap;gap:7px;margin:8px 0;";
             const candidates = [
                 ...(review.officialCategories || []),
-                ...(review.aiSuggestions || []).map(item => item.name)
+                ...(review.aiSuggestions || []).filter(item => isSupportedAICategorySuggestion(project.name, item, record)).map(item => item.name)
             ].filter((value, index, all) => value && all.indexOf(value) === index);
             candidates.forEach(category => {
                 const label = document.createElement("label");
