@@ -274,6 +274,9 @@ const RELATED_SEARCH_TERMS = {
 // "analysis", "series", "status", and "glass".
 const SEARCH_IRREGULAR_FORMS = {
     people: ["person"], person: ["people", "persons"], persons: ["person", "people"],
+        bus: ["buses"], buses: ["bus"], class: ["classes"], classes: ["class"],
+        glass: ["glasses"], glasses: ["glass"], dress: ["dresses"], dresses: ["dress"],
+        address: ["addresses"], addresses: ["address"], process: ["processes"], processes: ["process"],
     men: ["man"], man: ["men"], women: ["woman"], woman: ["women"],
     children: ["child"], child: ["children"], mice: ["mouse"], mouse: ["mice"],
     geese: ["goose"], goose: ["geese"], teeth: ["tooth"], tooth: ["teeth"],
