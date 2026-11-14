@@ -7586,9 +7586,14 @@ function getSelectedFinishCategories() {
                     shape.x2 = midX - (shape.x2 - midX);
                     updateLine(shape);
                 } else if (shape.type === "curve") {
-                    shape.cx = midX - (shape.cx - midX);
+                    // Mirror the arc around its own vertical centre axis.
+                    // Keep its centre and radius unchanged.
                     shape.startAngle = Math.PI - shape.startAngle;
                     shape.endAngle = Math.PI - shape.endAngle;
+
+                    // Reverse the arc direction for a true reflection.
+                    shape.sweepFlag = shape.sweepFlag === 0 ? 1 : 0;
+
                     updateCurve(shape);
                 } else if (shape.type === "circle") {
                     shape.cx = midX - (shape.cx - midX);
