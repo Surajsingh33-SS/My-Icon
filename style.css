@@ -4185,15 +4185,44 @@ body.light-theme #save-project-button:hover {
 .sidebar-customization.global-preview-focus { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 10px; }
 
 
-/* Stack drawer utility actions vertically above the export button. */
+/* Keep drawer utility actions compact, inline, and independent of search-term expansion. */
 .project-drawer-utility-row {
-    flex-direction: column;
-    align-items: stretch;
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
     gap: 6px;
     width: 100%;
+    min-width: 0;
 }
 
-.project-drawer-utility-row .project-utility-button {
-    width: 100%;
-    text-align: center;
+.project-drawer-utility-row #project-global-preview-button {
+    box-sizing: border-box;
+    flex: 0 0 100px;
+    width: 100px;
+    min-width: 100px;
+    padding-left: 4px;
+    padding-right: 4px;
+    white-space: nowrap;
+}
+
+.project-drawer-utility-row #project-edit-categories {
+    box-sizing: border-box;
+    flex: 0 0 101px;
+    width: 101px;
+    min-width: 101px;
+    padding-left: 4px;
+    padding-right: 4px;
+    white-space: nowrap;
+}
+
+.project-info > .project-search-terms {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+.project-search-terms.is-expanded {
+    flex: 1 1 auto;
+    min-height: 0;
 }
