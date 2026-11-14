@@ -10545,6 +10545,16 @@ function getSelectedFinishCategories() {
         });
     }
 
+    async function getAllAIReviewRecords() {
+        const db = await openAIReviewDatabase();
+        return new Promise((resolve, reject) => {
+            const request = db.transaction("results", "readonly")
+                .objectStore("results").getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
     async function saveAIReviewRecord(record) {
         const db = await openAIReviewDatabase();
         return new Promise((resolve, reject) => {
@@ -10665,6 +10675,8 @@ function getSelectedFinishCategories() {
         results.innerHTML = "<p class='home-empty'>Loading icon metadata…</p>";
         try {
             const metadata = await loadIconMetadata();
+            const savedReviews = await getAllAIReviewRecords();
+            const reviewByName = new Map(savedReviews.map(item => [item.name, item]));
             if (token !== iconLibraryRenderToken) return;
             const names = Object.keys(metadata).sort((a, b) => a.localeCompare(b));
             const countBadge = document.getElementById("icon-library-count");
@@ -10682,10 +10694,11 @@ function getSelectedFinishCategories() {
                     const record = metadata[name] || {};
                     const lucide = record.lucide || {};
                     const ai = record.ai || {};
+                    const manualTerms = reviewByName.get(name)?.metadataEdits?.searchTerms || [];
                     const searchable = [
                         name, ...(lucide.tags || []), ...(lucide.categories || []),
                         ...(lucide.useCases || []), ...(ai.searchTerms || []),
-                        ...getExpandedIconSearchTerms(name, record), ai.description || ""
+                        ...getExpandedIconSearchTerms(name, record), ...manualTerms, ai.description || ""
                     ].join(" ").toLowerCase();
                     return (!query || searchable.includes(query)) &&
                         (selectedCategory === "all" || (lucide.categories || []).includes(selectedCategory));
