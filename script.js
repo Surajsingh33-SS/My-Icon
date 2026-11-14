@@ -7586,9 +7586,15 @@ function getSelectedFinishCategories() {
                     shape.x2 = midX - (shape.x2 - midX);
                     updateLine(shape);
                 } else if (shape.type === "curve") {
-                    shape.cx = midX - (shape.cx - midX);
-                    shape.startAngle = Math.PI - shape.startAngle;
-                    shape.endAngle = Math.PI - shape.endAngle;
+                    // Reflect the arc around its own vertical centre line (x = cx).
+                    // Keep the circular centre and radius unchanged.
+                    // Swap the reflected endpoints so the arc size and direction remain correct.
+                    const oldStartAngle = shape.startAngle;
+                    const oldEndAngle = shape.endAngle;
+
+                    shape.startAngle = Math.PI - oldEndAngle;
+                    shape.endAngle = Math.PI - oldStartAngle;
+
                     updateCurve(shape);
                 } else if (shape.type === "circle") {
                     shape.cx = midX - (shape.cx - midX);
