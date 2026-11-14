@@ -9818,7 +9818,7 @@ function getSelectedFinishCategories() {
     };
 
     function getCuratedIconSearchTerms(iconName) {
-        const normalized = String(iconName || "").trim().toLowerCase().replace(/\\s+/g, "-");
+        const normalized = String(iconName || "").trim().toLowerCase().replace(/\s+/g, "-");
         const baseName = normalized.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
         return [...new Set([
             ...(CURATED_ICON_SEARCH_TERMS[normalized] || []),
@@ -9832,7 +9832,7 @@ function getSelectedFinishCategories() {
         const metadataRecord = iconMetadataCache
             ? getIconMetadataRecord(iconMetadataCache, project.name)
             : null;
-        const iconName = String(project.name || "").trim().toLowerCase().replace(/\\s+/g, "-");
+        const iconName = String(project.name || "").trim().toLowerCase().replace(/\s+/g, "-");
         const variantBaseName = iconName.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
         const inheritedRecord = variantBaseName !== iconName
             ? getIconMetadataRecord(iconMetadataCache, variantBaseName)
@@ -10571,7 +10571,7 @@ function getSelectedFinishCategories() {
 
     function getIconMetadataRecord(metadata, iconName) {
         if (!metadata || !iconName) return null;
-        const normalized = iconName.trim().toLowerCase().replace(/\\s+/g, "-");
+        const normalized = iconName.trim().toLowerCase().replace(/\s+/g, "-");
         return metadata[normalized] || metadata[normalized.replace(/_/g, "-")] || null;
     }
 
@@ -10868,11 +10868,11 @@ function getSelectedFinishCategories() {
         try {
             const [metadata, review] = await Promise.all([
                 loadIconMetadata().catch(() => ({})),
-                getAIReviewRecord((project.name || "").trim().toLowerCase().replace(/\\s+/g, "-")).catch(() => null)
+                getAIReviewRecord((project.name || "").trim().toLowerCase().replace(/\s+/g, "-")).catch(() => null)
             ]);
             if (selectedHomeProject !== project) return;
 
-            const iconName = String(project.name || "").trim().toLowerCase().replace(/\\s+/g, "-");
+            const iconName = String(project.name || "").trim().toLowerCase().replace(/\s+/g, "-");
             const variantBaseName = iconName.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
             const record = getIconMetadataRecord(metadata, project.name);
             const inheritedRecord = variantBaseName !== iconName
