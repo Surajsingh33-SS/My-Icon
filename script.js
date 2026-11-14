@@ -7817,7 +7817,12 @@ function getSelectedFinishCategories() {
         selectedShapes = created;
         selectedShape = created[0] || null;
         renderLayers();
-        updat    function createShapeFromCopy(data, preserveId = false) {
+        updateSVGSource();
+        commitHistoryAction();
+        showToast("Duplicated selection", "success");
+    }
+
+    function createShapeFromCopy(data, preserveId = false) {
         let shape;
 
         // Rebuilding or duplicating an existing shape must not create a new
@@ -7874,12 +7879,6 @@ function getSelectedFinishCategories() {
             isCreatingShapeCopy = wasCreatingShapeCopy;
         }
 
-        return shape;
-    }
-id
-                ? data.id
-                : crypto.randomUUID();
-        }
         return shape;
     }
 
