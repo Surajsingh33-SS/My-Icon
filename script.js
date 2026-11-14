@@ -9570,6 +9570,8 @@ function getSelectedFinishCategories() {
             const metadata = await loadIconMetadata();
             if (token !== iconLibraryRenderToken) return;
             const names = Object.keys(metadata).sort((a, b) => a.localeCompare(b));
+            const countBadge = document.getElementById("icon-library-count");
+            if (countBadge) countBadge.textContent = names.length.toLocaleString();
             const categories = [...new Set(names.flatMap(name => metadata[name]?.lucide?.categories || []))].sort();
             const currentCategory = category.value;
             category.replaceChildren(new Option("All official categories", "all"));
