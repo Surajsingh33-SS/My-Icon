@@ -9871,7 +9871,7 @@ function getSelectedFinishCategories() {
 
     // Common irregular forms plus conservative English singular/plural handling.
     const ICON_SEARCH_IRREGULAR_FORMS = Object.freeze({
-        people: ["person"], person: ["people"], persons: ["person", "people"],
+        people: ["person"], person: ["people", "persons"], persons: ["person", "people"],
         men: ["man"], man: ["men"], women: ["woman"], woman: ["women"],
         children: ["child"], child: ["children"], mice: ["mouse"], mouse: ["mice"],
         geese: ["goose"], goose: ["geese"], teeth: ["tooth"], tooth: ["teeth"],
@@ -9889,8 +9889,11 @@ function getSelectedFinishCategories() {
     function getIconSearchWordVariants(value) {
         const word = normalizeIconSearchText(value);
         if (!word || word.includes(" ")) return word ? [word] : [];
-        const variants = new Set([word, ...(ICON_SEARCH_IRREGULAR_FORMS[word] || [])]);
-        if (word.length >= 4) {
+        const irregular = ICON_SEARCH_IRREGULAR_FORMS[word];
+        const variants = new Set([word, ...(irregular || [])]);
+        if (irregular) return [...variants];
+
+        if (word.length >= 3) {
             const looksPlural = word.endsWith("ies") ||
                 /(ches|shes|xes|zes|sses)$/.test(word) ||
                 (word.endsWith("s") && !/(ss|us|is)$/.test(word));
@@ -9902,11 +9905,9 @@ function getSelectedFinishCategories() {
             if (!looksPlural) {
                 if (/[^aeiou]y$/.test(word)) variants.add(word.slice(0, -1) + "ies");
                 else if (/(ch|sh|x|z)$/.test(word)) variants.add(word + "es");
-                else if (word.endsWith("s") && !/(ss|us|is)$/.test(word)) variants.add(word + "es");
+                else if (word.endsWith("s") && !/(ss|ss|us|is)$/.test(word)) variants.add(word + "es");
                 else if (!/(s|ss|us|is)$/.test(word)) variants.add(word + "s");
             }
-        } else if (word.length >= 3 && !/(s|ss)$/.test(word)) {
-            variants.add(word + "s");
         }
         return [...variants];
     }
