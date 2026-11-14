@@ -5596,6 +5596,16 @@ function getSelectedFinishCategories() {
         renderCustomMirrorAxes();
     }
 
+    // Gently magnetise custom axes to the canvas' horizontal/vertical grid directions.
+    // The axis remains freely rotatable outside this small angular capture range.
+    function snapCustomAxisAngle(angle) {
+        const quarterTurn = Math.PI / 2;
+        const nearest = Math.round(angle / quarterTurn) * quarterTurn;
+        const difference = Math.atan2(Math.sin(angle - nearest), Math.cos(angle - nearest));
+        const snapRange = 5 * Math.PI / 180;
+        return Math.abs(difference) <= snapRange ? nearest : angle;
+    }
+
     function updateUniformAxisGroup(groupId, center, angle, halfLength) {
         const members = getCustomAxisGroupMembers(groupId);
         const count = members.length;
@@ -6128,8 +6138,11 @@ function getSelectedFinishCategories() {
                     const target = customAxisDrag.action === "start"
                         ? { x: primary.x1 + dx, y: primary.y1 + dy }
                         : { x: primary.x2 + dx, y: primary.y2 + dy };
+                    const targetAngle = snapCustomAxisAngle(
+                        Math.atan2(target.y - center.y, target.x - center.x)
+                    );
                     updateUniformAxisGroup(customAxisDrag.groupId, center,
-                        Math.atan2(target.y - center.y, target.x - center.x),
+                        targetAngle,
                         Math.max(0.25, Math.hypot(target.x - center.x, target.y - center.y)));
                 } else if (customAxisDrag.action === "center") {
                     // Centre handles magnetically snap to grid intersections (integer X/Y).
@@ -6150,9 +6163,19 @@ function getSelectedFinishCategories() {
                 } else {
                     const axis = customMirrorAxes.find(item => item.id === customAxisDrag.axisId);
                     if (axis && customAxisDrag.action === "start") {
-                        axis.x1 = primary.x1 + dx; axis.y1 = primary.y1 + dy;
+                        const fixed = { x: primary.x2, y: primary.y2 };
+                        const moving = { x: primary.x1 + dx, y: primary.y1 + dy };
+                        const length = Math.hypot(moving.x - fixed.x, moving.y - fixed.y);
+                        const angle = snapCustomAxisAngle(Math.atan2(moving.y - fixed.y, moving.x - fixed.x));
+                        axis.x1 = fixed.x + Math.cos(angle) * length;
+                        axis.y1 = fixed.y + Math.sin(angle) * length;
                     } else if (axis) {
-                        axis.x2 = primary.x2 + dx; axis.y2 = primary.y2 + dy;
+                        const fixed = { x: primary.x1, y: primary.y1 };
+                        const moving = { x: primary.x2 + dx, y: primary.y2 + dy };
+                        const length = Math.hypot(moving.x - fixed.x, moving.y - fixed.y);
+                        const angle = snapCustomAxisAngle(Math.atan2(moving.y - fixed.y, moving.x - fixed.x));
+                        axis.x2 = fixed.x + Math.cos(angle) * length;
+                        axis.y2 = fixed.y + Math.sin(angle) * length;
                     }
                 }
                 renderCustomMirrorAxes();
