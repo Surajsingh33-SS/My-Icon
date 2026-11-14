@@ -1301,7 +1301,24 @@
     }
 
     function getAllIconCategories() {
-        return [...new Set([...normalizeCategoryList(STANDARD_ICON_CATEGORIES), ...normalizeCategoryList(getCustomCategories()), "Uncategorized"])];
+        const assigned = [];
+        (projectManager?.projects || []).forEach(project => {
+            ["manualCategories", "autoCategories", "categories"].forEach(key => {
+                if (Array.isArray(project[key])) assigned.push(...project[key]);
+            });
+            if (project.category) assigned.push(project.category);
+        });
+        if (typeof homeSearchReviewByName !== "undefined" && homeSearchReviewByName instanceof Map) {
+            homeSearchReviewByName.forEach(record => {
+                if (Array.isArray(record?.manualCategories)) assigned.push(...record.manualCategories);
+            });
+        }
+        return [...new Set([
+            ...normalizeCategoryList(STANDARD_ICON_CATEGORIES),
+            ...normalizeCategoryList(getCustomCategories()),
+            ...normalizeCategoryList(assigned),
+            "Uncategorized"
+        ])];
     }
 
     function saveCustomCategory(categoryName) {
