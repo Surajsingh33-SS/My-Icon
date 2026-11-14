@@ -89,12 +89,12 @@ function descriptionFor(name) {
   const lucide = record.lucide || {};
   const ai = record.ai || {};
   return [
-    'Icon named ' + name.replace(/[-_]/g, ' ') + '.',
+    'Icon name: ' + name.replace(/[-_]/g, ' ') + '.',
     ai.description || '',
-    lucide.tags?.length ? 'Tags: ' + lucide.tags.join(', ') + '.' : '',
-    lucide.categories?.length ? 'Official Lucide categories: ' + lucide.categories.join(', ') + '.' : '',
-    ai.searchTerms?.length ? 'Search terms: ' + ai.searchTerms.join(', ') + '.' : '',
-    lucide.useCases?.length ? 'Use cases: ' + lucide.useCases.join(', ') + '.' : ''
+    lucide.tags?.length ? 'Official visual tags: ' + lucide.tags.join(', ') + '.' : '',
+    lucide.aliases?.length ? 'Alternate names: ' + lucide.aliases.map(alias => alias.name).filter(Boolean).join(', ') + '.' : '',
+    lucide.useCases?.length ? 'Documented use cases: ' + lucide.useCases.join(', ') + '.' : '',
+    lucide.categories?.length ? 'Official Lucide categories: ' + lucide.categories.join(', ') + '.' : ''
   ].filter(Boolean).join(' ');
 }
 function cosine(a, b) {
