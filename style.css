@@ -1613,8 +1613,14 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .project-details-close {
-    font-size: 24px;
+    padding: 0;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    font-size: 25px;
+    font-weight: 400;
     line-height: 1;
+    text-align: center;
+    vertical-align: middle;
 }
 
 /* ICON INFORMATION */
