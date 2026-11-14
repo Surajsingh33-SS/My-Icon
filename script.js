@@ -9598,6 +9598,7 @@ function getSelectedFinishCategories() {
         "sliders-horizontal": ["filters", "filter", "adjustments", "tune", "controls", "preferences", "configuration", "settings", "equalizer"],
         "sliders-vertical": ["filters", "filter", "adjustments", "tune", "controls", "preferences", "configuration", "settings", "equalizer"],
         search: ["find", "lookup", "look up", "discover", "magnifier", "magnifying glass", "inspect", "query", "searching"],
+        smile: ["smiley", "happy", "happiness", "grin", "smol"],
         "search-check": ["find", "lookup", "verified search", "search result", "inspect"],
         "search-x": ["clear search", "remove search", "cancel search", "no results"],
         home: ["house", "homepage", "home page", "main page", "start page", "dashboard", "residence"],
@@ -9979,15 +9980,10 @@ function getSelectedFinishCategories() {
         return (` ${normalizedHaystack} `).includes(` ${normalizedPhrase} `);
     }
 
-    // Conservative typo matching: one missing/extra letter, one adjacent
-    // transposition, or one substitution caused by a neighbouring keyboard key.
-    // This avoids treating unrelated words such as "sitting" and "setting" as alike.
+    // Keyboard-aware edit distance catches several small typing mistakes
+    // without treating unrelated words as matches (e.g. "sitting" vs "setting").
     function areAdjacentKeyboardKeysForIconSearch(a, b) {
-        const rows = [
-            "qwertyuiop",
-            "asdfghjkl",
-            "zxcvbnm"
-        ];
+        const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
         const positions = new Map();
         rows.forEach((row, rowIndex) => {
             [...row].forEach((key, columnIndex) => {
@@ -9995,11 +9991,10 @@ function getSelectedFinishCategories() {
                 positions.set(key, { row: rowIndex, column: columnIndex + offset });
             });
         });
-
         const first = positions.get(a);
         const second = positions.get(b);
-        if (!first || !second) return false;
-        return Math.abs(first.row - second.row) <= 1 &&
+        return !!first && !!second &&
+            Math.abs(first.row - second.row) <= 1 &&
             Math.abs(first.column - second.column) <= 1.15;
     }
 
@@ -10007,44 +10002,46 @@ function getSelectedFinishCategories() {
         const a = normalizeIconSearchText(queryWord);
         const b = normalizeIconSearchText(indexedWord);
         if (!a || !b || a === b) return false;
-        if (Math.min(a.length, b.length) < 5 || Math.abs(a.length - b.length) > 1) return false;
+        const shortest = Math.min(a.length, b.length);
+        if (shortest < 5 || Math.abs(a.length - b.length) > 3) return false;
 
-        // A single adjacent letter swap is a common typing mistake.
-        if (a.length === b.length) {
-            const mismatches = [];
-            for (let i = 0; i < a.length; i++) {
-                if (a[i] !== b[i]) mismatches.push(i);
+        // Allow at most 2 edits for 5-6 letter words and 3 for words of 7+.
+        const maxEdits = shortest >= 7 ? 3 : 2;
+        const previousPrevious = Array.from({ length: b.length + 1 }, (_, i) => i);
+        let previous = previousPrevious.slice();
+
+        for (let i = 1; i <= a.length; i++) {
+            const current = new Array(b.length + 1);
+            current[0] = i;
+            let rowMinimum = current[0];
+
+            for (let j = 1; j <= b.length; j++) {
+                const same = a[i - 1] === b[j - 1];
+                const substitutionCost = same
+                    ? 0
+                    : (areAdjacentKeyboardKeysForIconSearch(a[i - 1], b[j - 1]) ? 1 : 99);
+                let cost = Math.min(
+                    previous[j] + 1,             // missing character
+                    current[j - 1] + 1,          // extra character
+                    previous[j - 1] + substitutionCost
+                );
+
+                // Adjacent transposition (e.g. "smiel" -> "smile").
+                if (i > 1 && j > 1 &&
+                    a[i - 1] === b[j - 2] &&
+                    a[i - 2] === b[j - 1]) {
+                    cost = Math.min(cost, previousPrevious[j - 2] + 1);
+                }
+                current[j] = cost;
+                rowMinimum = Math.min(rowMinimum, cost);
             }
-            if (mismatches.length === 2) {
-                const [first, second] = mismatches;
-                return second === first + 1 &&
-                    a[first] === b[second] &&
-                    a[second] === b[first];
-            }
-            if (mismatches.length !== 1) return false;
-            const index = mismatches[0];
-            return areAdjacentKeyboardKeysForIconSearch(a[index], b[index]);
+
+            if (rowMinimum > maxEdits) return false;
+            previousPrevious.splice(0, previousPrevious.length, ...previous);
+            previous = current;
         }
 
-        // One omitted or accidentally repeated/extra character.
-        const shorter = a.length < b.length ? a : b;
-        const longer = a.length < b.length ? b : a;
-        let shortIndex = 0;
-        let longIndex = 0;
-        let skipped = false;
-
-        while (shortIndex < shorter.length && longIndex < longer.length) {
-            if (shorter[shortIndex] === longer[longIndex]) {
-                shortIndex++;
-                longIndex++;
-            } else if (!skipped) {
-                skipped = true;
-                longIndex++;
-            } else {
-                return false;
-            }
-        }
-        return true;
+        return previous[b.length] <= maxEdits;
     }
 
     // Match a partial query token against the beginning of any indexed word.
