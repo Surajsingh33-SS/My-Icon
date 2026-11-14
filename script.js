@@ -1090,7 +1090,7 @@
         "Security": [
             "shield", "lock", "unlock", "security",
             "safe", "fingerprint", "scan-face"
-        ],
+        , "badge-check", "verified badge", "verification badge"],
         "Shapes": [
             "circle", "square", "triangle", "rectangle",
             "hexagon", "polygon", "shape", "pentagon",
@@ -1103,7 +1103,7 @@
         "Social": [
             "share", "social", "heart", "thumbs-up",
             "thumbs-down", "like", "follow", "hashtag"
-        ],
+        , "badge-check", "verified badge"],
         "Sports": [
             "football", "basketball", "soccer", "tennis",
             "trophy", "medal", "volleyball", "baseball"
@@ -9632,6 +9632,7 @@ function getSelectedFinishCategories() {
         "user-round-plus": ["add user", "new user", "invite", "create account", "add member"],
         "user-minus": ["remove user", "delete member", "remove account"],
         "user-check": ["verified user", "approved account", "confirmed member"],
+        "badge-check": ["verified", "verification", "verified badge", "check badge", "approval", "approved", "certification", "certified", "authentic", "authenticity", "trusted", "trust", "official", "identity verified", "credential", "seal", "emblem", "insignia", "rosette", "award", "achievement", "recognition", "checkmark", "tick", "confirmed", "validated", "accepted", "correct", "valid", "completed", "success", "status", "blue check"],
         mail: ["email", "e-mail", "message", "envelope", "inbox", "correspondence"],
         "mail-open": ["open email", "read message", "opened envelope", "inbox"],
         "mail-check": ["email sent", "message delivered", "verified email"],
@@ -9982,12 +9983,36 @@ function getSelectedFinishCategories() {
             ...(Array.isArray(inheritedEdits.useCases) ? inheritedEdits.useCases : []),
             ...getExpandedIconSearchTerms(iconName, metadataRecord || inheritedRecord)
         ];
-        return [...new Set([
+        const allTerms = [...new Set([
             name,
             ...categories,
             ...(Array.isArray(project.searchTerms) ? project.searchTerms : []),
             ...metadataTerms
-        ].map(value => String(value).trim().toLowerCase()).filter(Boolean))];
+        ].map(value => normalizeIconSearchText(value)).filter(Boolean))];
+
+        const termSet = new Set(allTerms);
+        const pluralToSingular = Object.freeze({
+            people: "person", persons: "person", buses: "bus", classes: "class",
+            glasses: "glass", dresses: "dress", addresses: "address", processes: "process",
+            men: "man", women: "woman", children: "child", mice: "mouse",
+            geese: "goose", teeth: "tooth", feet: "foot", leaves: "leaf",
+            knives: "knife", wolves: "wolf", shelves: "shelf", lives: "life",
+            wives: "wife", indices: "index", matrices: "matrix", vertices: "vertex",
+            analyses: "analysis", bases: "basis", crises: "crisis", theses: "thesis",
+            diagnoses: "diagnosis", statuses: "status"
+        });
+
+        return allTerms.filter(term => {
+            if (term.includes(" ")) return true;
+            const singular = pluralToSingular[term] || (
+                term.endsWith("ies") ? term.slice(0, -3) + "y" :
+                /(ches|shes|xes|zes|sses)$/.test(term) ? term.slice(0, -2) :
+                term.length > 3 && term.endsWith("s") && !/(ss|us|is)$/.test(term)
+                    ? term.slice(0, -1)
+                    : null
+            );
+            return !singular || singular === term || !termSet.has(singular);
+        });
     }
 
     // ---------------------------------------------------------------------------
@@ -11195,20 +11220,37 @@ function getSelectedFinishCategories() {
 
     function renderDrawerSearchTerms(terms = []) {
         if (!projectSearchTerms) return;
-        projectSearchTerms.replaceChildren();
-        projectSearchTerms.classList.add("is-expanded");
 
-        // Show the complete search index for this icon in its information drawer.
-        // The drawer itself can scroll, so hiding terms behind a "+ more" control
-        // makes it too easy to mistake a partial list for the full metadata.
         const cleanTerms = [...new Set(terms.map(term => String(term).trim()).filter(Boolean))];
+        const expanded = projectSearchTerms.dataset.expanded === "true";
+        const visibleLimit = 6;
+        const canExpand = cleanTerms.length > visibleLimit;
+        const termsToShow = expanded || !canExpand
+            ? cleanTerms
+            : cleanTerms.slice(0, visibleLimit);
 
-        cleanTerms.forEach(term => {
+        projectSearchTerms.replaceChildren();
+        projectSearchTerms.classList.toggle("is-expanded", expanded && canExpand);
+
+        termsToShow.forEach(term => {
             const chip = document.createElement("span");
             chip.className = "project-search-term";
             chip.textContent = term;
             projectSearchTerms.appendChild(chip);
         });
+
+        if (canExpand) {
+            const more = document.createElement("button");
+            more.type = "button";
+            more.className = "project-search-more";
+            more.textContent = expanded ? "Show less" : `+${cleanTerms.length - visibleLimit} more`;
+            more.setAttribute("aria-expanded", String(expanded));
+            more.addEventListener("click", () => {
+                projectSearchTerms.dataset.expanded = expanded ? "false" : "true";
+                renderDrawerSearchTerms(cleanTerms);
+            });
+            projectSearchTerms.appendChild(more);
+        }
     }
 
     async function renderIconMetadataDetails(project) {
@@ -11266,7 +11308,10 @@ function getSelectedFinishCategories() {
         projectRelatedPage?.setAttribute("aria-hidden", "true");
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
-        if (projectCategoryBadge) renderProjectCategoryBadges(project);
+        if (projectCategoryBadge) {
+            projectCategoryBadge.dataset.expanded = "false";
+            renderProjectCategoryBadges(project);
+        }
         ensureProjectCategoryEditor();
         if (projectDateBadge) projectDateBadge.textContent = `Saved ${new Date(project.savedAt).toLocaleDateString()}`;
 
