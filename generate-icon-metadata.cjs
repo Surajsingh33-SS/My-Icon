@@ -273,7 +273,7 @@ const RELATED_SEARCH_TERMS = {
 // cover common irregular plurals and avoid destructive rules for words like
 // "analysis", "series", "status", and "glass".
 const SEARCH_IRREGULAR_FORMS = {
-    people: ["person"], person: ["people"], persons: ["person", "people"],
+    people: ["person"], person: ["people", "persons"], persons: ["person", "people"],
     men: ["man"], man: ["men"], women: ["woman"], woman: ["women"],
     children: ["child"], child: ["children"], mice: ["mouse"], mouse: ["mice"],
     geese: ["goose"], goose: ["geese"], teeth: ["tooth"], tooth: ["teeth"],
@@ -291,8 +291,11 @@ const SEARCH_IRREGULAR_FORMS = {
 function getSearchWordVariants(value) {
     const word = String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
     if (!word) return [];
-    const variants = new Set([word, ...(SEARCH_IRREGULAR_FORMS[word] || [])]);
-    if (word.length >= 4) {
+    const irregular = SEARCH_IRREGULAR_FORMS[word];
+    const variants = new Set([word, ...(irregular || [])]);
+    if (irregular) return [...variants];
+
+    if (word.length >= 3) {
         const looksPlural = word.endsWith("ies") ||
             /(ches|shes|xes|zes|sses)$/.test(word) ||
             (word.endsWith("s") && !/(ss|us|is)$/.test(word));
@@ -307,8 +310,6 @@ function getSearchWordVariants(value) {
             else if (word.endsWith("s") && !/(ss|us|is)$/.test(word)) variants.add(word + "es");
             else if (!/(s|ss|us|is)$/.test(word)) variants.add(word + "s");
         }
-    } else if (word.length >= 3 && !/(s|ss)$/.test(word)) {
-        variants.add(word + "s");
     }
     return [...variants];
 }
