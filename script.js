@@ -9896,8 +9896,6 @@ function getSelectedFinishCategories() {
     async function renderIconMetadataDetails(project) {
         if (!project || !projectSearchTerms) return;
 
-        // Reuse the existing search-term chips and category badge in the drawer.
-        // Do not create a second metadata panel.
         document.getElementById("icon-ai-metadata-panel")?.remove();
 
         try {
@@ -9907,18 +9905,29 @@ function getSelectedFinishCategories() {
             ]);
             if (selectedHomeProject !== project) return;
 
+            const iconName = String(project.name || "").trim().toLowerCase().replace(/\\s+/g, "-");
+            const variantBaseName = iconName.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
             const record = getIconMetadataRecord(metadata, project.name);
+            const inheritedRecord = variantBaseName !== iconName
+                ? getIconMetadataRecord(metadata, variantBaseName)
+                : null;
             const edits = review?.metadataEdits || {};
+
+            // Prefer edited and official terms, then inherit the base icon's
+            // tags/search terms for variants such as moon-fill or sun-fill.
             const terms = [...new Set([
                 ...(Array.isArray(edits.searchTerms) ? edits.searchTerms : []),
                 ...(Array.isArray(record?.lucide?.tags) ? record.lucide.tags : []),
                 ...(Array.isArray(record?.ai?.searchTerms) ? record.ai.searchTerms : []),
-                ...(Array.isArray(project.searchTerms) ? project.searchTerms : [])
+                ...(Array.isArray(inheritedRecord?.lucide?.tags) ? inheritedRecord.lucide.tags : []),
+                ...(Array.isArray(inheritedRecord?.ai?.searchTerms) ? inheritedRecord.ai.searchTerms : []),
+                ...(Array.isArray(project.searchTerms) ? project.searchTerms : []),
+                ...(project.name ? [project.name.replace(/[-_]+/g, " ")] : [])
             ].map(value => String(value).trim()).filter(Boolean))];
 
             project.searchTerms = terms;
-
             projectSearchTerms.replaceChildren();
+
             terms.forEach(term => {
                 const chip = document.createElement("span");
                 chip.className = "project-search-term";
@@ -9926,13 +9935,10 @@ function getSelectedFinishCategories() {
                 projectSearchTerms.appendChild(chip);
             });
 
-            // Keep the existing category presentation and manual-category priority.
             if (projectCategoryBadge) {
                 projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
             }
         } catch (error) {
-            // The drawer's existing project terms/categories remain visible if
-            // the optional metadata file or local AI review database is unavailable.
             console.warn("Could not enrich drawer search terms:", error);
         }
     }
