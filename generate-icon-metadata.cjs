@@ -269,12 +269,54 @@ const RELATED_SEARCH_TERMS = {
     wifi: ["wireless", "internet", "network", "connection", "signal"]
 };
 
+// Keep this vocabulary aligned with the browser search engine. These forms
+// cover common irregular plurals and avoid destructive rules for words like
+// "analysis", "series", "status", and "glass".
+const SEARCH_IRREGULAR_FORMS = {
+    people: ["person"], person: ["people"], persons: ["person", "people"],
+    men: ["man"], man: ["men"], women: ["woman"], woman: ["women"],
+    children: ["child"], child: ["children"], mice: ["mouse"], mouse: ["mice"],
+    geese: ["goose"], goose: ["geese"], teeth: ["tooth"], tooth: ["teeth"],
+    feet: ["foot"], foot: ["feet"], leaves: ["leaf"], leaf: ["leaves"],
+    knives: ["knife"], knife: ["knives"], wolves: ["wolf"], wolf: ["wolves"],
+    shelves: ["shelf"], shelf: ["shelves"], lives: ["life"], life: ["lives"],
+    wives: ["wife"], wife: ["wives"], indices: ["index"], index: ["indices"],
+    matrices: ["matrix"], matrix: ["matrices"], vertices: ["vertex"], vertex: ["vertices"],
+    analyses: ["analysis"], analysis: ["analyses"], bases: ["basis"], basis: ["bases"],
+    crises: ["crisis"], crisis: ["crises"], theses: ["thesis"], thesis: ["theses"],
+    diagnoses: ["diagnosis"], diagnosis: ["diagnoses"], statuses: ["status"], status: ["statuses"],
+    series: ["series"], species: ["species"], news: ["news"]
+};
+
+function getSearchWordVariants(value) {
+    const word = String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
+    if (!word) return [];
+    const variants = new Set([word, ...(SEARCH_IRREGULAR_FORMS[word] || [])]);
+    if (word.length >= 4) {
+        if (word.endsWith("ies")) variants.add(word.slice(0, -3) + "y");
+        else if (/(ches|shes|xes|zes|sses)$/.test(word)) variants.add(word.slice(0, -2));
+        else if (word.endsWith("s") && !/(ss|us|is)$/.test(word)) variants.add(word.slice(0, -1));
+
+        if (/[^aeiou]y$/.test(word)) variants.add(word.slice(0, -1) + "ies");
+        else if (/(ch|sh|s|x|z)$/.test(word)) variants.add(word + "es");
+        else if (!/(s|ss|us|is)$/.test(word)) variants.add(word + "s");
+    } else if (word.length >= 3 && !/(s|ss)$/.test(word)) {
+        variants.add(word + "s");
+    }
+    return [...variants];
+}
+
 function expandRelatedSearchTerms(values) {
     const expanded = [...values];
     for (const value of values) {
-        const words = String(value || "").toLowerCase()
-            .replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/);
-        for (const word of words) {
+        const normalized = String(value || "").toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ").trim();
+        for (const word of normalized.split(/\s+/).filter(Boolean)) {
+            const variants = getSearchWordVariants(word);
+            expanded.push(...variants);
+            for (const variant of variants) {
+                if (RELATED_SEARCH_TERMS[variant]) expanded.push(...RELATED_SEARCH_TERMS[variant]);
+            }
             if (RELATED_SEARCH_TERMS[word]) expanded.push(...RELATED_SEARCH_TERMS[word]);
         }
     }
@@ -459,6 +501,22 @@ console.log(
     "Missing official metadata:",
     missingMetadata
 );
+
+const termCounts = Object.values(iconDatabase).map(record =>
+    (record.ai?.searchTerms || []).length
+);
+const averageTerms = termCounts.length
+    ? Math.round(termCounts.reduce((sum, count) => sum + count, 0) / termCounts.length)
+    : 0;
+const lowCoverage = Object.values(iconDatabase)
+    .filter(record => (record.ai?.searchTerms || []).length < 8)
+    .map(record => record.name);
+
+console.log("Average generated search terms:", averageTerms);
+console.log("Icons with fewer than 8 search terms:", lowCoverage.length);
+if (lowCoverage.length) {
+    console.log("Low-coverage examples:", lowCoverage.slice(0, 30).join(", "));
+}
 
 console.log(
     "Shared tag groups:",
