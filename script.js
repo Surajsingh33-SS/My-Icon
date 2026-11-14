@@ -9824,6 +9824,7 @@ function getSelectedFinishCategories() {
         bank:["banking","finance","money","payment"], book:["reading","read","library","publication","pages"],
         calendar:["date","schedule","planner","appointment","event"], camera:["photograph","photography","snapshot","capture","picture"],
         chart:["graph","analytics","statistics","data visualization","report"], check:["done","complete","completed","success","approved","confirm"],
+        cog:["gear","settings","setting","preferences","configuration","options","tune"],
         circle:["round","circular","ellipse","shape"], clipboard:["copy","paste","notes","board"],
         clock:["time","watch","duration","schedule"], close:["exit","dismiss","cancel","remove","clear"],
         cloud:["online storage","internet","sync","weather"], code:["programming","developer","software","source code","script"],
@@ -10003,10 +10004,13 @@ function getSelectedFinishCategories() {
         }
 
         if (query) {
-            const words = query.split(/\s+/).filter(Boolean);
+            const words = query.split(/\\s+/).filter(Boolean);
             finished = finished.filter(p => {
                 const text = `${p.name || ""} ${getProjectCategories(p).join(" ")} ${getProjectSearchTerms(p).join(" ")}`.toLowerCase();
-                return words.every(w => text.includes(w));
+                return words.every(word => {
+                    const related = RELATED_ICON_SEARCH_TERMS[word] || [];
+                    return [word, ...related].some(term => text.includes(String(term).toLowerCase()));
+                });
             });
         }
 
@@ -10589,20 +10593,25 @@ function getSelectedFinishCategories() {
     }
 
     // Load official metadata and local manual edits for homepage search on startup.
-    Promise.all([loadIconMetadata(), getAllAIReviewRecords()])
-        .then(([metadata, reviews]) => {
-            iconMetadataCache = metadata;
-            homeSearchReviewByName = new Map(
-                reviews.map(record => [
-                    normalizeHomeSearchIconName(record?.name),
-                    record
-                ]).filter(([name]) => name)
-            );
-            renderHomeProjects();
+    Promise.all([
+        loadIconMetadata().catch(error => {
+            console.warn("Could not load official icon metadata for homepage search:", error);
+            return null;
+        }),
+        getAllAIReviewRecords().catch(error => {
+            console.warn("Could not load saved metadata edits for homepage search:", error);
+            return [];
         })
-        .catch(error => {
-            console.warn("Could not initialize homepage search metadata:", error);
-        });
+    ]).then(([metadata, reviews]) => {
+        if (metadata) iconMetadataCache = metadata;
+        homeSearchReviewByName = new Map(
+            reviews.map(record => [
+                normalizeHomeSearchIconName(record?.name),
+                record
+            ]).filter(([name]) => name)
+        );
+        renderHomeProjects();
+    });
 
     function createMetadataEditor(panel, iconName, record, baseRecord) {
         const section = document.createElement("details");
