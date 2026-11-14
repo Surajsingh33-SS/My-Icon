@@ -964,7 +964,7 @@
             "user", "account", "profile", "login", "logout",
             "log-in", "log-out", "password", "key", "contact",
             "badge", "id-card", "fingerprint"
-        ],
+        , "badge-check", "verified badge", "verification badge"],
         "Animals": [
             "cat", "dog", "bird", "fish", "paw", "rabbit",
             "bug", "butterfly", "turtle", "horse", "fox", "wolf"
@@ -1103,7 +1103,7 @@
         "Social": [
             "share", "social", "heart", "thumbs-up",
             "thumbs-down", "like", "follow", "hashtag"
-        , "badge-check", "verified badge"],
+        ],
         "Sports": [
             "football", "basketball", "soccer", "tennis",
             "trophy", "medal", "volleyball", "baseball"
@@ -11223,7 +11223,7 @@ function getSelectedFinishCategories() {
 
         const cleanTerms = [...new Set(terms.map(term => String(term).trim()).filter(Boolean))];
         const expanded = projectSearchTerms.dataset.expanded === "true";
-        const visibleLimit = 6;
+        const visibleLimit = 3;
         const canExpand = cleanTerms.length > visibleLimit;
         const termsToShow = expanded || !canExpand
             ? cleanTerms
