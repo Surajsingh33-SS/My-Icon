@@ -359,7 +359,7 @@ async function renderResults(query = '') {
           throw new Error('The saved project data is not in the expected format.');
         }
         const normalize = value => String(value || '').trim().toLowerCase()
-          .replace(/[_\\s]+/g, '-').replace(/-+/g, '-');
+          .replace(/[_\s]+/g, '-').replace(/-+/g, '-');
         const matches = manager.projects.filter(project =>
           normalize(project.name) === normalize(record.name) && project.status === 'finished'
         );
