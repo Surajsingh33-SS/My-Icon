@@ -1643,11 +1643,18 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
  .project-info {
     min-width: 0;
-    padding: 16px 22px;
-
+    min-height: 0;
+    height: 100%;
+    padding: 14px 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.project-info > .project-export-button {
+    margin-top: auto;
+    flex: 0 0 auto;
 }
 
 .project-info-heading {
@@ -4014,13 +4021,25 @@ body.light-theme #save-project-button:hover {
 }
 
 .project-details-main {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     height: auto;
+    min-height: 0;
+    align-items: stretch;
+}
+
+.project-preview {
+    height: 100%;
     min-height: 0;
 }
 
+.project-content {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+}
+
 .project-info {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
     overflow: hidden;
 }
@@ -4043,4 +4062,12 @@ body.light-theme #save-project-button:hover {
 
 #project-category-editor[hidden] {
     display: none !important;
+}
+
+/* Keep metadata compact while the export action stays at the bottom. */
+.project-search-terms {
+    min-height: 0;
+    max-height: 34%;
+    overflow: hidden;
+    align-content: flex-start;
 }
