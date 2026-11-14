@@ -10479,6 +10479,8 @@ function getSelectedFinishCategories() {
             delBtn.addEventListener("click", () => {
                 if (isFinished) {
                     if (deleteConfirmModal && deleteTargetProjectName && deleteConfirmBtn && deleteCancelBtn) {
+                        if (deleteConfirmTitle) deleteConfirmTitle.textContent = "Delete Finished Project";
+                        deleteConfirmBtn.textContent = "Delete Project";
                         deleteTargetProjectName.textContent = project.name || "this icon";
                         deleteConfirmModal.style.display = "flex";
                         deleteConfirmModal.classList.add("show");
