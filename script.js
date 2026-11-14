@@ -9993,6 +9993,15 @@ function getSelectedFinishCategories() {
         return edits === 1;
     }
 
+    // Match a partial query token against the beginning of any indexed word.
+    // This deliberately avoids substring matches (e.g. "og" does not match "cog").
+    function iconSearchPrefixMatches(text, prefix) {
+        const normalizedPrefix = normalizeIconSearchText(prefix);
+        if (!normalizedPrefix) return false;
+        const words = normalizeIconSearchText(text).split(" ").filter(Boolean);
+        return words.some(word => word.startsWith(normalizedPrefix));
+    }
+
     function scoreHomeProjectSearch(project, rawQuery) {
         const query = normalizeIconSearchText(rawQuery);
         if (!query) return 0;
@@ -10016,6 +10025,13 @@ function getSelectedFinishCategories() {
                 if (terms.some(term => term === candidate)) bestScore = Math.max(bestScore, 76);
                 else if (terms.some(term => iconSearchPhraseMatches(term, candidate))) bestScore = Math.max(bestScore, 66);
                 if (categories.some(category => iconSearchPhraseMatches(category, candidate))) bestScore = Math.max(bestScore, 28);
+
+                // Prefix matches make results appear while the user is still typing.
+                // Complete names/terms above always outrank these partial matches.
+                if (nameTokens.some(nameToken => nameToken.startsWith(token))) bestScore = Math.max(bestScore, 58);
+                if (terms.some(term => iconSearchPrefixMatches(term, token))) bestScore = Math.max(bestScore, 44);
+                if (categories.some(category => iconSearchPrefixMatches(category, token))) bestScore = Math.max(bestScore, 22);
+
                 if (candidate.length >= 5 && nameTokens.some(nameToken => isOneEditAwayForIconSearch(candidate, nameToken))) {
                     bestScore = Math.max(bestScore, 40);
                 }
