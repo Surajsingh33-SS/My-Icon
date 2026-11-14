@@ -6054,10 +6054,11 @@ function getSelectedFinishCategories() {
                 )
                 : null;
 
-            // Keep the visible endpoints at their exact starting angles.
-            // Their visual positions will ease toward the same snapped targets while dragging.
-            shape._displayStartAngle = shape.startAngle;
-            shape._displayEndAngle = shape.endAngle;
+            // Only blue endpoint handles use visual easing; other handles stay unchanged.
+            if (action === "start" || action === "end") {
+                shape._displayStartAngle = shape.startAngle;
+                shape._displayEndAngle = shape.endAngle;
+            }
 
             dragging = {
                 shape,
