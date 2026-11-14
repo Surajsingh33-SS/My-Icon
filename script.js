@@ -9320,6 +9320,8 @@ function getSelectedFinishCategories() {
         viewModeAllBtn.classList.add("active");
         viewModeCategoriesBtn?.classList.remove("active");
         galleryViewCategory = "all";
+        const categoryBackButton = document.getElementById("category-gallery-back-button");
+        if (categoryBackButton) categoryBackButton.hidden = true;
         renderHomeProjects();
     });
 
@@ -9327,7 +9329,21 @@ function getSelectedFinishCategories() {
         viewModeCategoriesBtn.classList.add("active");
         viewModeAllBtn?.classList.remove("active");
         galleryViewCategory = "categories";
+        const categoryBackButton = document.getElementById("category-gallery-back-button");
+        if (categoryBackButton) categoryBackButton.hidden = true;
         renderHomeProjects();
+    });
+
+    // Return from a single category jump to the top of the full category gallery.
+    document.getElementById("category-gallery-back-button")?.addEventListener("click", () => {
+        const categoryBackButton = document.getElementById("category-gallery-back-button");
+        if (categoryBackButton) categoryBackButton.hidden = true;
+
+        const firstCategoryGroup = homeProjectGrid?.querySelector(".gallery-category-group");
+        firstCategoryGroup?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
     });
 
     clearCategoryFilterBtn?.addEventListener("click", () => {
@@ -9420,6 +9436,10 @@ function getSelectedFinishCategories() {
 
                 renderHomeProjects();
                 closeProjectPreview();
+
+                // Show a shortcut back to the complete category overview.
+                const categoryBackButton = document.getElementById("category-gallery-back-button");
+                if (categoryBackButton) categoryBackButton.hidden = false;
 
                 // Scroll to the matching category after the gallery has been rebuilt.
                 const targetGroup = Array.from(
