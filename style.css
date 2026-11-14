@@ -3376,6 +3376,29 @@ input[type="range"]::-webkit-slider-thumb:hover {
     padding-bottom: 6px;
 }
 
+.collapsible-manager-header {
+    width: 100%;
+    cursor: pointer;
+    text-align: left;
+    background: transparent;
+    color: inherit;
+    border: 0;
+    font: inherit;
+}
+
+.manager-collapse-arrow {
+    margin-left: auto;
+    transition: transform 0.2s ease;
+}
+
+.collapsible-manager-header[aria-expanded="false"] .manager-collapse-arrow {
+    transform: rotate(-90deg);
+}
+
+.management-cards-grid[hidden] {
+    display: none !important;
+}
+
 .manager-section-title {
     font-size: 15px;
     font-weight: 700;
