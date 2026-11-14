@@ -10197,6 +10197,8 @@ function getSelectedFinishCategories() {
     }
 
     let homeSearchRenderToken = 0;
+    let homeSearchReviewsLoaded = false;
+    let homeSearchReviewLoadPromise = null;
 
     async function renderHomeProjects() {
         const renderToken = ++homeSearchRenderToken;
@@ -10280,19 +10282,25 @@ function getSelectedFinishCategories() {
         if (query) {
             try {
                 const metadata = await loadIconMetadata();
-                let reviewRecords = [];
-                try {
-                    reviewRecords = await getAllAIReviewRecords();
-                } catch (reviewError) {
-                    console.warn("Could not load local icon review metadata:", reviewError);
+                if (!homeSearchReviewsLoaded) {
+                    if (!homeSearchReviewLoadPromise) {
+                        homeSearchReviewLoadPromise = getAllAIReviewRecords()
+                            .then(reviewRecords => {
+                                reviewRecords.forEach(record => {
+                                    const key = normalizeHomeSearchIconName(record?.name);
+                                    if (key) homeSearchReviewByName.set(key, record);
+                                });
+                                homeSearchReviewsLoaded = true;
+                            })
+                            .catch(reviewError => {
+                                homeSearchReviewLoadPromise = null;
+                                console.warn("Could not load local icon review metadata:", reviewError);
+                            });
+                    }
+                    await homeSearchReviewLoadPromise;
                 }
 
                 if (renderToken !== homeSearchRenderToken) return;
-
-                reviewRecords.forEach(record => {
-                    const key = normalizeHomeSearchIconName(record?.name);
-                    if (key) homeSearchReviewByName.set(key, record);
-                });
 
                 const allSavedProjects = projectManager.projects.filter(
                     project => project.status === "finished"
@@ -10502,9 +10510,10 @@ function getSelectedFinishCategories() {
         }
 
         function createHomeLibrarySearchCard(iconName, project) {
-            const card = document.createElement("button");
-            card.type = "button";
+            const card = document.createElement("div");
             card.className = "home-project-card library-search-card";
+            card.tabIndex = 0;
+            card.setAttribute("role", "button");
             card.title = `Open ${iconName} in the Icon Library`;
 
             const preview = document.createElement("div");
@@ -10533,6 +10542,12 @@ function getSelectedFinishCategories() {
                 if (librarySearch) librarySearch.value = iconName;
                 if (libraryCategory) libraryCategory.value = "all";
                 switchHomeView("icon-library");
+            });
+            card.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    card.click();
+                }
             });
 
             return card;
