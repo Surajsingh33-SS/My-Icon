@@ -4161,23 +4161,36 @@ body.light-theme #save-project-button:hover {
     background: var(--bg-surface-raised);
 }
 .project-category-editor[hidden] { display: none; }
+/* Expanded drawer: one scrollable page that grows upward from the bottom. */
 .project-details.expanded {
-    height: 55dvh;
-    max-height: 55dvh;
+    top: 0;
+    bottom: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
-    display: block;
+    overflow-x: hidden;
+    border-radius: 16px 16px 0 0;
 }
-.project-details.expanded .project-details-main {
-    height: 55dvh;
-    min-height: 55dvh;
-    flex: none;
-}
+
+/* Similar icons move above the preview only in the expanded state. */
 .project-details.expanded .project-related {
+    order: -1;
+    flex: 0 0 auto;
     height: auto;
     min-height: 0;
     overflow: visible;
-    flex: none;
 }
+
+/* Keep the preview/details section intact below Similar Icons. */
+.project-details.expanded .project-details-main {
+    order: 0;
+    height: 55dvh;
+    min-height: 55dvh;
+    flex: 0 0 55dvh;
+}
+
 .project-details.expanded .related-project-grid {
     padding-bottom: 18px;
 }
