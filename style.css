@@ -1651,7 +1651,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .project-info > .project-export-button {
-    margin-top: auto;
+    margin-top: 0;
     flex: 0 0 auto;
 }
 
@@ -4187,6 +4187,7 @@ body.light-theme #save-project-button:hover {
 
 /* Keep drawer utility actions compact, inline, and independent of search-term expansion. */
 .project-drawer-utility-row {
+    margin-top: auto;
     display: flex;
     flex: 0 0 auto;
     flex-direction: row;
