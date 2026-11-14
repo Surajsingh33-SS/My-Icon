@@ -9939,10 +9939,15 @@ function getSelectedFinishCategories() {
         const lucide = record?.lucide || {};
         const ai = record?.ai || {};
         const aliases = (lucide.aliases || []).map(alias => typeof alias === "string" ? alias : alias?.name);
+        // Reuse the same controlled query aliases in the drawer and search index,
+        // so equivalent names (e.g. setting, settings, cog, and gear) are visible
+        // as metadata instead of being hidden inside query-time matching only.
+        const queryAliases = [normalized, baseName]
+            .flatMap(name => ICON_SEARCH_QUERY_ALIASES[name] || []);
         const source = [
             normalized, normalized.replace(/-/g, " "), baseName, baseName.replace(/-/g, " "),
             ...(lucide.tags || []), ...(lucide.useCases || []), ...aliases,
-            ...(ai.searchTerms || []), ...getCuratedIconSearchTerms(normalized)
+            ...queryAliases, ...(ai.searchTerms || []), ...getCuratedIconSearchTerms(normalized)
         ];
         return expandIconSearchTermVariants(source, RELATED_ICON_SEARCH_TERMS);
     }
