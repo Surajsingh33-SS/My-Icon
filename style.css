@@ -4381,3 +4381,12 @@ body.light-theme #save-project-button:hover {
         bottom: 16px;
     }
 }
+
+/* Custom mirror-axis editor */
+.mirror-axis-control{display:inline-flex;align-items:center;gap:4px;color:var(--text-secondary);font-size:10px;white-space:nowrap}
+.mirror-axis-control select,.mirror-axis-control input{height:26px;min-width:46px;max-width:58px;padding:2px 4px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);font:inherit}
+.mirror-axis-control input{width:42px}
+.mirror-axis-control input:disabled{opacity:.45}
+.custom-axis-line{cursor:pointer;pointer-events:stroke}
+.custom-axis-handle{cursor:grab;stroke:#fff;stroke-width:.12}
+.custom-axis-handle:active{cursor:grabbing}
