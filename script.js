@@ -8028,7 +8028,9 @@ function getSelectedFinishCategories() {
 
                 const largeArc = delta > Math.PI ? 1 : 0;
 
-                const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} 1 ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
+                const sweep = shape.sweepFlag ?? 1;
+
+                const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} ${sweep} ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
 
                 artwork.push(
                     `    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`
