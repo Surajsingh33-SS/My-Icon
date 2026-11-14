@@ -445,6 +445,7 @@
     let copiedShapes = [];
 
     let isRestoringProject = false;
+    let isCreatingShapeCopy = false;
     let activeHomeTab = "all"; // 'all' | 'recent' | 'favorites'
     let homeViewMode = "grid"; // 'grid' | 'list'
     let galleryViewCategory = "all"; // 'all' | 'categories'
@@ -2810,6 +2811,8 @@ function getSelectedFinishCategories() {
     function applyLiveSymmetry(sourceShape) {
         if (
             isApplyingLiveSymmetry ||
+            isCreatingShapeCopy ||
+            isRestoringProject ||
             !sourceShape ||
             sourceShape.symmetryGroupId
         ) {
@@ -7814,55 +7817,66 @@ function getSelectedFinishCategories() {
         selectedShapes = created;
         selectedShape = created[0] || null;
         renderLayers();
-        updateSVGSource();
-        commitHistoryAction();
-        showToast("Duplicated selection", "success");
-    }
-
-    function createShapeFromCopy(data, preserveId = false) {
+        updat    function createShapeFromCopy(data, preserveId = false) {
         let shape;
 
-        if (data.type === "line") {
-            createLine(data.x1, data.y1);
-            shape = shapes[shapes.length - 1];
-            Object.assign(shape, data);
-            updateLine(shape);
-        } else if (data.type === "curve") {
-            createCurve(data.cx, data.cy);
-            shape = shapes[shapes.length - 1];
-            Object.assign(shape, data);
-            updateCurve(shape);
-        } else if (data.type === "ellipse-arc") {
-            createEllipseArc(data.cx, data.cy);
-            shape = shapes[shapes.length - 1];
-            Object.assign(shape, data);
-            updateEllipseArc(shape);
-        } else if (
-            data.type === "circle" ||
-            data.type === "ellipse" ||
-            data.type === "rectangle"
-        ) {
-            createOtherShape(data.type, 12, 12);
-            shape = shapes[shapes.length - 1];
-            Object.assign(shape, data);
-            updateBasicShape(shape);
-        } else if (data.type === "path") {
-            const el = document.createElementNS(SVG_NS, "path");
+        // Rebuilding or duplicating an existing shape must not create a new
+        // live-symmetry group. Its symmetry members are already in the data.
+        const wasCreatingShapeCopy = isCreatingShapeCopy;
+        isCreatingShapeCopy = true;
 
-            shape = {
-                ...structuredClone(data),
-                element: el,
-                handles: []
-            };
+        try {
+            if (data.type === "line") {
+                createLine(data.x1, data.y1);
+                shape = shapes[shapes.length - 1];
+                Object.assign(shape, data);
+                updateLine(shape);
+            } else if (data.type === "curve") {
+                createCurve(data.cx, data.cy);
+                shape = shapes[shapes.length - 1];
+                Object.assign(shape, data);
+                updateCurve(shape);
+            } else if (data.type === "ellipse-arc") {
+                createEllipseArc(data.cx, data.cy);
+                shape = shapes[shapes.length - 1];
+                Object.assign(shape, data);
+                updateEllipseArc(shape);
+            } else if (
+                data.type === "circle" ||
+                data.type === "ellipse" ||
+                data.type === "rectangle"
+            ) {
+                createOtherShape(data.type, 12, 12);
+                shape = shapes[shapes.length - 1];
+                Object.assign(shape, data);
+                updateBasicShape(shape);
+            } else if (data.type === "path") {
+                const el = document.createElementNS(SVG_NS, "path");
 
-            workspace.appendChild(el);
-            shapes.push(shape);
+                shape = {
+                    ...structuredClone(data),
+                    element: el,
+                    handles: []
+                };
 
-            updatePathShape(shape);
+                workspace.appendChild(el);
+                shapes.push(shape);
+
+                updatePathShape(shape);
+            }
+
+            if (shape) {
+                shape.id = preserveId && data.id
+                    ? data.id
+                    : crypto.randomUUID();
+            }
+        } finally {
+            isCreatingShapeCopy = wasCreatingShapeCopy;
         }
 
-        if (shape) {
-            shape.id = preserveId && data.id
+        return shape;
+    }
+id
                 ? data.id
                 : crypto.randomUUID();
         }
