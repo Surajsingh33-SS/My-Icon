@@ -11133,33 +11133,19 @@ function getSelectedFinishCategories() {
     function renderDrawerSearchTerms(terms = []) {
         if (!projectSearchTerms) return;
         projectSearchTerms.replaceChildren();
-        projectSearchTerms.classList.remove("is-expanded");
+        projectSearchTerms.classList.add("is-expanded");
 
+        // Show the complete search index for this icon in its information drawer.
+        // The drawer itself can scroll, so hiding terms behind a "+ more" control
+        // makes it too easy to mistake a partial list for the full metadata.
         const cleanTerms = [...new Set(terms.map(term => String(term).trim()).filter(Boolean))];
-        const canExpand = cleanTerms.length > 7;
-        const expanded = canExpand && projectSearchTerms.dataset.expanded === "true";
-        const visibleTerms = expanded || !canExpand ? cleanTerms : cleanTerms.slice(0, 7);
 
-        visibleTerms.forEach(term => {
+        cleanTerms.forEach(term => {
             const chip = document.createElement("span");
             chip.className = "project-search-term";
             chip.textContent = term;
             projectSearchTerms.appendChild(chip);
         });
-
-        if (canExpand) {
-            const hiddenCount = cleanTerms.length - 7;
-            const more = document.createElement("button");
-            more.type = "button";
-            more.className = "project-search-more";
-            more.textContent = expanded ? "Show less" : `+${hiddenCount} more`;
-            more.addEventListener("click", () => {
-                projectSearchTerms.dataset.expanded = expanded ? "false" : "true";
-                renderDrawerSearchTerms(cleanTerms);
-            });
-            projectSearchTerms.appendChild(more);
-        }
-        if (expanded) projectSearchTerms.classList.add("is-expanded");
     }
 
     async function renderIconMetadataDetails(project) {
@@ -11174,26 +11160,15 @@ function getSelectedFinishCategories() {
             ]);
             if (selectedHomeProject !== project) return;
 
-            const iconName = String(project.name || "").trim().toLowerCase().replace(/\s+/g, "-");
-            const variantBaseName = iconName.replace(/-(?:fill|filled|round|rounded|dashed|dotted|vertical|horizontal)$/, "");
-            const record = getIconMetadataRecord(metadata, project.name);
-            const inheritedRecord = variantBaseName !== iconName
-                ? getIconMetadataRecord(metadata, variantBaseName)
-                : null;
-            const edits = review?.metadataEdits || {};
+            const iconName = normalizeHomeSearchIconName(project.name);
+            // Make the freshly loaded manual edits available to the same
+            // complete term builder used by homepage search.
+            if (review) homeSearchReviewByName.set(iconName, review);
 
-            // Prefer edited and official terms, then inherit the base icon's
-            // tags/search terms for variants such as moon-fill or sun-fill.
-            const terms = [...new Set([
-                ...(Array.isArray(edits.searchTerms) ? edits.searchTerms : []),
-                ...(Array.isArray(record?.lucide?.tags) ? record.lucide.tags : []),
-                ...(Array.isArray(record?.ai?.searchTerms) ? record.ai.searchTerms : []),
-                ...(Array.isArray(inheritedRecord?.lucide?.tags) ? inheritedRecord.lucide.tags : []),
-                ...(Array.isArray(inheritedRecord?.ai?.searchTerms) ? inheritedRecord.ai.searchTerms : []),
-                ...getCuratedIconSearchTerms(iconName),
-                ...(Array.isArray(project.searchTerms) ? project.searchTerms : []),
-                ...(project.name ? [project.name.replace(/[-_]+/g, " ")] : [])
-            ].map(value => String(value).trim()).filter(Boolean))];
+            // Use the exact same metadata pipeline as homepage search. This
+            // includes official tags, AI terms, manual edits, curated terms,
+            // related synonyms, inherited variant metadata and categories.
+            const terms = getProjectSearchTerms(project);
 
             project.searchTerms = terms;
             renderDrawerSearchTerms(terms);
