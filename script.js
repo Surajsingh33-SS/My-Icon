@@ -366,6 +366,7 @@
     const projectDeleteButton = document.getElementById("project-delete-button");
     const projectMoreSearchButton = document.getElementById("project-more-search-button");
     const projectRelated = document.getElementById("project-related");
+    const projectRelatedPage = document.getElementById("project-related-page");
     const relatedProjectGrid = document.getElementById("related-project-grid");
     const relatedHeadingText = document.getElementById("related-heading-text");
     const relatedCount = document.getElementById("related-count");
@@ -10015,6 +10016,8 @@ function getSelectedFinishCategories() {
         selectedHomeProject = project;
         updateHomeProjectSelection();
         if (projectRelated) projectRelated.hidden = true;
+        projectRelatedPage?.classList.remove("show");
+        projectRelatedPage?.setAttribute("aria-hidden", "true");
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
         if (projectCategoryBadge) projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
@@ -10058,24 +10061,27 @@ function getSelectedFinishCategories() {
     }
 
     function closeProjectPreview() {
-        projectDetails?.classList.remove("show", "expanded");
+        projectDetails?.classList.remove("show");
         projectSearchTerms && (projectSearchTerms.dataset.expanded = "false");
         projectDetails?.setAttribute("aria-hidden", "true");
 
-        if (projectRelated) projectRelated.hidden = true; // ADD THIS
+        projectRelatedPage?.classList.remove("show");
+        projectRelatedPage?.setAttribute("aria-hidden", "true");
+        if (projectRelated) projectRelated.hidden = true;
 
         selectedHomeProject = null;
         updateHomeProjectSelection();
     }
 
     projectDetailsClose?.addEventListener("click", closeProjectPreview);
-    // Move drawer upward and reveal related icons
+    // Open the Similar Icons page from behind the fixed preview drawer.
     projectMoreSearchButton?.addEventListener("click", () => {
-        if (!selectedHomeProject || !projectDetails || !projectRelated) return;
+        if (!selectedHomeProject || !projectDetails || !projectRelated || !projectRelatedPage) return;
 
         projectRelated.hidden = false;
-        projectDetails.classList.add("expanded");
-        projectDetails.scrollTop = 0;
+        projectRelatedPage.scrollTop = 0;
+        projectRelatedPage.classList.add("show");
+        projectRelatedPage.setAttribute("aria-hidden", "false");
     });
     document.getElementById("project-global-preview-button")?.addEventListener("click", () => {
         const sidebarScroll = document.querySelector(".sidebar-scroll-area");
