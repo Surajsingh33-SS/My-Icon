@@ -9643,8 +9643,20 @@ function getSelectedFinishCategories() {
         const heading = document.createElement("h3");
         heading.textContent = name;
         panel.appendChild(heading);
+
+        let review = null;
+        try {
+            review = await getAIReviewRecord(name);
+        } catch (error) {
+            const warning = document.createElement("p");
+            warning.textContent = "Local review storage is unavailable: " + error.message;
+            panel.appendChild(warning);
+        }
+        if (iconLibrarySelectedName !== name) return;
+
+        const edits = review?.metadataEdits || {};
         const description = document.createElement("p");
-        description.textContent = baseRecord?.ai?.description || "No description has been added yet.";
+        description.textContent = edits.description ?? baseRecord?.ai?.description ?? "No description has been added yet.";
         description.style.cssText = "font-size:13px;line-height:1.5;";
         panel.appendChild(description);
 
@@ -9659,10 +9671,10 @@ function getSelectedFinishCategories() {
             panel.append(title, value);
         };
         addList("Official Lucide categories", baseRecord?.lucide?.categories);
-        addList("Official tags", baseRecord?.lucide?.tags);
-        addList("Use cases", baseRecord?.lucide?.useCases);
-        addList("Contributors", baseRecord?.lucide?.contributors);
-        addList("Search terms", baseRecord?.ai?.searchTerms);
+        addList("Tags", edits.tags ?? baseRecord?.lucide?.tags);
+        addList("Use cases", edits.useCases ?? baseRecord?.lucide?.useCases);
+        addList("Contributors", edits.contributors ?? baseRecord?.lucide?.contributors);
+        addList("Search terms", edits.searchTerms ?? baseRecord?.ai?.searchTerms);
 
         const divider = document.createElement("hr");
         divider.style.cssText = "border:0;border-top:1px solid var(--border-subtle);margin:16px 0;";
@@ -9670,32 +9682,29 @@ function getSelectedFinishCategories() {
         const metadataTitle = document.createElement("h4");
         metadataTitle.textContent = "Editable metadata";
         panel.appendChild(metadataTitle);
-        let review = null;
-        try { review = await getAIReviewRecord(name); } catch (error) {
-            const warning = document.createElement("p");
-            warning.textContent = "Local review storage is unavailable: " + error.message;
-            panel.appendChild(warning);
-        }
-        if (iconLibrarySelectedName !== name) return;
         createMetadataEditor(panel, name, review, baseRecord);
 
         const reviewTitle = document.createElement("h4");
-        reviewTitle.textContent = "AI category suggestions";
+        reviewTitle.textContent = "Category review";
         reviewTitle.style.marginTop = "18px";
         panel.appendChild(reviewTitle);
+
+        const official = baseRecord?.lucide?.categories || review?.officialCategories || [];
+        const suggestions = review?.aiSuggestions || [];
         if (!review?.aiSuggestions?.length) {
             const note = document.createElement("p");
-            note.textContent = "This icon has not been analyzed yet. Run the batch analyzer to generate suggestions.";
+            note.textContent = "No AI analysis is saved for this icon yet. Official categories and your own categories can still be selected here.";
             note.style.cssText = "font-size:12px;opacity:.8;";
             panel.appendChild(note);
-            return;
         }
-        const selected = new Set(Array.isArray(review.manualCategories)
-            ? review.manualCategories : (review.officialCategories || []));
+
+        const selected = new Set(Array.isArray(review?.manualCategories)
+            ? review.manualCategories : official);
         const checkboxes = [];
         const group = document.createElement("div");
         group.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;";
         const addCategory = (value, source) => {
+            if (!value || checkboxes.some(input => input.value === value)) return;
             const label = document.createElement("label");
             label.style.cssText = "display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border:1px solid var(--border-subtle);border-radius:18px;font-size:12px;";
             const input = document.createElement("input");
@@ -9708,11 +9717,31 @@ function getSelectedFinishCategories() {
             group.appendChild(label);
             checkboxes.push(input);
         };
-        (review.officialCategories || []).forEach(value => addCategory(value, "Lucide"));
-        review.aiSuggestions.forEach(item => {
-            if (!(review.officialCategories || []).includes(item.name)) addCategory(item.name, "AI suggestion");
-        });
+        official.forEach(value => addCategory(value, "Lucide"));
+        suggestions.forEach(item => addCategory(item.name, "AI suggestion"));
         panel.appendChild(group);
+
+        const customRow = document.createElement("div");
+        customRow.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;";
+        const customInput = document.createElement("input");
+        customInput.type = "text";
+        customInput.placeholder = "Add your own category";
+        customInput.style.cssText = "flex:1;min-width:160px;padding:8px;border:1px solid var(--border-subtle);border-radius:7px;background:transparent;color:inherit;";
+        const addButton = document.createElement("button");
+        addButton.type = "button";
+        addButton.textContent = "Add category";
+        addButton.className = "btn btn-secondary";
+        addButton.addEventListener("click", () => {
+            const value = customInput.value.trim();
+            if (!value) return;
+            addCategory(value, "Manual");
+            const added = checkboxes.find(input => input.value === value);
+            if (added) added.checked = true;
+            customInput.value = "";
+        });
+        customRow.append(customInput, addButton);
+        panel.appendChild(customRow);
+
         const saveCategories = document.createElement("button");
         saveCategories.type = "button";
         saveCategories.className = "btn btn-primary";
@@ -9720,7 +9749,10 @@ function getSelectedFinishCategories() {
         saveCategories.addEventListener("click", async () => {
             saveCategories.disabled = true;
             try {
-                const latest = await getAIReviewRecord(name) || review;
+                const latest = await getAIReviewRecord(name) || {
+                    name, officialCategories: official, aiSuggestions: [],
+                    analyzedAt: null, reviewedAt: null, manualCategories: null
+                };
                 latest.manualCategories = [...new Set(checkboxes.filter(input => input.checked).map(input => input.value))];
                 latest.reviewedAt = new Date().toISOString();
                 await saveAIReviewRecord(latest);
