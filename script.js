@@ -9331,7 +9331,12 @@ function getSelectedFinishCategories() {
             projectCategoryBadge.parentElement.appendChild(panel);
         }
 
+        const closePanel = () => { panel.hidden = true; };
         button.onclick = () => {
+            if (!panel.hidden) {
+                closePanel();
+                return;
+            }
             const project = selectedHomeProject;
             if (!project) return;
             panel.innerHTML = "";
@@ -9399,6 +9404,18 @@ function getSelectedFinishCategories() {
             panel.appendChild(actions);
             panel.hidden = false;
         };
+
+        if (!panel.dataset.dismissHandlers) {
+            panel.dataset.dismissHandlers = "true";
+            document.addEventListener("pointerdown", event => {
+                if (panel.hidden) return;
+                if (panel.contains(event.target) || button.contains(event.target)) return;
+                closePanel();
+            });
+            document.addEventListener("keydown", event => {
+                if (event.key === "Escape" && !panel.hidden) closePanel();
+            });
+        }
 
         return { button, panel };
     }
@@ -9927,13 +9944,6 @@ function getSelectedFinishCategories() {
         projectFavoriteBtn.innerHTML = selectedHomeProject.favorite ? "★" : "☆";
         saveProjectManager();
         renderHomeProjects();
-    });
-
-    previewStrokeWidth?.addEventListener("input", () => {
-        if (!selectedHomeProject) return;
-        const val = Number(previewStrokeWidth.value) || 2;
-        previewStrokeValue.textContent = val.toFixed(1);
-        projectPreviewImage.src = getPreviewSVG(selectedHomeProject, val);
     });
 
     projectEditButton?.addEventListener("click", () => {
