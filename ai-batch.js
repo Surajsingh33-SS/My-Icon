@@ -62,7 +62,21 @@ const getAllRecords = () => transaction('readonly', store => store.getAll());
 const putRecords = records => transaction('readwrite', store => {
   records.forEach(record => store.put(record));
 });
-const clearRecords = () => transaction('readwrite', store => store.clear());
+async function clearAIResults() {
+  const records = await getAllRecords();
+  await transaction('readwrite', store => {
+    records.forEach(record => {
+      // Keep human decisions and metadata edits; remove only generated analysis.
+      delete record.aiSuggestions;
+      delete record.analyzedAt;
+      if (record.reviewedAt || Array.isArray(record.manualCategories) || record.metadataEdits) {
+        store.put(record);
+      } else {
+        store.delete(record.name);
+      }
+    });
+  });
+}
 
 function unique(values) { return [...new Set((values || []).filter(Boolean))]; }
 function officialFor(name) {
@@ -163,7 +177,7 @@ async function loadModel() {
 
 async function updateStats() {
   const records = await getAllRecords();
-  const analyzed = records.filter(record => Array.isArray(record.aiSuggestions)).length;
+  const analyzed = records.filter(record => Boolean(record.analyzedAt) && Array.isArray(record.aiSuggestions)).length;
   const reviewed = records.filter(record => record.reviewedAt).length;
   $('done').textContent = analyzed;
   $('reviewed').textContent = reviewed;
@@ -177,15 +191,17 @@ async function analyzeBatch(names) {
   const texts = names.map(descriptionFor);
   const output = await extractor(texts, { pooling: 'mean', normalize: true });
   const vectors = output.tolist();
+  const existingRecords = await getAllRecords();
+  const existingByName = new Map(existingRecords.map(record => [record.name, record]));
   const records = names.map((name, index) => {
+    const existing = existingByName.get(name) || {};
     const existingOfficial = officialFor(name);
     return {
+      ...existing,
       name,
       officialCategories: existingOfficial,
       aiSuggestions: rankCategories(vectors[index], existingOfficial, name),
-      analyzedAt: new Date().toISOString(),
-      reviewedAt: null,
-      manualCategories: null
+      analyzedAt: new Date().toISOString()
     };
   });
   await putRecords(records);
@@ -200,7 +216,7 @@ async function runBatches() {
   try {
     while (!pauseRequested) {
       const records = await getAllRecords();
-      const completed = new Set(records.filter(r => Array.isArray(r.aiSuggestions)).map(r => r.name));
+      const completed = new Set(records.filter(r => Boolean(r.analyzedAt) && Array.isArray(r.aiSuggestions)).map(r => r.name));
       const next = iconNames.filter(name => !completed.has(name)).slice(0, BATCH_SIZE);
       if (!next.length) {
         $('status').textContent = 'All ' + iconNames.length + ' icons have been analyzed.';
@@ -324,6 +340,48 @@ async function renderResults(query = '') {
       save.textContent = 'Saved';
     });
     card.append(save);
+
+    const apply = document.createElement('button');
+    apply.textContent = 'Apply reviewed categories to Gallery';
+    apply.style.marginLeft = '8px';
+    apply.disabled = !record.reviewedAt || !Array.isArray(record.manualCategories);
+    apply.title = apply.disabled
+      ? 'Save your category selection first.'
+      : 'Set these categories as the manual categories for matching finished icons in Icon Maker PRO.';
+    apply.addEventListener('click', () => {
+      try {
+        const raw = localStorage.getItem('iconMakerProjects');
+        if (!raw) throw new Error('No saved Icon Maker PRO projects were found in this browser.');
+        const manager = JSON.parse(raw);
+        if (!manager || !Array.isArray(manager.projects)) {
+          throw new Error('The saved project data is not in the expected format.');
+        }
+        const normalize = value => String(value || '').trim().toLowerCase()
+          .replace(/[_\\s]+/g, '-').replace(/-+/g, '-');
+        const matches = manager.projects.filter(project =>
+          normalize(project.name) === normalize(record.name) && project.status === 'finished'
+        );
+        if (!matches.length) {
+          throw new Error('No finished Gallery icon named "' + record.name + '" was found. Check that its project name matches the icon name.');
+        }
+        const categories = unique(record.manualCategories);
+        if (!categories.length) throw new Error('Save at least one category before applying.');
+        matches.forEach(project => {
+          project.manualCategories = [...categories];
+          project.categories = [...categories];
+          project.categorySource = 'manual';
+          project.category = categories[0];
+        });
+        localStorage.setItem('iconMakerProjects', JSON.stringify(manager));
+        apply.textContent = 'Applied to Gallery (' + matches.length + ')';
+        apply.disabled = true;
+        $('status').textContent = 'Applied ' + categories.length + ' manual category/categories to ' +
+          matches.length + ' finished Gallery project(s). Refresh Icon Maker PRO to see the update.';
+      } catch (error) {
+        $('status').textContent = 'Could not apply categories: ' + error.message;
+      }
+    });
+    card.append(apply);
     root.append(card);
   }
 }
@@ -342,8 +400,8 @@ $('load').addEventListener('click', loadModel);
 $('start').addEventListener('click', runBatches);
 $('pause').addEventListener('click', () => { pauseRequested = true; $('pause').disabled = true; });
 $('reset').addEventListener('click', async () => {
-  if (!confirm('Clear all locally saved AI analysis and manual review decisions?')) return;
-  await clearRecords();
+  if (!confirm('Clear generated AI analysis results? Saved manual category reviews and metadata edits will be kept.')) return;
+  await clearAIResults();
   await updateStats();
   await renderResults();
   $('status').textContent = 'Saved AI results cleared. The model does not need to be reloaded.';
