@@ -391,6 +391,7 @@
     const finishConfirm = document.getElementById("finish-confirm");
 
     const deleteConfirmModal = document.getElementById("delete-confirm-modal");
+    const deleteConfirmTitle = document.getElementById("delete-confirm-title");
     const deleteTargetProjectName = document.getElementById("delete-target-project-name");
     const deleteConfirmBtn = document.getElementById("delete-confirm-btn");
     const deleteCancelBtn = document.getElementById("delete-cancel-btn");
@@ -10273,15 +10274,36 @@ function getSelectedFinishCategories() {
 
     projectDeleteButton?.addEventListener("click", () => {
         if (!selectedHomeProject) return;
-        const name = selectedHomeProject.name || "Untitled icon";
 
-        if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+        const project = selectedHomeProject;
+        const name = project.name || "Untitled icon";
 
-        projectManager.projects = projectManager.projects.filter(p => p.id !== selectedHomeProject.id);
-        saveProjectManager();
-        closeProjectPreview();
-        renderHomeProjects();
-        showToast(`Deleted "${name}"`, "info");
+        if (!deleteConfirmModal || !deleteTargetProjectName || !deleteConfirmBtn || !deleteCancelBtn) {
+            showToast("Delete confirmation dialog is unavailable", "error");
+            return;
+        }
+
+        if (deleteConfirmTitle) deleteConfirmTitle.textContent = "Delete Icon";
+        deleteTargetProjectName.textContent = name;
+        deleteConfirmBtn.textContent = "Delete Icon";
+        deleteConfirmModal.style.display = "flex";
+        deleteConfirmModal.classList.add("show");
+
+        const closeDeleteDialog = () => {
+            deleteConfirmModal.style.display = "none";
+            deleteConfirmModal.classList.remove("show");
+        };
+
+        deleteConfirmBtn.onclick = () => {
+            closeDeleteDialog();
+            projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+            saveProjectManager();
+            closeProjectPreview();
+            renderHomeProjects();
+            showToast(`Deleted "${name}"`, "info");
+        };
+
+        deleteCancelBtn.onclick = closeDeleteDialog;
     });
 
 
