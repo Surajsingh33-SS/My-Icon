@@ -1071,6 +1071,32 @@ input[type="range"]::-webkit-slider-thumb:hover {
     box-shadow: 0 0 0 3px var(--accent-light);
 }
 
+.home-search-scope-toggle {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.home-search-scope-toggle:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+.home-search-scope-toggle.active {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
 .clear-search-btn {
     position: absolute;
     right: 12px;
