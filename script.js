@@ -9991,7 +9991,7 @@ function getSelectedFinishCategories() {
                 metadataEdits.description,
                 inheritedEdits.description
             ].filter(value => typeof value === "string" && value.trim() &&
-                !/^icon named\\b/i.test(value.trim())),
+                !/^icon named\b/i.test(value.trim())),
             ...getExpandedIconSearchTerms(iconName, metadataRecord || inheritedRecord)
         ];
         const allTerms = [...new Set([
