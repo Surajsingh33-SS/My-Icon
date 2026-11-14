@@ -9805,6 +9805,34 @@ function getSelectedFinishCategories() {
             card.appendChild(tooltip);
             card.appendChild(starBtn);
 
+            // Keep the tooltip below its icon. Only shift it right when its
+            // centered position would intrude into the fixed gallery sidebar.
+            card.addEventListener("mouseenter", () => {
+                tooltip.style.setProperty("--tooltip-shift-x", "0px");
+
+                const sidebar = document.querySelector(".home-sidebar");
+                if (!sidebar) return;
+
+                const sidebarRight = sidebar.getBoundingClientRect().right;
+                const cardRect = card.getBoundingClientRect();
+                const tooltipWidth = tooltip.offsetWidth;
+                const centeredLeft = cardRect.left + cardRect.width / 2 - tooltipWidth / 2;
+                const minimumLeft = sidebarRight + 8;
+
+                if (centeredLeft < minimumLeft) {
+                    const maximumRight = window.innerWidth - 8;
+                    const shift = Math.min(
+                        minimumLeft - centeredLeft,
+                        Math.max(0, maximumRight - (centeredLeft + tooltipWidth))
+                    );
+                    tooltip.style.setProperty("--tooltip-shift-x", `${shift}px`);
+                }
+            });
+
+            card.addEventListener("mouseleave", () => {
+                tooltip.style.removeProperty("--tooltip-shift-x");
+            });
+
             card.addEventListener("click", () => showProjectPreview(project));
             card.addEventListener("keydown", e => {
                 if (e.key === "Enter" || e.key === " ") {
