@@ -9595,7 +9595,7 @@ function getSelectedFinishCategories() {
                 count.className = "muted";
                 count.textContent = matches.length + " of " + names.length + " icons";
                 results.appendChild(count);
-                matches.slice(0, 500).forEach(name => {
+                matches.forEach(name => {
                     const button = document.createElement("button");
                     button.type = "button";
                     button.textContent = name;
@@ -9609,12 +9609,6 @@ function getSelectedFinishCategories() {
                     });
                     results.appendChild(button);
                 });
-                if (matches.length > 500) {
-                    const note = document.createElement("p");
-                    note.className = "muted";
-                    note.textContent = "Showing the first 500 matches. Refine your search to see more.";
-                    results.appendChild(note);
-                }
                 if (!matches.length) {
                     const empty = document.createElement("p");
                     empty.className = "home-empty";
@@ -9753,7 +9747,12 @@ function getSelectedFinishCategories() {
                     name, officialCategories: official, aiSuggestions: [],
                     analyzedAt: null, reviewedAt: null, manualCategories: null
                 };
-                latest.manualCategories = [...new Set(checkboxes.filter(input => input.checked).map(input => input.value))];
+                const chosenCategories = [...new Set(checkboxes.filter(input => input.checked).map(input => input.value))];
+                if (!chosenCategories.length) {
+                    showToast("Select at least one category before saving.", "error");
+                    return;
+                }
+                latest.manualCategories = chosenCategories;
                 latest.reviewedAt = new Date().toISOString();
                 await saveAIReviewRecord(latest);
                 showToast("Category choices saved locally for " + name + ".", "success");
