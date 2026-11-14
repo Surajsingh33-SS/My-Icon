@@ -9431,24 +9431,31 @@ function getSelectedFinishCategories() {
         if (!projectCategoryBadge) return;
 
         projectCategoryBadge.replaceChildren();
+
         const categories = getProjectCategories(project);
         const visibleCategories = categories.length ? categories : ["Uncategorized"];
 
-        visibleCategories.forEach(category => {
+        const expanded = projectCategoryBadge.dataset.expanded === "true";
+        const canExpand = visibleCategories.length > 9;
+
+        const categoriesToShow = expanded || !canExpand
+            ? visibleCategories
+            : visibleCategories.slice(0, 9);
+
+        categoriesToShow.forEach(category => {
             const badge = document.createElement("button");
             badge.type = "button";
             badge.className = "project-category";
             badge.textContent = category;
             badge.title = `Show the gallery's "${category}" category`;
+
             badge.addEventListener("click", () => {
-                // Switch to the grouped gallery and remove any other category filter.
                 galleryViewCategory = "categories";
                 selectedCategoryFilter = null;
 
                 if (viewModeCategoriesBtn) viewModeCategoriesBtn.classList.add("active");
                 viewModeAllBtn?.classList.remove("active");
 
-                // A toolbar category filter would otherwise hide the category groups.
                 if (homeCategorySelect) {
                     homeCategorySelect.value = "all";
                     homeCategoryDropdown?.refresh();
@@ -9457,11 +9464,9 @@ function getSelectedFinishCategories() {
                 renderHomeProjects();
                 closeProjectPreview();
 
-                // Show a shortcut back to the complete category overview.
                 const categoryBackButton = document.getElementById("category-gallery-back-button");
                 if (categoryBackButton) categoryBackButton.hidden = false;
 
-                // Scroll to the matching category after the gallery has been rebuilt.
                 const targetGroup = Array.from(
                     homeProjectGrid?.querySelectorAll(".gallery-category-group") || []
                 ).find(group => group.dataset.category === category);
@@ -9471,10 +9476,26 @@ function getSelectedFinishCategories() {
                     block: "start"
                 });
             });
+
             projectCategoryBadge.appendChild(badge);
         });
-    }
 
+        if (canExpand) {
+            const more = document.createElement("button");
+            more.type = "button";
+            more.className = "project-search-more";
+            more.textContent = expanded
+                ? "Show less"
+                : `+${visibleCategories.length - 9} more`;
+
+            more.addEventListener("click", () => {
+                projectCategoryBadge.dataset.expanded = expanded ? "false" : "true";
+                renderProjectCategoryBadges(project);
+            });
+
+            projectCategoryBadge.appendChild(more);
+        }
+    }
     function ensureProjectCategoryEditor() {
         const button = document.getElementById("project-edit-categories");
         const panel = document.getElementById("project-category-editor");
