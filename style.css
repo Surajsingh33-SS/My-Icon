@@ -1476,22 +1476,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     transform: translateY(0);
 }
 
-/* .project-details.expanded {
-    height: calc(100dvh - var(--gallery-top));
-    max-height: none;
-} */
-.project-details.expanded {
-    top: auto;
-    bottom: 0;
-    height: calc(100dvh - 40px);
-    max-height: calc(100dvh - 40px);
-    border-radius: 16px 16px 0 0;
-}
-
-/* .project-details.expanded {
-    height: var(--drawer-expanded-height, 90dvh);
-    max-height: none;
-} */
+/* The preview drawer remains anchored at the bottom at its normal size. */
 
 /* LEFT: LARGE ICON PREVIEW */
 
@@ -1564,10 +1549,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     min-height: 0;
     overflow: hidden;
     transition: transform 0.45s ease;
-}
-
-.project-details.expanded .project-details-main {
-    transform: translateY(0);
 }
 
 /* TOP ACTION TOOLBAR */
@@ -4161,38 +4142,53 @@ body.light-theme #save-project-button:hover {
     background: var(--bg-surface-raised);
 }
 .project-category-editor[hidden] { display: none; }
-/* Expanded drawer: one scrollable page that grows upward from the bottom. */
-.project-details.expanded {
-    top: 0;
+/* Similar Icons is a separate page that slides up behind the fixed drawer. */
+.project-related-page {
+    position: fixed;
+    top: 48px;
+    right: 0;
     bottom: 0;
-    height: 100dvh;
-    max-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
+    left: 250px;
+    z-index: 59;
     overflow-x: hidden;
-    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+    padding: 20px 20px calc(55dvh + 24px);
+    background: var(--bg-base);
+    border-top: 1px solid var(--border-subtle);
+    transform: translateY(100%);
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        transform 0.5s ease-in-out,
+        visibility 0s linear 0.5s;
 }
 
-/* Similar icons move above the preview only in the expanded state. */
-.project-details.expanded .project-related {
-    order: -1;
-    flex: 0 0 auto;
+.project-related-page.show {
+    transform: translateY(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+        transform 0.5s ease-in-out,
+        visibility 0s;
+}
+
+.project-related-page .project-related {
+    display: block;
+    min-height: 100%;
     height: auto;
-    min-height: 0;
     overflow: visible;
+    padding: 0;
+    margin: 0;
+    border: 0;
 }
 
-/* Keep the preview/details section intact below Similar Icons. */
-.project-details.expanded .project-details-main {
-    order: 0;
-    height: 55dvh;
-    min-height: 55dvh;
-    flex: 0 0 55dvh;
-}
-
-.project-details.expanded .related-project-grid {
+.project-related-page .related-project-grid {
     padding-bottom: 18px;
+}
+
+/* Keep the preview drawer fixed in front of the Similar Icons page. */
+.project-details {
+    z-index: 60;
 }
 
 .sidebar-customization.global-preview-focus { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 10px; }
