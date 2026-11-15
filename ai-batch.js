@@ -138,18 +138,52 @@ function isAnalysisComplete(record) {
     ));
 }
 
+function hasMetadataAnalysis(record) {
+  return record.analysisVersion >= Engine.version &&
+    Boolean(record.analyzedAt) &&
+    Array.isArray(record.aiSuggestions);
+}
+
+function hasSuccessfulVisualAnalysis(record) {
+  return record.visualModelVersion === VISUAL_MODEL_ID &&
+    Boolean(record.visualAnalyzedAt) &&
+    Array.isArray(record.visualScores) &&
+    record.visualScores.length > 0;
+}
+
+function isAnalysisComplete(record) {
+  return hasMetadataAnalysis(record) &&
+    (!visualClassifier || hasSuccessfulVisualAnalysis(record));
+}
+
 async function updateStats() {
   const records = await getAllRecords();
-  const analyzed = records.filter(record =>
-    isAnalysisComplete(record)
-  ).length;
+  const metadataDone = records.filter(hasMetadataAnalysis).length;
+  const visualDone = records.filter(hasSuccessfulVisualAnalysis).length;
   const reviewed = records.filter(record => record.reviewedAt).length;
-  $('done').textContent = analyzed;
+  const completed = visualClassifier ? visualDone : metadataDone;
+  $('done').textContent = completed;
   $('reviewed').textContent = reviewed;
-  $('remaining').textContent = Math.max(0, iconNames.length - analyzed);
+  $('remaining').textContent = Math.max(0, iconNames.length - completed);
   $('total').textContent = iconNames.length;
   $('progress').max = iconNames.length;
-  $('progress').value = analyzed;
+  $('progress').value = completed;
+
+  const visualFailed = records.filter(record =>
+    record.visualError && !hasSuccessfulVisualAnalysis(record)
+  ).length;
+  const visualPending = Math.max(0, iconNames.length - visualDone);
+  if (visualClassifier) {
+    $('status').dataset.progress = 'visual';
+    $('status').textContent = 'CLIP visual progress: ' + visualDone + '/' + iconNames.length +
+      ' successful; ' + visualPending + ' remaining; ' + visualFailed + ' failed and retryable. ' +
+      'Metadata analyzed: ' + metadataDone + '/' + iconNames.length + '.';
+  } else {
+    $('status').dataset.progress = 'metadata';
+    $('status').textContent = 'Metadata analysis: ' + metadataDone + '/' + iconNames.length +
+      '. CLIP visual analysis has not been counted yet. Load CLIP Visual Model to analyze the actual SVG artwork; ' +
+      visualDone + ' visual results are already saved.';
+  }
 }
 
 function getEmbeddingScores(vector) {
@@ -242,9 +276,20 @@ async function runBatches() {
       const next = pending.slice(0, BATCH_SIZE);
       if (!next.length) {
         const failed = iconNames.length - completed.size;
-        $('status').textContent = failed
-          ? 'Analysis pass finished: ' + completed.size + ' succeeded; ' + failed + ' need retry. Use Start / Resume Batch to retry failed icons.'
-          : 'All ' + iconNames.length + ' icons have been analyzed successfully by shared engine v' + Engine.version + '.';
+        if (visualClassifier) {
+          $('status').textContent = failed
+            ? 'CLIP pass finished: ' + completed.size + '/' + iconNames.length +
+              ' icons visually analyzed successfully; ' + failed +
+              ' remain (including failed decodes). Click Start / Resume Batch to retry.'
+            : 'CLIP visual analysis complete: all ' + iconNames.length +
+              ' icons were successfully inspected by the visual model.';
+        } else {
+          $('status').textContent = failed
+            ? 'Metadata pass finished: ' + completed.size + '/' + iconNames.length +
+              ' icons analyzed; ' + failed + ' metadata analyses remain.'
+            : 'Metadata analysis complete for all ' + iconNames.length +
+              ' icons. This does NOT mean CLIP inspected the SVG artwork. Load CLIP Visual Model, then run Start / Resume Batch for visual analysis.';
+        }
         break;
       }
       next.forEach(name => attemptedThisRun.add(name));
@@ -441,7 +486,7 @@ async function initialize() {
     db = await openDatabase();
     await updateStats();
     await renderResults();
-    $('status').textContent = 'Ready. Load the text model, the visual model, or both. Current shared engine v' + Engine.version + '.';
+    $('status').textContent = 'Ready. For actual SVG recognition, load CLIP Visual Model before starting. Text-only runs are metadata analysis, not visual analysis. Shared engine v' + Engine.version + '.';
   } catch (error) {
     $('status').textContent = 'Initialization failed: ' + error.message;
   }
