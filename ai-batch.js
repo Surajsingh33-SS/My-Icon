@@ -5,7 +5,7 @@ import './category-engine.js';
 import { loadVisualModel, getIconVisualScores, VISUAL_MODEL_ID } from './visual-analyzer.js';
 
 const Engine = window.IconCategoryEngine;
-const MODEL_ID = 'all-MiniLM-L6-v2';
+const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
 const BATCH_SIZE = 8;
 const DB_NAME = 'icon-maker-ai-categorization';
 const STORE_NAME = 'results';
