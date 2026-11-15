@@ -147,10 +147,12 @@
       let useCaseScore = 0;
       let searchScore = 0;
       let descriptionScore = 0;
+      const matchedTextSources = new Set();
 
       const add = (sourceName, values, weight, cap) => {
         const hits = phraseHits(values.join(' '), terms);
         if (!hits.length) return 0;
+        matchedTextSources.add(sourceName);
         if (evidence.length < 8) evidence.push({
           source: sourceName,
           matches: hits.slice(0, 5),
@@ -200,8 +202,12 @@
       if (emb >= 0.48) evidence.push({ source: 'embedding', matches: [emb.toFixed(3)], label: 'Text-semantic support' });
       if (vis >= 0.30) evidence.push({ source: 'visual', matches: [vis.toFixed(3)], label: 'Visual-model support' });
 
-      const minimum = Number.isFinite(Number(options.threshold)) ? Number(options.threshold) : 0.52;
-      const required = isOfficial ? Math.min(minimum, 0.52) : minimum;
+      const minimum = Number.isFinite(Number(options.threshold)) ? Number(options.threshold) : 0.30;
+      const required = isOfficial ? Math.min(minimum, 0.30) : minimum;
+      const independentTextSupport = matchedTextSources.size >= 2;
+      const secondaryEligible = isOfficial ||
+        (lexical >= 0.30 && independentTextSupport) ||
+        modelAgreement;
       return {
         name: categoryName,
         score: confidence,
@@ -220,14 +226,21 @@
           embedding: emb,
           visual: vis,
           official: isOfficial,
-          modelAgreement
+          modelAgreement,
+          matchedTextSources: [...matchedTextSources],
+          independentTextSupport,
+          secondaryEligible,
+          excluded
         },
         _required: required
       };
     }).sort((a, b) => b.confidence - a.confidence);
 
-    const accepted = suggestions.filter(item => item.eligible && item.confidence >= item._required);
-    const primary = accepted[0] || null;
+    const ranked = suggestions.filter(item => item.eligible && item.confidence >= item._required);
+    const primary = ranked[0] || null;
+    const accepted = primary
+      ? [primary, ...ranked.slice(1).filter(item => item.signals.secondaryEligible)]
+      : [];
     const secondary = accepted.slice(1, Math.max(1, Number(options.maxSuggestions) || 6));
     const publicSuggestions = accepted.slice(0, Math.max(1, Number(options.maxSuggestions) || 6))
       .map(({ _required, ...item }, index) => ({
