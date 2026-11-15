@@ -250,7 +250,7 @@ async function runTextBenchmark() {
           categoryData: CATEGORY_DATA,
           embeddingScores: getEmbeddingScores(vectors[index]),
           visualScores: [],
-          threshold: 0.52,
+          threshold: 0.30,
           maxSuggestions: 8
         });
         checkpoints.push({
@@ -329,7 +329,7 @@ async function analyzeBatch(names) {
       const embeddingScores = vector ? getEmbeddingScores(vector) : [];
       const analysis = Engine.classify(name, ICON_METADATA[name] || {}, existing, {
         categoryData: CATEGORY_DATA, embeddingScores, visualScores,
-        threshold: 0.52, maxSuggestions: 8
+        threshold: 0.30, maxSuggestions: 8
       });
       const now = new Date().toISOString();
       const visualSucceeded = Boolean(visualClassifier && !visualError && visualScores.length);
