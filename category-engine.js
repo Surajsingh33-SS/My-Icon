@@ -41,7 +41,7 @@
     'Buildings':['building','office','skyscraper','factory','warehouse','school','hospital building','church','temple','mosque','bank building','stadium','hotel','apartment','house building'],
     'Business':['business','briefcase','work','finance','financial','bank','payment','invoice','receipt','wallet','cash','money','currency','coin','credit card','debit card','tax','investment','chart','sales','contract','calculator','budget'],
     'Communication':['message','chat','comment','conversation','mail','email','inbox','phone call','call','voicemail','notification','bell','send','reply','mention','sms','message bubble','speech bubble','contact'],
-    'Connectivity':['wifi','wi-fi','wireless','bluetooth','network','internet','signal','antenna','router','ethernet','connection','satellite','hotspot','cellular','rss'],
+    'Connectivity':['wifi','wi-fi','wifi signal','wireless','wireless network','connect to the internet','bluetooth','network','internet','signal','antenna','router','ethernet','connection','satellite','hotspot','cellular','rss'],
     'Devices':['computer','laptop','desktop','monitor','keyboard','mouse','phone','smartphone','tablet','printer','server','cpu','chip','hard drive','usb','webcam','watch','device','battery','plug','charger'],
     'Files':['file','folder','document','paper','page','pdf','spreadsheet','archive','zip','attachment','clipboard','notebook','directory','file type','copy file'],
     'Food & drink':['food','drink','coffee','tea','cup','mug','glass','bottle','beer','wine','cocktail','water','pizza','burger','sandwich','bread','cake','cookie','donut','fruit','apple','banana','vegetable','carrot','meal','restaurant','chef','cooking','utensil','fork','spoon','knife','soup','ice cream'],
