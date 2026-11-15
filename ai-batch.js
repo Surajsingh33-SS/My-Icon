@@ -2,6 +2,7 @@ import { pipeline, env } from '@huggingface/transformers';
 import { CATEGORY_DATA } from './category-data.js';
 import ICON_METADATA from './icon-metadata.json';
 import './category-engine.js';
+import { loadVisualModel, getIconVisualScores, VISUAL_MODEL_ID } from './visual-analyzer.js';
 
 const Engine = window.IconCategoryEngine;
 const MODEL_ID = 'all-MiniLM-L6-v2';
@@ -16,6 +17,7 @@ env.localModelPath = '/models/';
 const $ = id => document.getElementById(id);
 const iconNames = Object.keys(ICON_METADATA).sort((a, b) => a.localeCompare(b));
 let extractor = null;
+let visualClassifier = null;
 let categoryEmbeddings = [];
 let running = false;
 let pauseRequested = false;
@@ -59,6 +61,10 @@ async function clearAIResults() {
       delete record.aiSuggestions;
       delete record.analyzedAt;
       delete record.analysisVersion;
+      delete record.visualScores;
+      delete record.visualAnalyzedAt;
+      delete record.visualModelVersion;
+      delete record.visualError;
       if (record.reviewedAt || Array.isArray(record.manualCategories) || record.metadataEdits) {
         store.put(record);
       } else {
@@ -92,11 +98,32 @@ async function loadModel() {
     categoryEmbeddings = output.tolist();
     $('start').disabled = false;
     $('load').textContent = 'AI Model Ready';
-    $('status').textContent = 'Shared engine and semantic model ready. You can start or resume analysis.';
+    $('status').textContent = 'Semantic model ready. You can also load CLIP for actual SVG visual analysis.';
   } catch (error) {
     extractor = null;
     $('load').disabled = false;
     $('status').textContent = 'Model loading failed: ' + error.message;
+  }
+}
+
+async function loadVisualAI() {
+  if (visualClassifier) return;
+  $('load-visual').disabled = true;
+  $('status').textContent = 'Loading CLIP visual model. First load downloads model files and requires internet...';
+  try {
+    visualClassifier = await loadVisualModel(progress => {
+      const stage = progress.status || 'Loading';
+      const file = progress.file || '';
+      const percent = typeof progress.progress === 'number' ? ' (' + progress.progress.toFixed(1) + '%)' : '';
+      $('status').textContent = 'Visual model: ' + stage + ' ' + file + percent;
+    });
+    $('load-visual').textContent = 'Visual Model Ready';
+    $('start').disabled = false;
+    $('status').textContent = 'CLIP is ready. Batch analysis will inspect actual SVG artwork and combine it with metadata.';
+  } catch (error) {
+    visualClassifier = null;
+    $('load-visual').disabled = false;
+    $('status').textContent = 'Visual model loading failed: ' + error.message;
   }
 }
 
@@ -128,59 +155,69 @@ function getEmbeddingScores(vector) {
 }
 
 async function analyzeBatch(names) {
-  const descriptions = names.map(name => {
-    const record = ICON_METADATA[name] || {};
-    const lucide = record.lucide || {};
-    const ai = record.ai || {};
-    return [
-      'Icon name: ' + name.replace(/[-_]/g, ' ') + '.',
-      ai.description || '',
-      lucide.tags?.length ? 'Tags: ' + lucide.tags.join(', ') + '.' : '',
-      lucide.aliases?.length ? 'Aliases: ' + lucide.aliases.map(alias =>
-        typeof alias === 'string' ? alias : (alias.name || alias.alias || '')
-      ).filter(Boolean).join(', ') + '.' : '',
-      lucide.useCases?.length ? 'Use cases: ' + lucide.useCases.join(', ') + '.' : '',
-      ai.searchTerms?.length ? 'Search terms: ' + ai.searchTerms.join(', ') + '.' : '',
-      lucide.categories?.length ? 'Official categories: ' + lucide.categories.join(', ') + '.' : ''
-    ].filter(Boolean).join(' ');
-  });
-
-  const output = await extractor(descriptions, { pooling: 'mean', normalize: true });
-  const vectors = output.tolist();
   const existingRecords = await getAllRecords();
   const existingByName = new Map(existingRecords.map(record => [record.name, record]));
+  const vectorsByName = new Map();
 
-  const records = names.map((name, index) => {
+  if (extractor) {
+    const descriptions = names.map(name => {
+      const record = ICON_METADATA[name] || {};
+      const lucide = record.lucide || {};
+      const ai = record.ai || {};
+      return [
+        'Icon name: ' + name.replace(/[-_]/g, ' ') + '.',
+        ai.description || '',
+        lucide.tags?.length ? 'Tags: ' + lucide.tags.join(', ') + '.' : '',
+        lucide.aliases?.length ? 'Aliases: ' + lucide.aliases.map(alias =>
+          typeof alias === 'string' ? alias : (alias.name || alias.alias || '')
+        ).filter(Boolean).join(', ') + '.' : '',
+        lucide.useCases?.length ? 'Use cases: ' + lucide.useCases.join(', ') + '.' : '',
+        ai.searchTerms?.length ? 'Search terms: ' + ai.searchTerms.join(', ') + '.' : '',
+        lucide.categories?.length ? 'Official categories: ' + lucide.categories.join(', ') + '.' : ''
+      ].filter(Boolean).join(' ');
+    });
+    const output = await extractor(descriptions, { pooling: 'mean', normalize: true });
+    output.tolist().forEach((vector, index) => vectorsByName.set(names[index], vector));
+  }
+
+  const records = [];
+  for (const name of names) {
     const existing = existingByName.get(name) || {};
-    const analysis = Engine.classify(
-      name,
-      ICON_METADATA[name] || {},
-      existing,
-      {
-        categoryData: CATEGORY_DATA,
-        embeddingScores: getEmbeddingScores(vectors[index]),
-        threshold: 0.52,
-        maxSuggestions: 8
+    let visualScores = Array.isArray(existing.visualScores) ? existing.visualScores : [];
+    let visualError = existing.visualError || null;
+    if (visualClassifier) {
+      try {
+        visualScores = await getIconVisualScores(visualClassifier, name, CATEGORY_DATA);
+        visualError = null;
+      } catch (error) {
+        visualError = error.message;
       }
-    );
-
-    return {
+    }
+    const vector = vectorsByName.get(name);
+    const embeddingScores = vector ? getEmbeddingScores(vector) : [];
+    const analysis = Engine.classify(name, ICON_METADATA[name] || {}, existing, {
+      categoryData: CATEGORY_DATA, embeddingScores, visualScores,
+      threshold: 0.52, maxSuggestions: 8
+    });
+    const now = new Date().toISOString();
+    records.push({
       ...existing,
       name,
       officialCategories: analysis.officialCategories,
       aiSuggestions: analysis.suggestions,
-      analyzedAt: new Date().toISOString(),
-      analysisVersion: Engine.version
-    };
-  });
-
-  // Spread the previous record above so manualCategories, review timestamps,
-  // and metadataEdits survive every re-analysis.
+      analyzedAt: now,
+      analysisVersion: Engine.version,
+      visualScores,
+      visualAnalyzedAt: visualClassifier && !visualError ? now : existing.visualAnalyzedAt || null,
+      visualModelVersion: visualClassifier && !visualError ? VISUAL_MODEL_ID : existing.visualModelVersion || null,
+      visualError
+    });
+  }
+  // Existing manual decisions and metadata edits survive every analysis pass.
   await putRecords(records);
 }
-
 async function runBatches() {
-  if (!extractor || running) return;
+  if ((!extractor && !visualClassifier) || running) return;
   running = true;
   pauseRequested = false;
   $('start').disabled = true;
@@ -209,7 +246,7 @@ async function runBatches() {
     $('status').textContent = 'Batch stopped: ' + error.message + '. Completed batches remain saved.';
   } finally {
     running = false;
-    $('start').disabled = !extractor;
+    $('start').disabled = !(extractor || visualClassifier);
     $('pause').disabled = true;
     await updateStats();
     await renderResults();
@@ -386,13 +423,14 @@ async function initialize() {
     db = await openDatabase();
     await updateStats();
     await renderResults();
-    $('status').textContent = 'Ready. Load the model to analyze icons with shared engine v' + Engine.version + '.';
+    $('status').textContent = 'Ready. Load the text model, the visual model, or both. Current shared engine v' + Engine.version + '.';
   } catch (error) {
     $('status').textContent = 'Initialization failed: ' + error.message;
   }
 }
 
 $('load').addEventListener('click', loadModel);
+$('load-visual').addEventListener('click', loadVisualAI);
 $('start').addEventListener('click', runBatches);
 $('pause').addEventListener('click', () => { pauseRequested = true; $('pause').disabled = true; });
 $('reset').addEventListener('click', async () => {

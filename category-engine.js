@@ -5,7 +5,7 @@
 (function (root) {
   "use strict";
 
-  const VERSION = 3;
+  const VERSION = 4;
   const STOP_WORDS = new Set([
     "icon","icons","the","and","for","with","from","into","that","this","these","those",
     "are","was","were","has","have","had","its","your","their","can","use","used","using",
@@ -211,6 +211,18 @@
       Object.entries(embeddingScores).forEach(([name, score]) => embeddingMap.set(name.toLowerCase(), Number(score) || 0));
     }
 
+    const visualMap = new Map();
+    const visualScores = options.visualScores || review.visualScores;
+    if (Array.isArray(visualScores)) visualScores.forEach(item => {
+      if (item && item.name) visualMap.set(item.name.toLowerCase(), Number(item.score) || 0);
+    });
+    else if (visualScores && typeof visualScores === "object") {
+      Object.entries(visualScores).forEach(([name, score]) => visualMap.set(name.toLowerCase(), Number(score) || 0));
+    }
+    const visualRanking = [...visualMap.entries()].sort((a, b) => b[1] - a[1]);
+    const visualRankMap = new Map(visualRanking.map(([name], index) => [name, index + 1]));
+    const visualTopScore = visualRanking.length ? visualRanking[0][1] : 0;
+
     const keywordMap = options.keywordMap || {};
     const metadataTerms = options.metadataTerms || {};
     const ranked = [];
@@ -262,6 +274,16 @@
           strongest = Math.max(strongest, semanticScore);
           evidence.push("semantic model similarity: " + embeddingScore.toFixed(3));
         }
+      }
+
+      // This score is derived from the rendered SVG image, not its metadata.
+      const visualScore = visualMap.get(String(category).toLowerCase());
+      const visualRank = visualRankMap.get(String(category).toLowerCase());
+      if (Number.isFinite(visualScore) && visualRank <= 3 &&
+          visualScore >= Math.max(0.12, visualTopScore * 0.42)) {
+        const visualConfidence = Math.min(0.82, 0.54 + Math.max(0, visualScore - 0.10) * 1.25);
+        strongest = Math.max(strongest, visualConfidence);
+        evidence.push("visual model rank #" + visualRank + " similarity: " + visualScore.toFixed(3));
       }
 
       if (official.some(value => value.toLowerCase() === String(category).toLowerCase())) strongest = 1;

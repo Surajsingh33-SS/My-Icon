@@ -2,6 +2,7 @@ import { pipeline, env } from '@huggingface/transformers';
 import { CATEGORY_DATA } from './category-data.js';
 import ICON_METADATA from './icon-metadata.json';
 import './category-engine.js';
+import { loadVisualModel, getIconVisualScores, VISUAL_MODEL_ID } from './visual-analyzer.js';
 
 const Engine = window.IconCategoryEngine;
 const MODEL_ID = 'all-MiniLM-L6-v2';
@@ -13,6 +14,7 @@ env.allowRemoteModels = false;
 env.localModelPath = '/models/';
 
 let extractor = null;
+let visualClassifier = null;
 let categoryEmbeddings = [];
 let isLoading = false;
 
@@ -129,42 +131,37 @@ async function runTest() {
   const input = document.getElementById('icon-name');
   const results = document.getElementById('results');
   const iconName = normalizeName(input.value);
-  if (!extractor) { results.textContent = 'Please load the AI model first.'; return; }
+  if (!extractor && !visualClassifier) { results.textContent = 'Load the text model or CLIP visual model first.'; return; }
   if (!iconName) { results.textContent = 'Enter an icon name first.'; return; }
-
   const metadata = ICON_METADATA[iconName];
-  if (!metadata) {
-    results.textContent = 'Icon "' + iconName + '" was not found in the metadata database.';
-    return;
-  }
-
-  results.textContent = 'Analyzing with the shared engine...';
+  if (!metadata) { results.textContent = 'Icon "' + iconName + '" was not found in the metadata database.'; return; }
+  results.textContent = 'Analyzing metadata and available model evidence...';
   try {
-    const output = await extractor(buildIconDescription(iconName, metadata), {
-      pooling: 'mean', normalize: true
-    });
-    const vector = output.tolist()[0];
-    const embeddingScores = CATEGORY_DATA.map((category, index) => ({
-      name: category.name,
-      score: cosineSimilarity(vector, categoryEmbeddings[index] || [])
-    })).sort((a, b) => b.score - a.score);
-
+    let embeddingScores = [];
+    if (extractor) {
+      const output = await extractor(buildIconDescription(iconName, metadata), { pooling: 'mean', normalize: true });
+      const vector = output.tolist()[0];
+      embeddingScores = CATEGORY_DATA.map((category, index) => ({
+        name: category.name, score: cosineSimilarity(vector, categoryEmbeddings[index] || [])
+      })).sort((a, b) => b.score - a.score);
+    }
+    const visualScores = visualClassifier ? await getIconVisualScores(visualClassifier, iconName, CATEGORY_DATA) : [];
     const review = await getSavedReview(iconName);
     const analysis = Engine.classify(iconName, metadata, review, {
-      categoryData: CATEGORY_DATA,
-      embeddingScores,
-      threshold: 0.52,
-      maxSuggestions: 8
+      categoryData: CATEGORY_DATA, embeddingScores, visualScores, threshold: 0.52, maxSuggestions: 8
     });
-
     results.replaceChildren();
+    const preview = document.createElement('img');
+    preview.src = '/lucide-icons/' + encodeURIComponent(iconName) + '.svg';
+    preview.alt = iconName + ' SVG artwork';
+    preview.style.cssText = 'width:96px;height:96px;padding:12px;border:1px solid #888;border-radius:10px;background:white;';
+    results.append(preview);
     const title = document.createElement('h2');
     title.textContent = 'Icon metadata';
     results.append(title);
     const description = document.createElement('p');
     description.textContent = metadata.ai?.description || 'No description available.';
     results.append(description);
-
     results.append(
       createSection('Official Lucide categories', metadata.lucide?.categories || []),
       createSection('Official Lucide tags', metadata.lucide?.tags || []),
@@ -174,42 +171,28 @@ async function runTest() {
         typeof alias === 'string' ? alias : (alias.name || alias.alias || '')
       ).filter(Boolean))
     );
-
     const categoryHeading = document.createElement('h2');
     categoryHeading.textContent = 'Shared-engine category analysis';
     results.append(categoryHeading);
     results.append(createSection('Official category mapping', analysis.officialCategories));
-
     const suggestionHeading = document.createElement('h3');
     suggestionHeading.textContent = 'Additional category suggestions';
     results.append(suggestionHeading);
     if (!analysis.suggestions.length) {
       const empty = document.createElement('p');
-      empty.textContent = 'No additional category passed the shared engine evidence threshold.';
+      empty.textContent = 'No additional category passed the shared evidence threshold.';
       results.append(empty);
     } else {
       analysis.suggestions.forEach((item, index) => results.append(createSuggestion(item, index)));
     }
-
-    const diagnosticHeading = document.createElement('h3');
-    diagnosticHeading.textContent = 'Semantic model ranking (diagnostic only)';
-    results.append(diagnosticHeading);
-    embeddingScores.slice(0, 10).forEach((item, index) => {
-      const row = document.createElement('p');
-      row.textContent = (index + 1) + '. ' + item.name + ' — similarity ' + item.score.toFixed(4);
-      results.append(row);
-    });
-
+    if (visualScores.length) results.append(createSection('CLIP visual ranking — rendered SVG', visualScores.slice(0, 10).map(item => item.name + ' — ' + item.score.toFixed(3))));
+    if (embeddingScores.length) results.append(createSection('Text embedding ranking (diagnostic)', embeddingScores.slice(0, 10).map(item => item.name + ' — ' + item.score.toFixed(4))));
     const summary = document.createElement('p');
-    summary.textContent = 'Engine version ' + Engine.version + ' · ' +
-      analysis.officialCategories.length + ' official categories · ' +
-      analysis.suggestions.length + ' evidence-backed suggestions.';
+    summary.textContent = 'Engine v' + Engine.version + ' · ' + (visualClassifier ? VISUAL_MODEL_ID + ' visual evidence' : 'no visual model loaded') +
+      ' · ' + analysis.officialCategories.length + ' official categories · ' + analysis.suggestions.length + ' evidence-backed suggestions.';
     results.append(summary);
-  } catch (error) {
-    results.textContent = 'Analysis failed: ' + error.message;
-  }
+  } catch (error) { results.textContent = 'Analysis failed: ' + error.message; }
 }
-
 testArea.hidden = false;
 const loadButton = document.createElement('button');
 loadButton.id = 'load-ai-button';
@@ -232,6 +215,31 @@ results.id = 'results';
 results.style.marginTop = '20px';
 testArea.replaceChildren(loadButton, heading, input, analyzeButton, results);
 
+const visualButton = document.createElement('button');
+visualButton.id = 'load-visual-button';
+visualButton.textContent = 'Load CLIP Visual Model';
+visualButton.style.cssText = 'padding:10px;margin:10px 0 10px 8px;';
+const visualNote = document.createElement('p');
+visualNote.textContent = 'CLIP examines the actual SVG artwork. First load downloads model files and requires internet.';
+testArea.replaceChildren(loadButton, visualButton, visualNote, heading, input, analyzeButton, results);
+visualButton.addEventListener('click', async () => {
+  visualButton.disabled = true;
+  status.textContent = 'Loading CLIP visual model...';
+  try {
+    visualClassifier = await loadVisualModel(progress => {
+      const stage = progress.status || 'Loading';
+      const file = progress.file || '';
+      const percent = typeof progress.progress === 'number' ? ' (' + progress.progress.toFixed(1) + '%)' : '';
+      status.textContent = 'CLIP: ' + stage + ' ' + file + percent;
+    });
+    visualButton.textContent = 'Visual Model Ready';
+    analyzeButton.disabled = false;
+    status.textContent = 'CLIP visual model ready.';
+  } catch (error) {
+    visualButton.disabled = false;
+    status.textContent = 'Visual model loading failed: ' + error.message;
+  }
+});
 loadButton.addEventListener('click', loadAI);
 analyzeButton.addEventListener('click', runTest);
 input.addEventListener('keydown', event => {
