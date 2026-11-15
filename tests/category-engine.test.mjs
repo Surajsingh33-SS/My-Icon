@@ -32,7 +32,7 @@ const categories = [
 ];
 
 assert.ok(Engine, 'shared classifier should expose a global API');
-assert.equal(Engine.version, 7);
+assert.equal(Engine.version, 8);
 
 function top(name, metadata = {}, options = {}) {
   return Engine.classify(name, metadata, {}, {
@@ -171,4 +171,44 @@ test('confidence is an evidence score and avoids inflated near-100 scores from o
   const tools = result.suggestions.find(item => item.name === 'Tools');
   assert.ok(tools);
   assert.ok(tools.confidence < 0.60, 'single name evidence should not look almost certain');
+});
+
+
+test('zodiac icons receive no unrelated taxonomy categories', () => {
+  for (const name of ['zodiac-cancer', 'zodiac-pisces', 'zodiac-aquarius', 'zodiac-virgo', 'zodiac-scorpio']) {
+    const result = top(name, {}, {
+      embeddingScores: categories.map(item => ({ name: item.name, score: 0.99 })),
+      visualScores: [],
+      threshold: 0.30
+    });
+    assert.deepEqual(result.suggestions, [], name + ' should not be forced into an unrelated category');
+  }
+});
+
+test('zap and zap-off are assigned to electrical devices rather than weather', () => {
+  for (const name of ['zap', 'zap-off']) {
+    const result = top(name);
+    assert.equal(result.suggestions[0]?.name, 'Devices');
+    assert.equal(result.suggestions.some(item => item.name === 'Weather'), false);
+    assert.equal(result.suggestions[0]?.signals.curatedRule, 'Lightning/power indicator.');
+  }
+});
+
+test('wind and directional wind arrows use distinct categories', () => {
+  const wind = top('wind');
+  assert.deepEqual(wind.categories, ['Weather']);
+  for (const name of ['wind-arrow-up', 'wind-arrow-down']) {
+    const result = top(name);
+    assert.deepEqual(result.categories, ['Arrows']);
+  }
+});
+
+test('worm is kept in Animals without weak unrelated secondary suggestions', () => {
+  const result = top('worm');
+  assert.deepEqual(result.categories, ['Animals']);
+});
+
+test('generic workflow is not assigned a weak connectivity category', () => {
+  const result = top('workflow');
+  assert.deepEqual(result.suggestions, []);
 });
