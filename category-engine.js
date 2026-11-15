@@ -151,7 +151,7 @@
         return Math.min(cap, hits.length * weight);
       };
 
-      nameScore = add('icon name', sources.name, 0.30, 0.60);
+      nameScore = add('icon name', sources.name, 0.56, 0.75);
       tagScore = add('Lucide tags', sources.tags, 0.22, 0.55);
       aliasScore = add('aliases', sources.aliases, 0.16, 0.32);
       useCaseScore = add('use cases', sources.useCases, 0.19, 0.48);
