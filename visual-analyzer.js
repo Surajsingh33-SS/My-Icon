@@ -21,22 +21,58 @@ export async function loadVisualModel(onProgress = () => {}) {
 }
 
 async function loadSvgImage(svg) {
-  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  // Normalize Lucide SVGs before rasterizing: explicit dimensions and namespace
+  // make browser SVG decoders more reliable across Chromium versions.
+  const parser = new DOMParser();
+  const documentNode = parser.parseFromString(svg, 'image/svg+xml');
+  const root = documentNode.documentElement;
+  if (!root || root.localName !== 'svg' || documentNode.querySelector('parsererror')) {
+    throw new Error('The source SVG markup is invalid.');
+  }
+  if (!root.getAttribute('xmlns')) {
+    root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  }
+  if (!root.getAttribute('width')) root.setAttribute('width', '256');
+  if (!root.getAttribute('height')) root.setAttribute('height', '256');
+  if (!root.getAttribute('viewBox')) root.setAttribute('viewBox', '0 0 24 24');
+  const normalizedSvg = new XMLSerializer().serializeToString(documentNode);
+  const blob = new Blob([normalizedSvg], { type: 'image/svg+xml;charset=utf-8' });
+
   if (typeof createImageBitmap === 'function') {
-    try { return await createImageBitmap(blob); } catch (error) {
-      // Some browsers cannot decode SVG blobs with createImageBitmap; use Image instead.
+    try {
+      const bitmap = await createImageBitmap(blob);
+      if (bitmap.width && bitmap.height) return bitmap;
+      bitmap.close?.();
+    } catch (error) {
+      // Fall through to the HTMLImageElement decoder.
     }
   }
+
   const objectUrl = URL.createObjectURL(blob);
   try {
     const image = new Image();
     image.decoding = 'async';
     image.src = objectUrl;
-    if (typeof image.decode === 'function') await image.decode();
-    else await new Promise((resolve, reject) => {
-      image.onload = resolve;
-      image.onerror = () => reject(new Error('Browser could not decode the SVG image.'));
-    });
+    if (typeof image.decode === 'function') {
+      try {
+        await image.decode();
+      } catch (error) {
+        if (!image.complete || !image.naturalWidth || !image.naturalHeight) {
+          await new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = () => reject(new Error('Browser could not rasterize the SVG image.'));
+          });
+        }
+      }
+    } else {
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error('Browser could not rasterize the SVG image.'));
+      });
+    }
+    if (!image.naturalWidth || !image.naturalHeight) {
+      throw new Error('Browser decoded the SVG without usable dimensions.');
+    }
     return image;
   } finally {
     URL.revokeObjectURL(objectUrl);
