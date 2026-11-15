@@ -120,3 +120,21 @@ test('manual review fields are not modified by the classifier', () => {
   top('dog', {}, manual);
   assert.deepEqual(manual, before);
 });
+
+test('text-only classification ignores previously saved visual scores when explicitly disabled', () => {
+  const metadata = { lucide: { tags: ['wireless network'] } };
+  const existing = {
+    visualScores: [{ name: 'Animals', score: 0.99 }],
+    manualCategories: ['My Manual Category'],
+    reviewedAt: '2026-01-01T00:00:00.000Z'
+  };
+  const result = Engine.classify('custom-mark', metadata, existing, {
+    categoryData: categories,
+    embeddingScores: [],
+    visualScores: [],
+    threshold: 0.52
+  });
+  assert.ok(result.suggestions.some(item => item.name === 'Connectivity'));
+  assert.equal(result.suggestions.some(item => item.name === 'Animals'), false);
+  assert.deepEqual(existing.manualCategories, ['My Manual Category']);
+});
