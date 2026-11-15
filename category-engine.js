@@ -204,7 +204,14 @@
       if (vis >= 0.30) evidence.push({ source: 'visual', matches: [vis.toFixed(3)], label: 'Visual-model support' });
 
       const minimum = Number.isFinite(Number(options.threshold)) ? Number(options.threshold) : 0.30;
-      const required = isOfficial ? Math.min(minimum, 0.30) : minimum;
+      // A single precise metadata hit can be valid even when its conservative
+      // evidence score is below the general model-agreement threshold. Keep
+      // the threshold proportional to that evidence instead of dropping it.
+      const required = isOfficial
+        ? Math.min(minimum, 0.30)
+        : hasTextEvidence
+          ? Math.min(minimum, confidence * 0.90)
+          : minimum;
       const independentTextSupport = matchedTextSources.size >= 2;
       const secondaryEligible = isOfficial ||
         (lexical >= 0.30 && independentTextSupport) ||
