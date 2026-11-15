@@ -280,7 +280,7 @@
       const visualScore = visualMap.get(String(category).toLowerCase());
       const visualRank = visualRankMap.get(String(category).toLowerCase());
       if (Number.isFinite(visualScore) && visualRank <= 3 &&
-          visualScore >= Math.max(0.12, visualTopScore * 0.42)) {
+          visualScore >= Math.max(0.055, visualTopScore * 0.42)) {
         const visualConfidence = Math.min(0.82, 0.54 + Math.max(0, visualScore - 0.10) * 1.25);
         strongest = Math.max(strongest, visualConfidence);
         evidence.push("visual model rank #" + visualRank + " similarity: " + visualScore.toFixed(3));

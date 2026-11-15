@@ -220,7 +220,7 @@ visualButton.id = 'load-visual-button';
 visualButton.textContent = 'Load CLIP Visual Model';
 visualButton.style.cssText = 'padding:10px;margin:10px 0 10px 8px;';
 const visualNote = document.createElement('p');
-visualNote.textContent = 'CLIP examines the actual SVG artwork. First load downloads model files and requires internet.';
+visualNote.textContent = 'CLIP examines the actual SVG artwork. First load downloads about 315 MB of model files and requires internet.';
 testArea.replaceChildren(loadButton, visualButton, visualNote, heading, input, analyzeButton, results);
 visualButton.addEventListener('click', async () => {
   visualButton.disabled = true;

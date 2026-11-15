@@ -37,7 +37,9 @@ export async function getIconVisualScores(classifier, iconName, categories) {
   bitmap.close?.();
 
   const labels = categories.map(category => category.name + ': ' + category.description);
-  const output = await classifier(canvas, labels, { top_k: labels.length, multi_label: true });
+  const output = await classifier(canvas, labels, {
+    hypothesis_template: 'This is a minimalist line icon representing {}.'
+  });
   const labelMap = new Map(labels.map((label, index) => [label, categories[index].name]));
   return (Array.isArray(output) ? output : [])
     .map(item => ({ name: labelMap.get(item.label) || item.label, score: Number(item.score) || 0 }))

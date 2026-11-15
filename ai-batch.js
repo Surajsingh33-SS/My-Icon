@@ -120,6 +120,7 @@ async function loadVisualAI() {
     $('load-visual').textContent = 'Visual Model Ready';
     $('start').disabled = false;
     $('status').textContent = 'CLIP is ready. Batch analysis will inspect actual SVG artwork and combine it with metadata.';
+    await updateStats();
   } catch (error) {
     visualClassifier = null;
     $('load-visual').disabled = false;
@@ -127,12 +128,20 @@ async function loadVisualAI() {
   }
 }
 
+function isAnalysisComplete(record) {
+  return record.analysisVersion >= Engine.version &&
+    Boolean(record.analyzedAt) &&
+    Array.isArray(record.aiSuggestions) &&
+    (!visualClassifier || (
+      record.visualModelVersion === VISUAL_MODEL_ID &&
+      Boolean(record.visualAnalyzedAt)
+    ));
+}
+
 async function updateStats() {
   const records = await getAllRecords();
   const analyzed = records.filter(record =>
-    record.analysisVersion >= Engine.version &&
-    Boolean(record.analyzedAt) &&
-    Array.isArray(record.aiSuggestions)
+    isAnalysisComplete(record)
   ).length;
   const reviewed = records.filter(record => record.reviewedAt).length;
   $('done').textContent = analyzed;
@@ -208,8 +217,8 @@ async function analyzeBatch(names) {
       analyzedAt: now,
       analysisVersion: Engine.version,
       visualScores,
-      visualAnalyzedAt: visualClassifier && !visualError ? now : existing.visualAnalyzedAt || null,
-      visualModelVersion: visualClassifier && !visualError ? VISUAL_MODEL_ID : existing.visualModelVersion || null,
+      visualAnalyzedAt: visualClassifier ? now : existing.visualAnalyzedAt || null,
+      visualModelVersion: visualClassifier ? VISUAL_MODEL_ID : existing.visualModelVersion || null,
       visualError
     });
   }
@@ -225,11 +234,7 @@ async function runBatches() {
   try {
     while (!pauseRequested) {
       const records = await getAllRecords();
-      const completed = new Set(records.filter(record =>
-        record.analysisVersion >= Engine.version &&
-        Boolean(record.analyzedAt) &&
-        Array.isArray(record.aiSuggestions)
-      ).map(record => record.name));
+      const completed = new Set(records.filter(isAnalysisComplete).map(record => record.name));
       const next = iconNames.filter(name => !completed.has(name)).slice(0, BATCH_SIZE);
       if (!next.length) {
         $('status').textContent = 'All ' + iconNames.length + ' icons have been analyzed by shared engine v' + Engine.version + '.';
@@ -298,6 +303,12 @@ async function renderResults(query = '') {
     badge.className = 'tag';
     badge.textContent = record.reviewedAt ? 'Manually reviewed' : 'Awaiting review';
     card.append(heading, badge);
+    if (record.visualError) {
+      const visualWarning = document.createElement('p');
+      visualWarning.className = 'muted';
+      visualWarning.textContent = 'Visual analysis issue: ' + record.visualError;
+      card.append(visualWarning);
+    }
 
     const officialTitle = document.createElement('p');
     officialTitle.textContent = 'Official Lucide categories';
