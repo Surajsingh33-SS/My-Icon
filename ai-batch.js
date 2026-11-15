@@ -10,9 +10,9 @@ const BATCH_SIZE = 8;
 const DB_NAME = 'icon-maker-ai-categorization';
 const STORE_NAME = 'results';
 
-env.allowLocalModels = true;
-env.allowRemoteModels = false;
-env.localModelPath = '/models/';
+env.allowLocalModels = false;
+env.allowRemoteModels = true;
+env.useBrowserCache = true;
 
 const $ = id => document.getElementById(id);
 const iconNames = Object.keys(ICON_METADATA).sort((a, b) => a.localeCompare(b));
@@ -135,7 +135,7 @@ function hasMetadataAnalysis(record) {
 }
 
 function hasSuccessfulVisualAnalysis(record) {
-  return record.visualModelVersion === VISUAL_MODEL_ID &&
+  return !record.visualError && record.visualModelVersion === VISUAL_MODEL_ID &&
     Boolean(record.visualAnalyzedAt) &&
     Array.isArray(record.visualScores) &&
     record.visualScores.length > 0;

@@ -81,7 +81,7 @@ async function loadSvgImage(svg) {
 
 export async function getIconVisualScores(classifier, iconName, categories) {
   if (!classifier) throw new Error('CLIP visual model is not loaded.');
-  const response = await fetch('/lucide-icons/' + encodeURIComponent(iconName) + '.svg');
+  const response = await fetch('https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/' + encodeURIComponent(iconName) + '.svg');
   if (!response.ok) throw new Error('Could not load SVG for "' + iconName + '" (HTTP ' + response.status + ').');
   const svg = await response.text();
   if (!svg.includes('<svg')) throw new Error('The source for "' + iconName + '" is not valid SVG markup.');
