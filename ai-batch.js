@@ -316,7 +316,13 @@ async function analyzeBatch(names) {
       let visualScores = Array.isArray(existing.visualScores) ? existing.visualScores : [];
       let visualError = existing.visualError || null;
 
-      if (visualClassifier) {
+      // Reuse a successful CLIP result from the same visual model when only
+      // the shared text classifier version changed. This avoids re-running CLIP
+      // for icons that already have valid visual scores.
+      const reusableVisual = existing.visualModelVersion === VISUAL_MODEL_ID &&
+        existing.visualAnalyzedAt && Array.isArray(existing.visualScores) &&
+        existing.visualScores.length > 0 && !existing.visualError;
+      if (visualClassifier && !reusableVisual) {
         try {
           visualScores = await getIconVisualScores(visualClassifier, name, CATEGORY_DATA);
           visualError = null;
@@ -488,7 +494,7 @@ async function renderResults(query = '') {
       record.textBenchmark.suggestions.forEach(item => {
         const chip = document.createElement('span');
         chip.className = 'chip';
-        chip.textContent = item.name + ' ' + Math.round((item.confidence ?? item.score) * 100) + '%';
+        chip.textContent = item.name + ' · ' + Math.round((item.confidence ?? item.score) * 100) + '% evidence';
         benchmarkChips.append(chip);
       });
       card.append(benchmarkChips);
@@ -503,7 +509,7 @@ async function renderResults(query = '') {
     (record.aiSuggestions || []).forEach(item => {
       const chip = makeChip(item.name, selected.includes(item.name), item.evidence || []);
       const score = document.createElement('small');
-      score.textContent = ' ' + Math.round((item.confidence ?? item.score) * 100) + '%';
+      score.textContent = ' · ' + Math.round((item.confidence ?? item.score) * 100) + '% evidence';
       chip.append(score);
       aiChips.append(chip);
     });
