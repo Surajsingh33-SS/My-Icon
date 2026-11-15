@@ -6,10 +6,10 @@ import { loadVisualModel, getIconVisualScores, VISUAL_MODEL_ID } from './visual-
 
 const Engine = window.IconCategoryEngine;
 const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
-const BATCH_SIZE = 12;
+const BATCH_SIZE = 16;
 // Keep a small number of CLIP jobs in flight to improve throughput without
 // overwhelming browser memory or the ONNX runtime.
-const VISUAL_CONCURRENCY = 3;
+const VISUAL_CONCURRENCY = 4;
 const DB_NAME = 'icon-maker-ai-categorization';
 const STORE_NAME = 'results';
 
