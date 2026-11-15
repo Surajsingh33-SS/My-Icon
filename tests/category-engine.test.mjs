@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import './category-engine.js';
+import '../category-engine.js';
 
 const Engine = globalThis.IconCategoryEngine;
 const categories = [
