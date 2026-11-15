@@ -6,7 +6,10 @@ import { loadVisualModel, getIconVisualScores, VISUAL_MODEL_ID } from './visual-
 
 const Engine = window.IconCategoryEngine;
 const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
-const BATCH_SIZE = 8;
+const BATCH_SIZE = 12;
+// Keep a small number of CLIP jobs in flight to improve throughput without
+// overwhelming browser memory or the ONNX runtime.
+const VISUAL_CONCURRENCY = 3;
 const DB_NAME = 'icon-maker-ai-categorization';
 const STORE_NAME = 'results';
 
@@ -208,52 +211,68 @@ async function analyzeBatch(names) {
         ).filter(Boolean).join(', ') + '.' : '',
         lucide.useCases?.length ? 'Use cases: ' + lucide.useCases.join(', ') + '.' : '',
         ai.searchTerms?.length ? 'Search terms: ' + ai.searchTerms.join(', ') + '.' : '',
-        lucide.categories?.length ? 'Official categories: ' + lucide.categories.filter(value => typeof value === 'string' && !/^\$(?:group|extends):/i.test(value)).join(', ') + '.' : ''
+        lucide.categories?.length ? 'Official categories: ' + lucide.categories.filter(value => typeof value === 'string' && !/^\\$(?:group|extends):/i.test(value)).join(', ') + '.' : ''
       ].filter(Boolean).join(' ');
     });
     const output = await extractor(descriptions, { pooling: 'mean', normalize: true });
     output.tolist().forEach((vector, index) => vectorsByName.set(names[index], vector));
   }
 
-  const records = [];
-  for (const name of names) {
-    const existing = existingByName.get(name) || {};
-    let visualScores = Array.isArray(existing.visualScores) ? existing.visualScores : [];
-    let visualError = existing.visualError || null;
-    if (visualClassifier) {
-      try {
-        visualScores = await getIconVisualScores(visualClassifier, name, CATEGORY_DATA);
-        visualError = null;
-      } catch (error) {
-        visualError = error.message;
+  let cursor = 0;
+  let completedInBatch = 0;
+  const workerCount = Math.min(VISUAL_CONCURRENCY, names.length);
+  const worker = async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= names.length) return;
+      const name = names[index];
+      const existing = existingByName.get(name) || {};
+      let visualScores = Array.isArray(existing.visualScores) ? existing.visualScores : [];
+      let visualError = existing.visualError || null;
+
+      if (visualClassifier) {
+        try {
+          visualScores = await getIconVisualScores(visualClassifier, name, CATEGORY_DATA);
+          visualError = null;
+        } catch (error) {
+          visualError = error.message;
+        }
       }
+
+      const vector = vectorsByName.get(name);
+      const embeddingScores = vector ? getEmbeddingScores(vector) : [];
+      const analysis = Engine.classify(name, ICON_METADATA[name] || {}, existing, {
+        categoryData: CATEGORY_DATA, embeddingScores, visualScores,
+        threshold: 0.52, maxSuggestions: 8
+      });
+      const now = new Date().toISOString();
+      const visualSucceeded = Boolean(visualClassifier && !visualError && visualScores.length);
+      const result = {
+        ...existing,
+        name,
+        officialCategories: analysis.officialCategories,
+        primaryCategory: analysis.primaryCategory,
+        secondaryCategories: analysis.secondaryCategories,
+        aiSuggestions: analysis.suggestions,
+        analyzedAt: now,
+        analysisVersion: Engine.version,
+        visualScores,
+        // Failed visual decoding stays incomplete so Resume can retry it.
+        visualAnalyzedAt: visualClassifier ? (visualSucceeded ? now : null) : existing.visualAnalyzedAt || null,
+        visualModelVersion: visualClassifier ? (visualSucceeded ? VISUAL_MODEL_ID : null) : existing.visualModelVersion || null,
+        visualError
+      };
+
+      // Checkpoint every icon, not just the whole batch. A pause, tab crash, or
+      // transient failure therefore never discards already completed work.
+      await putRecords([result]);
+      completedInBatch++;
+      $('status').textContent = 'Analyzing batch: ' + completedInBatch + '/' + names.length +
+        ' icons saved (' + VISUAL_CONCURRENCY + ' parallel workers)...';
     }
-    const vector = vectorsByName.get(name);
-    const embeddingScores = vector ? getEmbeddingScores(vector) : [];
-    const analysis = Engine.classify(name, ICON_METADATA[name] || {}, existing, {
-      categoryData: CATEGORY_DATA, embeddingScores, visualScores,
-      threshold: 0.52, maxSuggestions: 8
-    });
-    const now = new Date().toISOString();
-    const visualSucceeded = Boolean(visualClassifier && !visualError && visualScores.length);
-    records.push({
-      ...existing,
-      name,
-      officialCategories: analysis.officialCategories,
-      primaryCategory: analysis.primaryCategory,
-      secondaryCategories: analysis.secondaryCategories,
-      aiSuggestions: analysis.suggestions,
-      analyzedAt: now,
-      analysisVersion: Engine.version,
-      visualScores,
-      // Failed visual decoding stays incomplete so Resume can retry it.
-      visualAnalyzedAt: visualClassifier ? (visualSucceeded ? now : null) : existing.visualAnalyzedAt || null,
-      visualModelVersion: visualClassifier ? (visualSucceeded ? VISUAL_MODEL_ID : null) : existing.visualModelVersion || null,
-      visualError
-    });
-  }
-  // Existing manual decisions and metadata edits survive every analysis pass.
-  await putRecords(records);
+  };
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
 }
 async function runBatches() {
   if ((!extractor && !visualClassifier) || running) return;
