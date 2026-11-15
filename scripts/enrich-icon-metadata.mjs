@@ -85,8 +85,10 @@ function buildDescription(name, descriptor, oldAi = {}) {
   return source || (tagSummary ? name.replace(/[-_]/g, ' ') + ': ' + tagSummary : oldAi.description || name.replace(/[-_]/g, ' '));
 }
 
-async function save(data) {
-  await writeFile(METADATA_PATH, JSON.stringify(data, null, 2) + '\n', 'utf8');
+let saveQueue = Promise.resolve();
+function queueSave(data) {
+  saveQueue = saveQueue.then(() => writeFile(METADATA_PATH, JSON.stringify(data, null, 2) + '\n', 'utf8'));
+  return saveQueue;
 }
 
 async function main() {
@@ -156,7 +158,7 @@ async function main() {
   }
 
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, targets.length) }, worker));
-  if (!dryRun) await save(metadata);
+  if (!dryRun) await queueSave(metadata);
 
   const enrichedCount = Object.values(metadata).filter(item =>
     item?.metadataSource === 'lucide-icons/lucide' &&
