@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  const VERSION = 7;
+  const VERSION = 8;
   const STOP = new Set([
     'icon','icons','outline','line','simple','symbol','small','large','left','right',
     'up','down','plus','minus','the','and','for','with','of','to','a','an'
@@ -61,12 +61,17 @@
     'Weather':['weather','temperature','forecast','thermometer','sunny','cloudy','rain','rainy','storm','thunder','lightning','snow','snowfall','windy','humidity','fog','tornado','hurricane','sunrise','sunset']
   };
 
-  // Hard exclusions for known semantic traps. These are intentionally narrow:
-  // a zodiac sign is astrology (not represented by this taxonomy), and a wrench
-  // is a tool rather than a person even when generic metadata mentions a worker.
-  const CATEGORY_EXCLUSIONS = [
-    { pattern: /^zodiac(?:-|$)/, categories: ['Nature', 'Weather', 'Animals'] },
-    { pattern: /^wrench(?:-|$)/, categories: ['People'] }
+  // Curated icon-family rules resolve known ambiguities that generic text
+  // embeddings cannot reliably distinguish. These rules only affect the named
+  // families; all other icons continue through the evidence-based classifier.
+  const ICON_CATEGORY_RULES = [
+    { pattern: /^zodiac(?:-|$)/, suppress: true, reason: 'Astrology is not represented by the current category taxonomy.' },
+    { pattern: /^zap(?:-off)?$/, allow: ['Devices'], force: ['Devices'], reason: 'Lightning/power indicator.' },
+    { pattern: /^worm$/, allow: ['Animals'], reason: 'Animal/invertebrate icon.' },
+    { pattern: /^wind-arrow-(?:up|down)$/, allow: ['Arrows'], reason: 'Directional arrow icon.' },
+    { pattern: /^wind$/, allow: ['Weather'], reason: 'Wind/weather condition icon.' },
+    { pattern: /^workflow$/, suppress: true, reason: 'Generic workflow concept has no reliable match in the current taxonomy.' },
+    { pattern: /^wrench(?:-|$)/, allow: ['Tools'], reason: 'Tool family; not a person category.' }
   ];
 
   function normalize(value) {
@@ -171,9 +176,16 @@
 
       const isOfficial = officialSet.has(categoryName);
       const normalizedName = normalize(name).replace(/\s+/g, '-');
-      const excluded = CATEGORY_EXCLUSIONS.some(rule =>
-        rule.pattern.test(normalizedName) && rule.categories.includes(categoryName)
-      );
+      const iconRule = ICON_CATEGORY_RULES.find(rule => rule.pattern.test(normalizedName));
+      const excluded = Boolean(iconRule && (
+        iconRule.suppress ||
+        (Array.isArray(iconRule.allow) && !iconRule.allow.includes(categoryName))
+      ));
+      const forcedByRule = Boolean(iconRule && Array.isArray(iconRule.force) &&
+        iconRule.force.includes(categoryName));
+      if (forcedByRule) {
+        evidence.unshift({ source: 'curated icon rule', matches: [iconRule.reason], label: 'Curated icon-family rule' });
+      }
       if (isOfficial) evidence.unshift({ source: 'official', matches: [categoryName], label: 'Official Lucide category' });
 
       const emb = embedding.get(categoryName) || 0;
@@ -194,12 +206,13 @@
         (emb >= 0.58 && vis >= 0.38 ? 0.24 : 0) +
         (isOfficial ? 0.58 : 0)
       );
+      if (forcedByRule) confidence = Math.max(confidence, 0.72);
 
       // Model similarity alone cannot create a category. Official category metadata
       // is strong evidence; other suggestions need at least one meaningful text hit
       // or agreement between both independent models.
       const modelAgreement = emb >= 0.58 && vis >= 0.38;
-      const eligible = !excluded && (isOfficial || hasTextEvidence || modelAgreement);
+      const eligible = !excluded && (isOfficial || hasTextEvidence || modelAgreement || forcedByRule);
       if (emb >= 0.48) evidence.push({ source: 'embedding', matches: [emb.toFixed(3)], label: 'Text-semantic support' });
       if (vis >= 0.30) evidence.push({ source: 'visual', matches: [vis.toFixed(3)], label: 'Visual-model support' });
 
@@ -238,7 +251,8 @@
           matchedTextSources: [...matchedTextSources],
           independentTextSupport,
           secondaryEligible,
-          excluded
+          excluded,
+          curatedRule: forcedByRule ? (iconRule.reason || true) : false
         },
         _required: required
       };
