@@ -151,7 +151,7 @@ async function main() {
         console.log('Progress: ' + processed + '/' + targets.length +
           ' | enriched ' + success + ' | no descriptor ' + missing + ' | failed ' + failed);
       }
-      if (!dryRun && processed % CHECKPOINT_EVERY === 0) await save(metadata);
+      if (!dryRun && processed % CHECKPOINT_EVERY === 0) await queueSave(metadata);
     }
   }
 
