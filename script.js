@@ -1414,7 +1414,10 @@ function getSelectedFinishCategories() {
                 if (project.status !== "finished") return;
 
                 if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
-                    if (Array.isArray(project.categories) && project.categories.length) {
+                    if (project.categorySource === "ai" || Number(project.aiCategoriesVersion) >= 6) {
+                        // AI-generated categories are automatic, not user decisions.
+                        // Never promote them into manual categories during migration.
+                    } else if (Array.isArray(project.categories) && project.categories.length) {
                         // Before this migration, categories[] was populated by the
                         // Finish dialog, so preserve the user's multi-select choices.
                         project.manualCategories = [...new Set(project.categories.filter(Boolean))];
