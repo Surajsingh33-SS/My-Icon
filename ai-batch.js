@@ -209,6 +209,7 @@ async function analyzeBatch(names) {
       threshold: 0.52, maxSuggestions: 8
     });
     const now = new Date().toISOString();
+    const visualSucceeded = Boolean(visualClassifier && !visualError && visualScores.length);
     records.push({
       ...existing,
       name,
@@ -217,8 +218,9 @@ async function analyzeBatch(names) {
       analyzedAt: now,
       analysisVersion: Engine.version,
       visualScores,
-      visualAnalyzedAt: visualClassifier ? now : existing.visualAnalyzedAt || null,
-      visualModelVersion: visualClassifier ? VISUAL_MODEL_ID : existing.visualModelVersion || null,
+      // Failed visual decoding stays incomplete so Resume can retry it.
+      visualAnalyzedAt: visualClassifier ? (visualSucceeded ? now : null) : existing.visualAnalyzedAt || null,
+      visualModelVersion: visualClassifier ? (visualSucceeded ? VISUAL_MODEL_ID : null) : existing.visualModelVersion || null,
       visualError
     });
   }
@@ -231,17 +233,22 @@ async function runBatches() {
   pauseRequested = false;
   $('start').disabled = true;
   $('pause').disabled = false;
+  const attemptedThisRun = new Set();
   try {
     while (!pauseRequested) {
       const records = await getAllRecords();
       const completed = new Set(records.filter(isAnalysisComplete).map(record => record.name));
-      const next = iconNames.filter(name => !completed.has(name)).slice(0, BATCH_SIZE);
+      const pending = iconNames.filter(name => !completed.has(name) && !attemptedThisRun.has(name));
+      const next = pending.slice(0, BATCH_SIZE);
       if (!next.length) {
-        $('status').textContent = 'All ' + iconNames.length + ' icons have been analyzed by shared engine v' + Engine.version + '.';
+        const failed = iconNames.length - completed.size;
+        $('status').textContent = failed
+          ? 'Analysis pass finished: ' + completed.size + ' succeeded; ' + failed + ' need retry. Use Start / Resume Batch to retry failed icons.'
+          : 'All ' + iconNames.length + ' icons have been analyzed successfully by shared engine v' + Engine.version + '.';
         break;
       }
-      $('status').textContent = 'Analyzing ' + (completed.size + 1) + '–' +
-        Math.min(completed.size + next.length, iconNames.length) + ' of ' + iconNames.length + '...';
+      next.forEach(name => attemptedThisRun.add(name));
+      $('status').textContent = 'Analyzing batch ' + attemptedThisRun.size + ' of ' + iconNames.length + '...';
       await analyzeBatch(next);
       await updateStats();
       await new Promise(resolve => setTimeout(resolve, 40));
