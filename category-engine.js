@@ -79,6 +79,52 @@
     "Weather":["sun","moon","cloud","rain","snow","wind","storm","cloudy","sunrise","sunset","lightning","temperature","forecast"]
   };
 
+  const CATEGORY_DESCRIPTIONS = {
+    "Accessibility":"Accessible interfaces and inclusive technology: wheelchair symbols, hearing assistance, visual assistance, screen readers, braille, captions and assistive controls.",
+    "Accounts & access":"User accounts and identity access: profiles, avatars, account settings, sign in, sign out, registration, credentials and verification.",
+    "Animals":"Living animals and creatures: cats, dogs, birds, fish, insects, reptiles, mammals, animal footprints, wildlife and pets.",
+    "Arrows":"Directional arrows and movement: arrowheads, chevrons, curved arrows, double arrows, rotation, undo, redo and directional navigation.",
+    "Buildings":"Physical buildings and structures: houses, skyscrapers, offices, schools, hospitals, factories, bridges and architecture.",
+    "Charts":"Numerical information and data visualization: bar charts, pie charts, line graphs, analytics, statistics, trends, dashboards and reports.",
+    "Communication":"People communicating: speech bubbles, chat bubbles, conversations, telephone calls, message exchanges, microphones and announcements.",
+    "Connectivity":"Connections between electronic devices and networks: Wi-Fi, Bluetooth, network nodes, antennas, wireless signals, cables and internet connections.",
+    "Cursors":"Computer input pointers and pointer actions: mouse cursors, hand pointers, clicking hands, text selection, dragging and selection pointers.",
+    "Design":"Creating and editing visual artwork: paint brushes, palettes, pencils, drawing tools, color pickers, illustration, vector drawing and creative editing.",
+    "Coding & development":"Software programming and technical development: code brackets, editors, source files, terminals, commands, debugging, databases, repositories and APIs.",
+    "Devices":"Physical electronic hardware: desktop computers, laptops, smartphones, tablets, monitors, keyboards, printers, hard drives and peripherals.",
+    "Emoji":"Facial expressions and emotional reactions: smiley faces, laughing faces, winking faces, angry faces, surprised expressions and reactions.",
+    "File icons":"Digital files and document storage: paper documents, file pages, folders, file extensions, attachments, archives, uploads, downloads and document management.",
+    "Finance":"Money and financial transactions: banknotes, coins, currency symbols, banks, credit cards, wallets, payment terminals, budgets and accounting.",
+    "Food & beverage":"Food, ingredients and drinks: fruits, vegetables, meals, bread, cakes, cooking utensils, cups, bottles, restaurants and kitchen equipment.",
+    "Gaming":"Video games and game-related objects: controllers, joysticks, consoles, dice, chess pieces, playing cards, puzzles and arcade games.",
+    "Home":"Household living spaces and domestic objects: houses, sofas, beds, chairs, lamps, tables, cabinets, kitchens and appliances.",
+    "Layout":"Arrangement of interface elements and page content: grids, columns, rows, sidebars, panels, split views, alignment guides, windows and dashboards.",
+    "Letters & digits":"Written characters: alphabet letters, uppercase and lowercase characters, numerals, digits, punctuation and alphanumeric symbols.",
+    "Mail":"Electronic and physical mail delivery: envelopes, email messages, inboxes, mailboxes, postal letters, attachments and sending or receiving.",
+    "Mathematics":"Mathematical concepts and calculations: plus, minus, multiplication, division, equations, fractions, square roots, formulas and arithmetic.",
+    "Medical":"Healthcare and medical treatment: medical crosses, stethoscopes, pills, capsules, syringes, bandages, medical equipment and patient care.",
+    "Multimedia":"Playing, recording and controlling audio or video: play, pause, stop, music notes, speakers, headphones, volume controls and video screens.",
+    "Nature":"Plants and natural landscapes: trees, leaves, flowers, grass, forests, mountains, hills, rivers, oceans and natural scenery.",
+    "Navigation & places":"Finding and identifying geographic locations: map pins, location markers, compasses, maps, globes, landmarks, routes and destinations.",
+    "Notifications":"Application alerts and updates: notification bells, ringing bells, alert badges, unread indicators, warnings, reminders and announcements.",
+    "People":"Human beings and groups: human silhouettes, head and shoulders, groups, families, teams, crowds, people standing and people sitting.",
+    "Photography":"Capturing and handling photographs: cameras, lenses, viewfinders, shutters, images, photo capture, focus frames, albums and scanning.",
+    "Science":"Scientific research and laboratory work: microscopes, flasks, test tubes, beakers, atoms, molecules, DNA, experiments and scientific equipment.",
+    "Seasons":"The four seasons and seasonal events: spring flowers, summer sunshine, autumn leaves, falling leaves, winter snowflakes and seasonal changes.",
+    "Security":"Protection, privacy and safeguarding information: shields, shield checks, padlocks, keys, fingerprints, secure barriers and verification.",
+    "Shapes":"Basic geometric forms and abstract geometry: circles, squares, rectangles, triangles, diamonds, polygons and geometric outlines.",
+    "Shopping":"Retail stores and purchasing products: shopping carts, baskets, bags, price tags, packages, checkout counters, merchandise and purchases.",
+    "Social":"Social networks and sharing between users: sharing symbols, social profiles, followers, likes, thumbs up, reactions and community interactions.",
+    "Sports":"Athletic activities and sporting equipment: balls, rackets, bats, trophies, medals, running, cycling, competitions and sports teams.",
+    "Sustainability":"Environmental care and sustainable technology: recycling, renewable energy, solar panels, wind turbines, electric energy and eco-friendly practices.",
+    "Text formatting":"Editing written text appearance and arrangement: bold, italic, underline, font size, alignment, paragraph formatting, lists and typography.",
+    "Time & calendar":"Measuring and organizing time: clocks, watches, calendars, dates, stopwatches, timers, alarms, schedules and countdowns.",
+    "Tools":"Physical tools and equipment for repair or construction: hammers, wrenches, screwdrivers, pliers, saws, drills, toolboxes and maintenance.",
+    "Transportation":"Vehicles used to transport people or goods: cars, buses, trains, bicycles, motorcycles, airplanes, helicopters, ships and trucks.",
+    "Travel":"Trips, tourism and travel activities: suitcases, luggage, passports, boarding passes, hotels, tents, camping equipment and journeys.",
+    "Weather":"Atmospheric weather conditions: clouds, rain, thunderstorms, lightning, snow, sunshine, wind, fog, temperature and forecasts."
+  };
+
   function text(value) {
     return String(value == null ? "" : value)
       .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -134,7 +180,10 @@
       ...Object.keys(options.metadataTerms || {}),
       ...Object.keys(EXTRA_TERMS)
     ]);
-    const definitions = new Map(categoryData.filter(Boolean).map(item => [item.name.toLowerCase(), item.description || ""]));
+    const definitions = new Map(Object.entries(CATEGORY_DESCRIPTIONS).map(([name, description]) => [name.toLowerCase(), description]));
+    categoryData.filter(Boolean).forEach(item => {
+      if (item.name) definitions.set(item.name.toLowerCase(), item.description || definitions.get(item.name.toLowerCase()) || "");
+    });
     const official = unique((Array.isArray(lucide.categories) ? lucide.categories : [])
       .map(value => resolveOfficial(value, options.officialCategoryMap))
       .filter(Boolean)
