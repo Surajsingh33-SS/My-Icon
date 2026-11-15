@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  const VERSION = 6;
+  const VERSION = 7;
   const STOP = new Set([
     'icon','icons','outline','line','simple','symbol','small','large','left','right',
     'up','down','plus','minus','the','and','for','with','of','to','a','an'
