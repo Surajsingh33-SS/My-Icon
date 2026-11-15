@@ -32,12 +32,12 @@ const categories = [
 ];
 
 assert.ok(Engine, 'shared classifier should expose a global API');
-assert.equal(Engine.version, 6);
+assert.equal(Engine.version, 7);
 
 function top(name, metadata = {}, options = {}) {
   return Engine.classify(name, metadata, {}, {
     categoryData: categories,
-    threshold: 0.52,
+    threshold: 0.30,
     maxSuggestions: 8,
     ...options
   });
@@ -137,4 +137,38 @@ test('text-only classification ignores previously saved visual scores when expli
   assert.ok(result.suggestions.some(item => item.name === 'Connectivity'));
   assert.equal(result.suggestions.some(item => item.name === 'Animals'), false);
   assert.deepEqual(existing.manualCategories, ['My Manual Category']);
+});
+
+
+test('does not misclassify zodiac sign icons as nature or weather', () => {
+  for (const name of ['zodiac-aries', 'zodiac-capricorn', 'zodiac-leo', 'zodiac-pisces']) {
+    const result = top(name, {}, {
+      embeddingScores: [{ name: 'Nature', score: 0.99 }, { name: 'Weather', score: 0.95 }],
+      visualScores: [],
+      threshold: 0.30
+    });
+    assert.equal(result.suggestions.some(item => ['Nature', 'Weather', 'Animals'].includes(item.name)), false, name);
+  }
+});
+
+test('does not add People as a secondary category for wrench icons', () => {
+  const result = top('wrench', {
+    lucide: { tags: ['repair', 'maintenance'], aliases: ['spanner'] },
+    ai: { searchTerms: ['tool', 'mechanic', 'repair'] }
+  });
+  assert.equal(result.suggestions.some(item => item.name === 'People'), false);
+  assert.ok(result.suggestions.some(item => item.name === 'Tools'));
+});
+
+test('requires independent text evidence for secondary categories', () => {
+  const result = top('wind-arrow-up');
+  assert.equal(result.suggestions.length <= 1, true,
+    'one ambiguous name-only match should not create several secondary categories');
+});
+
+test('confidence is an evidence score and avoids inflated near-100 scores from one name hit', () => {
+  const result = top('wrench');
+  const tools = result.suggestions.find(item => item.name === 'Tools');
+  assert.ok(tools);
+  assert.ok(tools.confidence < 0.60, 'single name evidence should not look almost certain');
 });
