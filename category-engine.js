@@ -191,6 +191,7 @@
         semanticSupport * 0.25 +
         visualSupport * 0.25 +
         corroboration * 0.20 +
+        (emb >= 0.58 && vis >= 0.38 ? 0.24 : 0) +
         (isOfficial ? 0.58 : 0)
       );
 
