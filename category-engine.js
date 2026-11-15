@@ -61,6 +61,14 @@
     'Weather':['weather','temperature','forecast','thermometer','sunny','cloudy','rain','rainy','storm','thunder','lightning','snow','snowfall','windy','humidity','fog','tornado','hurricane','sunrise','sunset']
   };
 
+  // Hard exclusions for known semantic traps. These are intentionally narrow:
+  // a zodiac sign is astrology (not represented by this taxonomy), and a wrench
+  // is a tool rather than a person even when generic metadata mentions a worker.
+  const CATEGORY_EXCLUSIONS = [
+    { pattern: /^zodiac(?:-|$)/, categories: ['Nature', 'Weather', 'Animals'] },
+    { pattern: /^wrench(?:-|$)/, categories: ['People'] }
+  ];
+
   function normalize(value) {
     return String(value == null ? '' : value)
       .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -160,6 +168,10 @@
       lexical = Math.min(1, nameScore + tagScore + aliasScore + useCaseScore + searchScore + descriptionScore);
 
       const isOfficial = officialSet.has(categoryName);
+      const normalizedName = normalize(name).replace(/\s+/g, '-');
+      const excluded = CATEGORY_EXCLUSIONS.some(rule =>
+        rule.pattern.test(normalizedName) && rule.categories.includes(categoryName)
+      );
       if (isOfficial) evidence.unshift({ source: 'official', matches: [categoryName], label: 'Official Lucide category' });
 
       const emb = embedding.get(categoryName) || 0;
@@ -170,13 +182,21 @@
       const corroboration = (hasTextEvidence && emb >= 0.48 ? 0.06 : 0) +
         (hasTextEvidence && vis >= 0.30 ? 0.07 : 0) +
         (emb >= 0.58 && vis >= 0.38 ? 0.30 : 0);
-      let confidence = Math.min(0.99, lexical + semanticSupport + visualSupport + corroboration + (isOfficial ? 0.42 : 0));
+      // This is an evidence-strength score, not a calibrated probability. Keep
+      // it conservative so one broad metadata match cannot produce a near-100%.
+      let confidence = Math.min(0.98,
+        lexical * 0.55 +
+        semanticSupport * 0.25 +
+        visualSupport * 0.25 +
+        corroboration * 0.20 +
+        (isOfficial ? 0.58 : 0)
+      );
 
       // Model similarity alone cannot create a category. Official category metadata
       // is strong evidence; other suggestions need at least one meaningful text hit
       // or agreement between both independent models.
       const modelAgreement = emb >= 0.58 && vis >= 0.38;
-      const eligible = isOfficial || hasTextEvidence || modelAgreement;
+      const eligible = !excluded && (isOfficial || hasTextEvidence || modelAgreement);
       if (emb >= 0.48) evidence.push({ source: 'embedding', matches: [emb.toFixed(3)], label: 'Text-semantic support' });
       if (vis >= 0.30) evidence.push({ source: 'visual', matches: [vis.toFixed(3)], label: 'Visual-model support' });
 
