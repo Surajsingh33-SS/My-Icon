@@ -5,7 +5,9 @@ let modelPromise = null;
 
 export async function loadVisualModel(onProgress = () => {}) {
   if (modelPromise) return modelPromise;
-  env.allowLocalModels = true;
+  // CLIP is downloaded from Hugging Face; do not let it resolve against
+  // the text model's local-only /models/ directory.
+  env.allowLocalModels = false;
   env.allowRemoteModels = true;
   env.useBrowserCache = true;
   modelPromise = pipeline('zero-shot-image-classification', VISUAL_MODEL_ID, {
