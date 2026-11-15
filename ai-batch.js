@@ -152,12 +152,16 @@ function isAnalysisComplete(record) {
 
 async function updateStats() {
   const records = await getAllRecords();
-  const metadataDone = records.filter(hasMetadataAnalysis).length;
-  const visualDone = records.filter(hasSuccessfulVisualAnalysis).length;
-  const reviewed = records.filter(record => record.reviewedAt).length;
   const textDone = records.filter(record =>
     record.textBenchmark && record.textBenchmark.analysisVersion === Engine.version
   ).length;
+  // Include current text-only benchmark results in the metadata progress total.
+  const metadataDone = records.filter(record =>
+    hasMetadataAnalysis(record) ||
+    (record.textBenchmark && record.textBenchmark.analysisVersion === Engine.version)
+  ).length;
+  const visualDone = records.filter(hasSuccessfulVisualAnalysis).length;
+  const reviewed = records.filter(record => record.reviewedAt).length;
   $('text-done').textContent = textDone;
   // The primary batch task is visual recognition. Never show metadata-only
   // completion as if CLIP had inspected the SVG artwork.
@@ -177,7 +181,7 @@ async function updateStats() {
     $('status').dataset.progress = 'visual';
     $('status').textContent = 'CLIP visual progress: ' + visualDone + '/' + iconNames.length +
       ' successful; ' + visualPending + ' remaining; ' + visualFailed + ' failed and retryable. ' +
-      'Metadata analyzed: ' + metadataDone + '/' + iconNames.length + '.';
+      'Text/metadata analyzed: ' + metadataDone + '/' + iconNames.length + '.';
   } else {
     $('status').dataset.progress = 'visual';
     $('status').textContent = 'Visual analysis: ' + visualDone + '/' + iconNames.length +
