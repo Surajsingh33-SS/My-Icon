@@ -55,36 +55,88 @@ function cleanStrings(values) {
     .filter(Boolean))];
 }
 
+function isInternalLucideMarker(value) {
+  return /^\$(?:group|extends):/i.test(value.trim());
+}
+
 function buildSearchTerms(name, descriptor, oldAi = {}) {
-  const aliasNames = (descriptor.aliases || [])
-    .map(alias => typeof alias === 'string' ? alias : alias?.name)
+  const aliases = (descriptor.aliases || [])
+    .map(alias => typeof alias === 'string'
+      ? alias
+      : alias?.name || alias?.alias || '')
     .filter(Boolean);
+
   const useCases = cleanStrings(descriptor['use-cases']);
-  const terms = [
+
+  // Keep existing useful terms, official tags, aliases and use cases.
+  // Never turn internal Lucide markers into searchable words.
+  const sourceTerms = [
     ...cleanStrings(oldAi.searchTerms),
     ...cleanStrings(descriptor.tags),
-    ...aliasNames,
+    ...cleanStrings(aliases),
     ...useCases
-  ];
+  ].filter(term => !isInternalLucideMarker(term));
+
   const expanded = [];
-  for (const term of terms) {
-    expanded.push(term);
-    expanded.push(...term.toLowerCase().split(/[^a-z0-9]+/).filter(word => word.length > 2));
+
+  for (const term of sourceTerms) {
+    const normalized = term.toLowerCase().trim();
+
+    if (!normalized || isInternalLucideMarker(normalized)) continue;
+
+    expanded.push(normalized);
+
+    // Split meaningful phrases into individual searchable words.
+    // Do not generate artificial plural or grammatical variants.
+    if (/\s/.test(normalized)) {
+      expanded.push(
+        ...normalized
+          .split(/[^a-z0-9]+/)
+          .filter(word => word.length > 2)
+      );
+    }
   }
-  return [...new Set(expanded.map(term => term.toLowerCase().trim()).filter(Boolean))]
-    .filter(term => term !== name.toLowerCase())
-    .slice(0, 100);
+
+  let result = [...new Set(expanded)]
+    .filter(term => term !== name.toLowerCase());
+
+  // Remove mechanically generated plural duplicates, not meaningful terms.
+  const termSet = new Set(result);
+
+  result = result.filter(term => {
+    if (term.length < 4 || !term.endsWith('s')) return true;
+    return !termSet.has(term.slice(0, -1));
+  });
+
+  return result.slice(0, 100);
 }
 
 function buildDescription(name, descriptor, oldAi = {}) {
-  const useCases = cleanStrings(descriptor['use-cases']);
-  const tags = cleanStrings(descriptor.tags);
-  // Prefer contributor-authored use cases; never invent a visual meaning.
-  const source = useCases.length ? useCases.slice(0, 3).join('; ') : '';
-  const tagSummary = tags.slice(0, 12).join(', ');
-  return source || (tagSummary ? name.replace(/[-_]/g, ' ') + ': ' + tagSummary : oldAi.description || name.replace(/[-_]/g, ' '));
-}
+  const useCases = cleanStrings(descriptor['use-cases'])
+    .filter(value => !isInternalLucideMarker(value));
 
+  const tags = cleanStrings(descriptor.tags)
+    .filter(tag => !isInternalLucideMarker(tag));
+
+  // Prefer contributor-authored use cases.
+  if (useCases.length) return useCases.slice(0, 3).join('; ');
+
+  // Otherwise use meaningful official tags.
+  if (tags.length) {
+    return name.replace(/[-_]/g, ' ') +
+      ': ' + tags.slice(0, 12).join(', ');
+  }
+
+  const oldDescription = typeof oldAi.description === 'string'
+    ? oldAi.description.trim()
+    : '';
+
+  if (oldDescription && !isInternalLucideMarker(oldDescription)) {
+    return oldDescription;
+  }
+
+  return name.replace(/[-_]/g, ' ');
+}
 let saveQueue = Promise.resolve();
 function queueSave(data) {
   saveQueue = saveQueue.then(() => writeFile(METADATA_PATH, JSON.stringify(data, null, 2) + '\n', 'utf8'));
