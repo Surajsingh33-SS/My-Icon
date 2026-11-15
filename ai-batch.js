@@ -427,10 +427,15 @@ async function renderResults(query = '') {
   const all = await getAllRecords();
   const normalized = query.trim().toLowerCase();
   let records = all.filter(record =>
-    record.analysisVersion >= Engine.version &&
+    (record.analysisVersion >= Engine.version ||
+      record.textBenchmark?.analysisVersion === Engine.version) &&
     (!normalized || record.name.toLowerCase().includes(normalized))
   );
-  records.sort((a, b) => (b.analyzedAt || '').localeCompare(a.analyzedAt || ''));
+  records.sort((a, b) =>
+    ((b.analyzedAt || b.textBenchmark?.analyzedAt || '')).localeCompare(
+      (a.analyzedAt || a.textBenchmark?.analyzedAt || '')
+    )
+  );
   records = records.slice(0, 30);
 
   const root = $('results');
