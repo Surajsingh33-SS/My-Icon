@@ -1,31 +1,20 @@
 import { pipeline, env } from '@huggingface/transformers';
 import { CATEGORY_DATA } from './category-data.js';
 import ICON_METADATA from './icon-metadata.json';
+import './category-engine.js';
+
+const Engine = window.IconCategoryEngine;
+const MODEL_ID = 'all-MiniLM-L6-v2';
+const BATCH_SIZE = 8;
+const DB_NAME = 'icon-maker-ai-categorization';
+const STORE_NAME = 'results';
 
 env.allowLocalModels = true;
 env.allowRemoteModels = false;
 env.localModelPath = '/models/';
 
-const MODEL_ID = 'all-MiniLM-L6-v2';
-const BATCH_SIZE = 8;
-const DB_NAME = 'icon-maker-ai-categorization';
-const STORE_NAME = 'results';
-const LUCIDE_CATEGORY_MAP = {
-  accessibility:'Accessibility', account:'Accounts & access', animals:'Animals',
-  arrows:'Arrows', buildings:'Buildings', charts:'Charts', communication:'Communication',
-  connectivity:'Connectivity', cursors:'Cursors', design:'Design',
-  development:'Coding & development', devices:'Devices', emoji:'Emoji', files:'File icons',
-  finance:'Finance', 'food-beverage':'Food & beverage', gaming:'Gaming', home:'Home',
-  layout:'Layout', 'letters-digits':'Letters & digits', mail:'Mail', math:'Mathematics',
-  medical:'Medical', multimedia:'Multimedia', nature:'Nature', navigation:'Navigation & places',
-  notifications:'Notifications', people:'People', photography:'Photography', science:'Science',
-  seasons:'Seasons', security:'Security', shapes:'Shapes', shopping:'Shopping', social:'Social',
-  sports:'Sports', sustainability:'Sustainability', text:'Text formatting', time:'Time & calendar',
-  tools:'Tools', transportation:'Transportation', travel:'Travel', weather:'Weather'
-};
-
 const $ = id => document.getElementById(id);
-const iconNames = Object.keys(ICON_METADATA);
+const iconNames = Object.keys(ICON_METADATA).sort((a, b) => a.localeCompare(b));
 let extractor = null;
 let categoryEmbeddings = [];
 let running = false;
@@ -57,18 +46,19 @@ function transaction(mode, action) {
   });
 }
 
-const getRecord = name => transaction('readonly', store => store.get(name));
 const getAllRecords = () => transaction('readonly', store => store.getAll());
 const putRecords = records => transaction('readwrite', store => {
   records.forEach(record => store.put(record));
 });
+
 async function clearAIResults() {
   const records = await getAllRecords();
   await transaction('readwrite', store => {
     records.forEach(record => {
-      // Keep human decisions and metadata edits; remove only generated analysis.
+      // Generated analysis is disposable; human decisions and edited metadata are not.
       delete record.aiSuggestions;
       delete record.analyzedAt;
+      delete record.analysisVersion;
       if (record.reviewedAt || Array.isArray(record.manualCategories) || record.metadataEdits) {
         store.put(record);
       } else {
@@ -78,76 +68,10 @@ async function clearAIResults() {
   });
 }
 
-function unique(values) { return [...new Set((values || []).filter(Boolean))]; }
-function officialFor(name) {
-  const slugs = ICON_METADATA[name]?.lucide?.categories || [];
-  return unique(slugs.map(slug => LUCIDE_CATEGORY_MAP[slug]))
-    .filter(category => CATEGORY_DATA.some(item => item.name === category));
-}
-function descriptionFor(name) {
-  const record = ICON_METADATA[name] || {};
-  const lucide = record.lucide || {};
-  const ai = record.ai || {};
-  return [
-    'Icon name: ' + name.replace(/[-_]/g, ' ') + '.',
-    ai.description || '',
-    lucide.tags?.length ? 'Official visual tags: ' + lucide.tags.join(', ') + '.' : '',
-    lucide.aliases?.length ? 'Alternate names: ' + lucide.aliases.map(alias => alias.name).filter(Boolean).join(', ') + '.' : '',
-    lucide.useCases?.length ? 'Documented use cases: ' + lucide.useCases.join(', ') + '.' : '',
-    lucide.categories?.length ? 'Official Lucide categories: ' + lucide.categories.join(', ') + '.' : ''
-  ].filter(Boolean).join(' ');
-}
-function cosine(a, b) {
-  let score = 0;
-  for (let i = 0; i < a.length; i++) score += a[i] * b[i];
-  return score;
-}
-// Similarity alone is not proof that an icon belongs in a category.
-// Require both a strong semantic match and corroborating words in official
-// Lucide metadata. When evidence is weak, return no extra category.
-function evidenceTokens(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .split(/\s+/)
-    .filter(token => token.length >= 4);
-}
-function hasCategoryEvidence(iconName, category) {
-  const record = ICON_METADATA[iconName] || {};
-  const lucide = record.lucide || {};
-  const evidence = new Set(evidenceTokens([
-    iconName.replace(/[-_]/g, ' '),
-    ...(lucide.tags || []),
-    ...(lucide.useCases || []),
-    ...((lucide.aliases || []).map(alias => alias.name))
-  ].join(' ')));
-  const categoryWords = evidenceTokens(category.name);
-  const descriptionWords = evidenceTokens(category.description);
-  const meaningful = categoryWords.filter(word => !['icons','icon','for','and','with','the','into','from','that','this'].includes(word));
-  // Exact category wording is strongest; descriptive overlap must be specific.
-  if (meaningful.some(word => evidence.has(word))) return true;
-  const overlap = descriptionWords.filter(word => evidence.has(word));
-  return overlap.length >= 2;
-}
-function rankCategories(embedding, official, iconName) {
-  const officialSet = new Set(official);
-  const ranked = CATEGORY_DATA.map((category, index) => ({
-    name: category.name,
-    score: cosine(embedding, categoryEmbeddings[index]),
-    category
-  })).sort((a, b) => b.score - a.score);
-  const eligible = ranked.filter(item =>
-    !officialSet.has(item.name) &&
-    item.score >= 0.52 &&
-    hasCategoryEvidence(iconName, item.category)
-  );
-  return eligible.slice(0, 3).map(({ name, score }) => ({ name, score }));
-}
-
 async function loadModel() {
   if (extractor) return;
   $('load').disabled = true;
-  $('status').textContent = 'Loading local model files...';
+  $('status').textContent = 'Loading local semantic model files...';
   try {
     extractor = await pipeline('feature-extraction', MODEL_ID, {
       dtype: 'q4',
@@ -159,7 +83,8 @@ async function loadModel() {
         $('status').textContent = 'Model: ' + stage + ' ' + file + percent;
       }
     });
-    $('status').textContent = 'Preparing the 43 category reference embeddings...';
+
+    $('status').textContent = 'Preparing shared category reference embeddings...';
     const output = await extractor(
       CATEGORY_DATA.map(item => item.name + '. ' + item.description),
       { pooling: 'mean', normalize: true }
@@ -167,7 +92,7 @@ async function loadModel() {
     categoryEmbeddings = output.tolist();
     $('start').disabled = false;
     $('load').textContent = 'AI Model Ready';
-    $('status').textContent = 'AI ready. You can start or resume batch analysis.';
+    $('status').textContent = 'Shared engine and semantic model ready. You can start or resume analysis.';
   } catch (error) {
     extractor = null;
     $('load').disabled = false;
@@ -177,7 +102,11 @@ async function loadModel() {
 
 async function updateStats() {
   const records = await getAllRecords();
-  const analyzed = records.filter(record => Boolean(record.analyzedAt) && Array.isArray(record.aiSuggestions)).length;
+  const analyzed = records.filter(record =>
+    record.analysisVersion >= Engine.version &&
+    Boolean(record.analyzedAt) &&
+    Array.isArray(record.aiSuggestions)
+  ).length;
   const reviewed = records.filter(record => record.reviewedAt).length;
   $('done').textContent = analyzed;
   $('reviewed').textContent = reviewed;
@@ -187,23 +116,66 @@ async function updateStats() {
   $('progress').value = analyzed;
 }
 
+function getEmbeddingScores(vector) {
+  return CATEGORY_DATA.map((category, index) => {
+    let score = 0;
+    const reference = categoryEmbeddings[index] || [];
+    for (let i = 0; i < Math.min(vector.length, reference.length); i++) {
+      score += vector[i] * reference[i];
+    }
+    return { name: category.name, score };
+  });
+}
+
 async function analyzeBatch(names) {
-  const texts = names.map(descriptionFor);
-  const output = await extractor(texts, { pooling: 'mean', normalize: true });
+  const descriptions = names.map(name => {
+    const record = ICON_METADATA[name] || {};
+    const lucide = record.lucide || {};
+    const ai = record.ai || {};
+    return [
+      'Icon name: ' + name.replace(/[-_]/g, ' ') + '.',
+      ai.description || '',
+      lucide.tags?.length ? 'Tags: ' + lucide.tags.join(', ') + '.' : '',
+      lucide.aliases?.length ? 'Aliases: ' + lucide.aliases.map(alias =>
+        typeof alias === 'string' ? alias : (alias.name || alias.alias || '')
+      ).filter(Boolean).join(', ') + '.' : '',
+      lucide.useCases?.length ? 'Use cases: ' + lucide.useCases.join(', ') + '.' : '',
+      ai.searchTerms?.length ? 'Search terms: ' + ai.searchTerms.join(', ') + '.' : '',
+      lucide.categories?.length ? 'Official categories: ' + lucide.categories.join(', ') + '.' : ''
+    ].filter(Boolean).join(' ');
+  });
+
+  const output = await extractor(descriptions, { pooling: 'mean', normalize: true });
   const vectors = output.tolist();
   const existingRecords = await getAllRecords();
   const existingByName = new Map(existingRecords.map(record => [record.name, record]));
+
   const records = names.map((name, index) => {
     const existing = existingByName.get(name) || {};
-    const existingOfficial = officialFor(name);
+    const analysis = Engine.classify(
+      name,
+      ICON_METADATA[name] || {},
+      existing,
+      {
+        categoryData: CATEGORY_DATA,
+        embeddingScores: getEmbeddingScores(vectors[index]),
+        threshold: 0.52,
+        maxSuggestions: 8
+      }
+    );
+
     return {
       ...existing,
       name,
-      officialCategories: existingOfficial,
-      aiSuggestions: rankCategories(vectors[index], existingOfficial, name),
-      analyzedAt: new Date().toISOString()
+      officialCategories: analysis.officialCategories,
+      aiSuggestions: analysis.suggestions,
+      analyzedAt: new Date().toISOString(),
+      analysisVersion: Engine.version
     };
   });
+
+  // Spread the previous record above so manualCategories, review timestamps,
+  // and metadataEdits survive every re-analysis.
   await putRecords(records);
 }
 
@@ -216,10 +188,14 @@ async function runBatches() {
   try {
     while (!pauseRequested) {
       const records = await getAllRecords();
-      const completed = new Set(records.filter(r => Boolean(r.analyzedAt) && Array.isArray(r.aiSuggestions)).map(r => r.name));
+      const completed = new Set(records.filter(record =>
+        record.analysisVersion >= Engine.version &&
+        Boolean(record.analyzedAt) &&
+        Array.isArray(record.aiSuggestions)
+      ).map(record => record.name));
       const next = iconNames.filter(name => !completed.has(name)).slice(0, BATCH_SIZE);
       if (!next.length) {
-        $('status').textContent = 'All ' + iconNames.length + ' icons have been analyzed.';
+        $('status').textContent = 'All ' + iconNames.length + ' icons have been analyzed by shared engine v' + Engine.version + '.';
         break;
       }
       $('status').textContent = 'Analyzing ' + (completed.size + 1) + '–' +
@@ -228,7 +204,7 @@ async function runBatches() {
       await updateStats();
       await new Promise(resolve => setTimeout(resolve, 40));
     }
-    if (pauseRequested) $('status').textContent = 'Paused. Progress is saved; use Start / Resume Batch to continue.';
+    if (pauseRequested) $('status').textContent = 'Paused. Completed batches are saved; use Start / Resume Batch to continue.';
   } catch (error) {
     $('status').textContent = 'Batch stopped: ' + error.message + '. Completed batches remain saved.';
   } finally {
@@ -240,7 +216,7 @@ async function runBatches() {
   }
 }
 
-function makeChip(name, checked) {
+function makeChip(name, checked, evidence = []) {
   const label = document.createElement('label');
   label.className = 'chip';
   const input = document.createElement('input');
@@ -250,57 +226,70 @@ function makeChip(name, checked) {
   const text = document.createElement('span');
   text.textContent = name;
   label.append(input, text);
+  if (evidence.length) label.title = evidence.join('\n');
   return label;
 }
 
 async function renderResults(query = '') {
   const all = await getAllRecords();
   const normalized = query.trim().toLowerCase();
-  let records = all.filter(record => !normalized || record.name.includes(normalized));
+  let records = all.filter(record =>
+    record.analysisVersion >= Engine.version &&
+    (!normalized || record.name.toLowerCase().includes(normalized))
+  );
   records.sort((a, b) => (b.analyzedAt || '').localeCompare(a.analyzedAt || ''));
   records = records.slice(0, 30);
+
   const root = $('results');
   root.replaceChildren();
   if (!records.length) {
     const empty = document.createElement('p');
-    empty.textContent = normalized ? 'No analyzed icons match that search.' : 'No batch results yet. Start the batch to analyze icons.';
+    empty.textContent = normalized
+      ? 'No current-engine results match that search.'
+      : 'No results from the current engine yet. Start the batch to analyze all icons.';
     root.append(empty);
     return;
   }
+
   for (const record of records) {
     const card = document.createElement('article');
     card.className = 'item';
+
     const heading = document.createElement('h3');
     heading.textContent = record.name;
     const badge = document.createElement('span');
     badge.className = 'tag';
     badge.textContent = record.reviewedAt ? 'Manually reviewed' : 'Awaiting review';
     card.append(heading, badge);
+
     const officialTitle = document.createElement('p');
-    officialTitle.textContent = 'Official Lucide category mapping';
+    officialTitle.textContent = 'Official Lucide categories';
     card.append(officialTitle);
     const chips = document.createElement('div');
     chips.className = 'chips';
-    const selected = Array.isArray(record.manualCategories)
-      ? record.manualCategories : record.officialCategories;
-    record.officialCategories.forEach(name => chips.append(makeChip(name, selected.includes(name))));
+
+    const selected = Array.isArray(record.manualCategories) && record.manualCategories.length
+      ? record.manualCategories : (record.officialCategories || []);
+    (record.officialCategories || []).forEach(name =>
+      chips.append(makeChip(name, selected.includes(name), ['Official Lucide category']))
+    );
     card.append(chips);
+
     const aiTitle = document.createElement('p');
-    aiTitle.textContent = 'AI suggestions — select only the ones that genuinely fit';
+    aiTitle.textContent = 'Shared-engine suggestions — select only the categories that genuinely fit';
     card.append(aiTitle);
     const aiChips = document.createElement('div');
     aiChips.className = 'chips';
-    (record.aiSuggestions || []).filter(item => {
-      const category = CATEGORY_DATA.find(entry => entry.name === item.name);
-      return category && item.score >= 0.52 && hasCategoryEvidence(record.name, category);
-    }).forEach(item => {
-      const chip = makeChip(item.name, selected.includes(item.name));
+
+    (record.aiSuggestions || []).forEach(item => {
+      const chip = makeChip(item.name, selected.includes(item.name), item.evidence || []);
       const score = document.createElement('small');
-      score.textContent = ' ' + item.score.toFixed(3);
+      score.textContent = ' ' + Math.round((item.confidence ?? item.score) * 100) + '%';
       chip.append(score);
       aiChips.append(chip);
     });
     card.append(aiChips);
+
     const customRow = document.createElement('div');
     customRow.className = 'controls';
     customRow.style.margin = '10px 0';
@@ -315,10 +304,7 @@ async function renderResults(query = '') {
       if (!value) return;
       const alreadyExists = [...card.querySelectorAll('input[type="checkbox"]')]
         .some(input => input.value.toLowerCase() === value.toLowerCase());
-      if (alreadyExists) {
-        customInput.value = '';
-        return;
-      }
+      if (alreadyExists) { customInput.value = ''; return; }
       const customChip = makeChip(value, true);
       customChip.dataset.custom = 'true';
       card.append(customChip);
@@ -331,7 +317,8 @@ async function renderResults(query = '') {
     save.className = 'primary';
     save.textContent = 'Save my categories';
     save.addEventListener('click', async () => {
-      const chosen = [...card.querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
+      const chosen = [...card.querySelectorAll('input[type="checkbox"]:checked')]
+        .map(input => input.value);
       record.manualCategories = unique(chosen);
       record.reviewedAt = new Date().toISOString();
       await putRecords([record]);
@@ -339,14 +326,17 @@ async function renderResults(query = '') {
       badge.textContent = 'Manually reviewed';
       save.textContent = 'Saved';
       apply.disabled = record.manualCategories.length === 0;
-      apply.title = apply.disabled ? 'Select at least one category before applying.' : 'Set these saved categories as the manual categories for matching finished icons in Icon Maker PRO.';
+      apply.title = apply.disabled
+        ? 'Select at least one category before applying.'
+        : 'Apply these manually selected categories to matching finished Gallery icons.';
     });
     card.append(save);
 
     const apply = document.createElement('button');
     apply.textContent = 'Apply reviewed categories to Gallery';
     apply.style.marginLeft = '8px';
-    apply.disabled = !record.reviewedAt || !Array.isArray(record.manualCategories) || record.manualCategories.length === 0;
+    apply.disabled = !record.reviewedAt ||
+      !Array.isArray(record.manualCategories) || record.manualCategories.length === 0;
     apply.title = apply.disabled
       ? 'Save your category selection first.'
       : 'Set these categories as the manual categories for matching finished icons in Icon Maker PRO.';
@@ -390,11 +380,15 @@ async function renderResults(query = '') {
 
 async function initialize() {
   try {
+    if (!Engine || typeof Engine.classify !== 'function') {
+      throw new Error('The shared category engine could not be initialized.');
+    }
     db = await openDatabase();
     await updateStats();
     await renderResults();
+    $('status').textContent = 'Ready. Load the model to analyze icons with shared engine v' + Engine.version + '.';
   } catch (error) {
-    $('status').textContent = 'Local database could not be opened: ' + error.message;
+    $('status').textContent = 'Initialization failed: ' + error.message;
   }
 }
 
@@ -402,11 +396,11 @@ $('load').addEventListener('click', loadModel);
 $('start').addEventListener('click', runBatches);
 $('pause').addEventListener('click', () => { pauseRequested = true; $('pause').disabled = true; });
 $('reset').addEventListener('click', async () => {
-  if (!confirm('Clear generated AI analysis results? Saved manual category reviews and metadata edits will be kept.')) return;
+  if (!confirm('Clear generated AI analysis? Saved manual category reviews and metadata edits will be kept.')) return;
   await clearAIResults();
   await updateStats();
   await renderResults();
-  $('status').textContent = 'Saved AI results cleared. The model does not need to be reloaded.';
+  $('status').textContent = 'Generated analysis cleared. Manual reviews and metadata edits were preserved.';
 });
 $('search').addEventListener('input', event => renderResults(event.target.value));
 $('show-all').addEventListener('click', () => { $('search').value = ''; renderResults(); });
