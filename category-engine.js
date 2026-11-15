@@ -168,7 +168,8 @@
       const semanticSupport = emb >= 0.48 ? Math.min(0.16, (emb - 0.48) * 0.55) : 0;
       const visualSupport = vis >= 0.30 ? Math.min(0.20, (vis - 0.30) * 0.65) : 0;
       const corroboration = (hasTextEvidence && emb >= 0.48 ? 0.06 : 0) +
-        (hasTextEvidence && vis >= 0.30 ? 0.07 : 0);
+        (hasTextEvidence && vis >= 0.30 ? 0.07 : 0) +
+        (emb >= 0.58 && vis >= 0.38 ? 0.30 : 0);
       let confidence = Math.min(0.99, lexical + semanticSupport + visualSupport + corroboration + (isOfficial ? 0.42 : 0));
 
       // Model similarity alone cannot create a category. Official category metadata
