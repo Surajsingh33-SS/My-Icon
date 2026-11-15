@@ -208,7 +208,7 @@ async function analyzeBatch(names) {
         ).filter(Boolean).join(', ') + '.' : '',
         lucide.useCases?.length ? 'Use cases: ' + lucide.useCases.join(', ') + '.' : '',
         ai.searchTerms?.length ? 'Search terms: ' + ai.searchTerms.join(', ') + '.' : '',
-        lucide.categories?.length ? 'Official categories: ' + lucide.categories.filter(value => typeof value === 'string' && !/^\\$(?:group|extends):/i.test(value)).join(', ') + '.' : ''
+        lucide.categories?.length ? 'Official categories: ' + lucide.categories.filter(value => typeof value === 'string' && !/^\$(?:group|extends):/i.test(value)).join(', ') + '.' : ''
       ].filter(Boolean).join(' ');
     });
     const output = await extractor(descriptions, { pooling: 'mean', normalize: true });
