@@ -297,7 +297,9 @@
           confidence:Number(strongest.toFixed(3)),
           evidence:unique(evidence).slice(0, 7),
           source:official.some(value => value.toLowerCase() === String(category).toLowerCase())
-            ? "Lucide + shared metadata engine" : "shared metadata engine"
+            ? "Lucide + shared metadata engine"
+            : evidence.some(item => item.startsWith("visual model"))
+              ? "shared visual + metadata engine" : "shared metadata engine"
         });
       }
     });
