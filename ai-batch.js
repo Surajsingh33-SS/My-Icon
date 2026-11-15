@@ -192,28 +192,100 @@ function getEmbeddingScores(vector) {
   });
 }
 
+function createIconDescriptions(names) {
+  return names.map(name => {
+    const record = ICON_METADATA[name] || {};
+    const lucide = record.lucide || {};
+    const ai = record.ai || {};
+    return [
+      'Icon name: ' + name.replace(/[-_]/g, ' ') + '.',
+      ai.description || '',
+      lucide.tags?.length ? 'Tags: ' + lucide.tags.join(', ') + '.' : '',
+      lucide.aliases?.length ? 'Aliases: ' + lucide.aliases.map(alias =>
+        typeof alias === 'string' ? alias : (alias.name || alias.alias || '')
+      ).filter(Boolean).join(', ') + '.' : '',
+      lucide.useCases?.length ? 'Use cases: ' + lucide.useCases.join(', ') + '.' : '',
+      ai.searchTerms?.length ? 'Search terms: ' + ai.searchTerms.join(', ') + '.' : '',
+      lucide.categories?.length ? 'Official categories: ' + lucide.categories.filter(value => typeof value === 'string' && !/^\\$(?:group|extends):/i.test(value)).join(', ') + '.' : ''
+    ].filter(Boolean).join(' ');
+  });
+}
+
+// A non-destructive benchmark: writes only textBenchmark fields and never replaces
+// the active combined suggestions, visual scores, or any manual review data.
+async function runTextBenchmark() {
+  if (running) return;
+  if (!extractor) await loadModel();
+  if (!extractor || running) return;
+  running = true;
+  pauseRequested = false;
+  $('start').disabled = true;
+  $('text-benchmark').disabled = true;
+  $('pause').disabled = false;
+  let processed = 0;
+  try {
+    while (!pauseRequested && processed < iconNames.length) {
+      const names = iconNames.slice(processed, processed + BATCH_SIZE);
+      const descriptions = createIconDescriptions(names);
+      const output = await extractor(descriptions, { pooling: 'mean', normalize: true });
+      const vectors = output.tolist();
+      const existingRecords = await getAllRecords();
+      const existingByName = new Map(existingRecords.map(record => [record.name, record]));
+      const checkpoints = [];
+      for (let index = 0; index < names.length; index++) {
+        const name = names[index];
+        const existing = existingByName.get(name) || {};
+        const analysis = Engine.classify(name, ICON_METADATA[name] || {}, existing, {
+          categoryData: CATEGORY_DATA,
+          embeddingScores: getEmbeddingScores(vectors[index]),
+          visualScores: [],
+          threshold: 0.52,
+          maxSuggestions: 8
+        });
+        checkpoints.push({
+          ...existing,
+          name,
+          textBenchmark: {
+            primaryCategory: analysis.primaryCategory,
+            secondaryCategories: analysis.secondaryCategories,
+            suggestions: analysis.suggestions,
+            analysisVersion: Engine.version,
+            analyzedAt: new Date().toISOString()
+          }
+        });
+      }
+      // One small transaction per batch. Existing visual and manual fields are retained.
+      await putRecords(checkpoints);
+      processed += names.length;
+      $('status').textContent = 'Text-only benchmark: ' + processed + '/' + iconNames.length +
+        ' icons saved. Existing visual results and manual reviews are untouched.';
+      await updateStats();
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    $('status').textContent = pauseRequested
+      ? 'Text-only benchmark paused at ' + processed + '/' + iconNames.length + '. Saved benchmark results are retained.'
+      : 'Text-only benchmark complete: ' + processed + '/' + iconNames.length +
+        '. Existing combined AI suggestions and manual reviews were not changed.';
+  } catch (error) {
+    $('status').textContent = 'Text-only benchmark stopped: ' + error.message +
+      '. Previously saved benchmark results are retained.';
+  } finally {
+    running = false;
+    $('start').disabled = !(extractor || visualClassifier);
+    $('text-benchmark').disabled = false;
+    $('pause').disabled = true;
+    await updateStats();
+    await renderResults($('search').value);
+  }
+}
+
 async function analyzeBatch(names) {
   const existingRecords = await getAllRecords();
   const existingByName = new Map(existingRecords.map(record => [record.name, record]));
   const vectorsByName = new Map();
 
   if (extractor) {
-    const descriptions = names.map(name => {
-      const record = ICON_METADATA[name] || {};
-      const lucide = record.lucide || {};
-      const ai = record.ai || {};
-      return [
-        'Icon name: ' + name.replace(/[-_]/g, ' ') + '.',
-        ai.description || '',
-        lucide.tags?.length ? 'Tags: ' + lucide.tags.join(', ') + '.' : '',
-        lucide.aliases?.length ? 'Aliases: ' + lucide.aliases.map(alias =>
-          typeof alias === 'string' ? alias : (alias.name || alias.alias || '')
-        ).filter(Boolean).join(', ') + '.' : '',
-        lucide.useCases?.length ? 'Use cases: ' + lucide.useCases.join(', ') + '.' : '',
-        ai.searchTerms?.length ? 'Search terms: ' + ai.searchTerms.join(', ') + '.' : '',
-        lucide.categories?.length ? 'Official categories: ' + lucide.categories.filter(value => typeof value === 'string' && !/^\\$(?:group|extends):/i.test(value)).join(', ') + '.' : ''
-      ].filter(Boolean).join(' ');
-    });
+    const descriptions = createIconDescriptions(names);
     const output = await extractor(descriptions, { pooling: 'mean', normalize: true });
     output.tolist().forEach((vector, index) => vectorsByName.set(names[index], vector));
   }
@@ -499,7 +571,7 @@ async function initialize() {
     db = await openDatabase();
     await updateStats();
     await renderResults();
-    $('status').textContent = 'Ready. For actual SVG recognition, load CLIP Visual Model before starting. Text-only runs are metadata analysis, not visual analysis. Shared engine v' + Engine.version + '.';
+    $('status').textContent = 'Ready. Run the non-destructive text-only benchmark to compare semantic classification without CLIP. Existing visual results and manual reviews are preserved. Shared engine v' + Engine.version + '.';
   } catch (error) {
     $('status').textContent = 'Initialization failed: ' + error.message;
   }
@@ -508,14 +580,14 @@ async function initialize() {
 $('load').addEventListener('click', loadModel);
 $('load-visual').addEventListener('click', loadVisualAI);
 $('start').addEventListener('click', async () => {
-  // Start always means visual analysis. Load CLIP automatically so users cannot
-  // accidentally run metadata-only analysis and receive a false "complete" state.
+  // The existing full visual workflow remains available as an explicit action.
   if (!visualClassifier) {
     await loadVisualAI();
     if (!visualClassifier) return;
   }
   await runBatches();
 });
+$('text-benchmark').addEventListener('click', runTextBenchmark);
 $('pause').addEventListener('click', () => { pauseRequested = true; $('pause').disabled = true; });
 $('reset').addEventListener('click', async () => {
   if (!confirm('Clear generated AI analysis? Saved manual category reviews and metadata edits will be kept.')) return;
