@@ -1285,7 +1285,7 @@
         "Weather": ["forecast", "temperature", "precipitation", "climate", "meteorology", "humidity", "wind speed"]
     };
 
-    const CATEGORY_ANALYSIS_VERSION = 2;
+    const CATEGORY_ANALYSIS_VERSION = 3;
     function categoryText(value) {
         return String(value || "").toLowerCase()
             .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -1306,62 +1306,19 @@
     }
 
     function classifyIconCategories(iconName, baseRecord, review = null) {
-        const lucide = baseRecord?.lucide || {};
-        const ai = baseRecord?.ai || {};
-        const edits = review?.metadataEdits || {};
-        const officialRaw = Array.isArray(lucide.categories) ? lucide.categories : [];
-        const official = normalizeCategoryList(officialRaw.map(value => {
-            const key = categoryText(value);
-            return LUCIDE_CATEGORY_MAP[key] || null;
-        }));
-        const aliases = [
-            ...categoryValues(lucide.aliases, value => typeof value === "object" ? (value.name || value.alias || "") : value),
-            ...categoryValues(edits.aliases, value => typeof value === "object" ? (value.name || value.alias || "") : value)
-        ];
-        const sources = [
-            { label: "icon name", weight: 1, values: [iconName] },
-            { label: "official tags", weight: 0.86, values: [...categoryValues(lucide.tags), ...categoryValues(edits.tags)] },
-            { label: "use cases", weight: 0.88, values: [...categoryValues(lucide.useCases), ...categoryValues(edits.useCases)] },
-            { label: "aliases", weight: 0.76, values: aliases },
-            { label: "search terms", weight: 0.68, values: [...categoryValues(ai.searchTerms), ...categoryValues(edits.searchTerms)] },
-            { label: "description", weight: 0.34, values: [edits.description || ai.description || ""] }
-        ].filter(source => source.values.length);
-
-        const ranked = [];
-        Object.entries(ICON_CATEGORY_KEYWORDS).forEach(([rawCategory, baseKeywords]) => {
-            const keywords = [...new Set([...baseKeywords, ...(ICON_CATEGORY_METADATA_TERMS[rawCategory] || [])])];
-            const category = resolveCategoryName(rawCategory);
-            if (!category) return;
-            let strongest = 0;
-            const evidence = [];
-            sources.forEach(source => {
-                const hits = keywords.filter(keyword => source.values.some(value => categoryPhraseMatches(value, keyword)));
-                if (!hits.length) return;
-                const specificity = hits.some(hit => categoryText(hit).includes(" ")) ? 1 : 0.94;
-                strongest = Math.max(strongest, source.weight * specificity);
-                hits.slice(0, 3).forEach(hit => evidence.push(source.label + ": " + hit));
-            });
-            if (official.includes(category)) strongest = Math.max(strongest, 1);
-            const independentSources = new Set(evidence.map(item => item.split(":")[0])).size;
-            if (independentSources >= 2 && strongest > 0) strongest = Math.min(0.99, strongest + 0.08);
-            if (strongest >= 0.60) ranked.push({
-                name: category,
-                score: Number(strongest.toFixed(2)),
-                evidence: [...new Set(evidence)].slice(0, 5),
-                source: official.includes(category) ? "Lucide + metadata" : "metadata"
-            });
+        if (!window.IconCategoryEngine) {
+            console.error("Shared icon categorization engine did not load.");
+            return { officialCategories: [], suggestions: [], categories: [] };
+        }
+        return window.IconCategoryEngine.classify(iconName, baseRecord, review, {
+            categories: STANDARD_ICON_CATEGORIES,
+            keywordMap: ICON_CATEGORY_KEYWORDS,
+            metadataTerms: ICON_CATEGORY_METADATA_TERMS,
+            officialCategoryMap: LUCIDE_CATEGORY_MAP,
+            resolveCategory: value => resolveCategoryName(value),
+            threshold: 0.52,
+            maxSuggestions: 8
         });
-
-        const byName = new Map();
-        [...ranked, ...official.map(name => ({ name, score: 1, evidence: ["Official Lucide category"], source: "Lucide" }))]
-            .forEach(item => {
-                const key = item.name.toLowerCase();
-                const current = byName.get(key);
-                if (!current || item.score > current.score) byName.set(key, item);
-            });
-        const ordered = [...byName.values()].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-        const suggestions = ordered.filter(item => !official.some(value => value.toLowerCase() === item.name.toLowerCase())).slice(0, 6);
-        return { officialCategories: official, suggestions, categories: normalizeCategoryList([...official, ...suggestions.map(item => item.name)]) };
     }
 
     function getAutomaticMetadataCategories(iconName) {
@@ -11978,6 +11935,10 @@ function getSelectedFinishCategories() {
     // corroborating words from the icon's official metadata.
     function isSupportedAICategorySuggestion(iconName, suggestion, baseRecord) {
         if (!suggestion || !suggestion.name || Number(suggestion.score) < 0.52) return false;
+        // Suggestions produced by the shared engine already carry auditable
+        // evidence. Trust that evidence instead of applying a second,
+        // narrower keyword filter that would hide valid secondary meanings.
+        if (Array.isArray(suggestion.evidence) && suggestion.evidence.length) return true;
         const lucide = baseRecord?.lucide || {};
         const tokens = new Set([
             String(iconName || "").replace(/[-_]/g, " "),
