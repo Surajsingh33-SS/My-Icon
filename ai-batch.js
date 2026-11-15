@@ -1,6 +1,6 @@
 import { pipeline, env } from '@huggingface/transformers';
 import { CATEGORY_DATA } from './category-data.js';
-import ICON_METADATA from './icon-metadata.json';
+import ICON_METADATA from './icon-metadata.json' with { type: 'json' };
 import './category-engine.js';
 import { loadVisualModel, getIconVisualScores, VISUAL_MODEL_ID } from './visual-analyzer.js';
 
