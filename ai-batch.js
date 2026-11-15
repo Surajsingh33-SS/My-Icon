@@ -68,6 +68,7 @@ async function clearAIResults() {
       delete record.visualAnalyzedAt;
       delete record.visualModelVersion;
       delete record.visualError;
+      delete record.textBenchmark;
       if (record.reviewedAt || Array.isArray(record.manualCategories) || record.metadataEdits) {
         store.put(record);
       } else {
@@ -154,6 +155,10 @@ async function updateStats() {
   const metadataDone = records.filter(hasMetadataAnalysis).length;
   const visualDone = records.filter(hasSuccessfulVisualAnalysis).length;
   const reviewed = records.filter(record => record.reviewedAt).length;
+  const textDone = records.filter(record =>
+    record.textBenchmark && record.textBenchmark.analysisVersion === Engine.version
+  ).length;
+  $('text-done').textContent = textDone;
   // The primary batch task is visual recognition. Never show metadata-only
   // completion as if CLIP had inspected the SVG artwork.
   const completed = visualDone;
@@ -224,12 +229,18 @@ async function runTextBenchmark() {
   $('pause').disabled = false;
   let processed = 0;
   try {
-    while (!pauseRequested && processed < iconNames.length) {
-      const names = iconNames.slice(processed, processed + BATCH_SIZE);
+    while (!pauseRequested) {
+      const existingRecords = await getAllRecords();
+      const benchmarked = new Set(existingRecords
+        .filter(record => record.textBenchmark &&
+          record.textBenchmark.analysisVersion === Engine.version)
+        .map(record => record.name));
+      const pendingNames = iconNames.filter(name => !benchmarked.has(name));
+      const names = pendingNames.slice(0, BATCH_SIZE);
+      if (!names.length) break;
       const descriptions = createIconDescriptions(names);
       const output = await extractor(descriptions, { pooling: 'mean', normalize: true });
       const vectors = output.tolist();
-      const existingRecords = await getAllRecords();
       const existingByName = new Map(existingRecords.map(record => [record.name, record]));
       const checkpoints = [];
       for (let index = 0; index < names.length; index++) {
@@ -262,9 +273,12 @@ async function runTextBenchmark() {
       await updateStats();
       await new Promise(resolve => setTimeout(resolve, 20));
     }
+    const finalRecords = await getAllRecords();
+    const finalDone = finalRecords.filter(record => record.textBenchmark &&
+      record.textBenchmark.analysisVersion === Engine.version).length;
     $('status').textContent = pauseRequested
-      ? 'Text-only benchmark paused at ' + processed + '/' + iconNames.length + '. Saved benchmark results are retained.'
-      : 'Text-only benchmark complete: ' + processed + '/' + iconNames.length +
+      ? 'Text-only benchmark paused at ' + finalDone + '/' + iconNames.length + '. Saved benchmark results are retained; resume skips completed icons.'
+      : 'Text-only benchmark complete: ' + finalDone + '/' + iconNames.length +
         '. Existing combined AI suggestions and manual reviews were not changed.';
   } catch (error) {
     $('status').textContent = 'Text-only benchmark stopped: ' + error.message +
@@ -459,6 +473,21 @@ async function renderResults(query = '') {
       chips.append(makeChip(name, selected.includes(name), ['Official Lucide category']))
     );
     card.append(chips);
+
+    if (record.textBenchmark && Array.isArray(record.textBenchmark.suggestions)) {
+      const benchmarkTitle = document.createElement('p');
+      benchmarkTitle.textContent = 'Text-only benchmark (no CLIP visual input)';
+      card.append(benchmarkTitle);
+      const benchmarkChips = document.createElement('div');
+      benchmarkChips.className = 'chips';
+      record.textBenchmark.suggestions.forEach(item => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = item.name + ' ' + Math.round((item.confidence ?? item.score) * 100) + '%';
+        benchmarkChips.append(chip);
+      });
+      card.append(benchmarkChips);
+    }
 
     const aiTitle = document.createElement('p');
     aiTitle.textContent = 'Shared-engine suggestions — select only the categories that genuinely fit';
