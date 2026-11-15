@@ -128,16 +128,6 @@ async function loadVisualAI() {
   }
 }
 
-function isAnalysisComplete(record) {
-  return record.analysisVersion >= Engine.version &&
-    Boolean(record.analyzedAt) &&
-    Array.isArray(record.aiSuggestions) &&
-    (!visualClassifier || (
-      record.visualModelVersion === VISUAL_MODEL_ID &&
-      Boolean(record.visualAnalyzedAt)
-    ));
-}
-
 function hasMetadataAnalysis(record) {
   return record.analysisVersion >= Engine.version &&
     Boolean(record.analyzedAt) &&
@@ -161,13 +151,15 @@ async function updateStats() {
   const metadataDone = records.filter(hasMetadataAnalysis).length;
   const visualDone = records.filter(hasSuccessfulVisualAnalysis).length;
   const reviewed = records.filter(record => record.reviewedAt).length;
-  const completed = visualClassifier ? visualDone : metadataDone;
+  // The primary batch task is visual recognition. Never show metadata-only
+  // completion as if CLIP had inspected the SVG artwork.
+  const completed = visualDone;
   $('done').textContent = completed;
   $('reviewed').textContent = reviewed;
-  $('remaining').textContent = Math.max(0, iconNames.length - completed);
+  $('remaining').textContent = Math.max(0, iconNames.length - visualDone);
   $('total').textContent = iconNames.length;
   $('progress').max = iconNames.length;
-  $('progress').value = completed;
+  $('progress').value = visualDone;
 
   const visualFailed = records.filter(record =>
     record.visualError && !hasSuccessfulVisualAnalysis(record)
@@ -179,10 +171,10 @@ async function updateStats() {
       ' successful; ' + visualPending + ' remaining; ' + visualFailed + ' failed and retryable. ' +
       'Metadata analyzed: ' + metadataDone + '/' + iconNames.length + '.';
   } else {
-    $('status').dataset.progress = 'metadata';
-    $('status').textContent = 'Metadata analysis: ' + metadataDone + '/' + iconNames.length +
-      '. CLIP visual analysis has not been counted yet. Load CLIP Visual Model to analyze the actual SVG artwork; ' +
-      visualDone + ' visual results are already saved.';
+    $('status').dataset.progress = 'visual';
+    $('status').textContent = 'Visual analysis: ' + visualDone + '/' + iconNames.length +
+      ' successful; ' + visualPending + ' remaining. Metadata analysis: ' +
+      metadataDone + '/' + iconNames.length + '. Click Start / Resume Batch to load CLIP and begin visual analysis.';
   }
 }
 
@@ -494,7 +486,15 @@ async function initialize() {
 
 $('load').addEventListener('click', loadModel);
 $('load-visual').addEventListener('click', loadVisualAI);
-$('start').addEventListener('click', runBatches);
+$('start').addEventListener('click', async () => {
+  // Start always means visual analysis. Load CLIP automatically so users cannot
+  // accidentally run metadata-only analysis and receive a false "complete" state.
+  if (!visualClassifier) {
+    await loadVisualAI();
+    if (!visualClassifier) return;
+  }
+  await runBatches();
+});
 $('pause').addEventListener('click', () => { pauseRequested = true; $('pause').disabled = true; });
 $('reset').addEventListener('click', async () => {
   if (!confirm('Clear generated AI analysis? Saved manual category reviews and metadata edits will be kept.')) return;
