@@ -29,6 +29,7 @@ const categories = [
   { name: 'Media', description: 'Images, photos and video.' },
   { name: 'Nature', description: 'Plants and environment.' },
   { name: 'People', description: 'People and profiles.' },
+  { name: 'Social', description: 'Social relationships, communities and astrology.' },
   { name: 'Security', description: 'Privacy and protection.' },
   { name: 'Shopping', description: 'Stores and products.' },
   { name: 'Sports', description: 'Sports and exercise.' },
@@ -40,7 +41,7 @@ const categories = [
 ];
 
 assert.ok(Engine, 'shared classifier should expose a global API');
-assert.equal(Engine.version, 10);
+assert.equal(Engine.version, 11);
 
 function top(name, metadata = {}, options = {}) {
   return Engine.classify(name, metadata, {}, {
@@ -148,15 +149,22 @@ test('text-only classification ignores previously saved visual scores when expli
 });
 
 
-test('does not misclassify zodiac sign icons as nature or weather', () => {
-  for (const name of ['zodiac-aries', 'zodiac-capricorn', 'zodiac-leo', 'zodiac-pisces']) {
-    const result = top(name, {}, {
-      embeddingScores: [{ name: 'Nature', score: 0.99 }, { name: 'Weather', score: 0.95 }],
-      visualScores: [],
-      threshold: 0.30
-    });
-    assert.equal(result.suggestions.some(item => ['Nature', 'Weather', 'Animals'].includes(item.name)), false, name);
-  }
+test('zodiac metadata maps to Social and Emoji rather than being blanket-suppressed', () => {
+  const result = top('zodiac-gemini', {
+    lucide: {
+      categories: ['social', 'emoji'],
+      tags: ['twins', 'duality', 'communication', 'air', 'adaptability', 'astrology', 'star sign', 'horoscope']
+    }
+  }, {
+    embeddingScores: [{ name: 'Nature', score: 0.99 }, { name: 'Weather', score: 0.95 }],
+    visualScores: [],
+    threshold: 0.30
+  });
+  assert.ok(result.categories.includes('Social'));
+  assert.ok(result.categories.includes('Emoji & expressions'));
+  assert.ok(result.categories.includes('Communication'));
+  assert.equal(result.categories.includes('Nature'), false);
+  assert.equal(result.categories.includes('Weather'), false);
 });
 
 test('does not add People as a secondary category for wrench icons', () => {
@@ -181,14 +189,18 @@ test('confidence is an evidence score and avoids inflated near-100 scores from o
 });
 
 
-test('zodiac icons receive no unrelated taxonomy categories', () => {
+test('zodiac family limits suggestions to relevant social and expressive categories', () => {
   for (const name of ['zodiac-cancer', 'zodiac-pisces', 'zodiac-aquarius', 'zodiac-virgo', 'zodiac-scorpio']) {
-    const result = top(name, {}, {
+    const result = top(name, {
+      lucide: { categories: ['social', 'emoji'] }
+    }, {
       embeddingScores: categories.map(item => ({ name: item.name, score: 0.99 })),
       visualScores: [],
       threshold: 0.30
     });
-    assert.deepEqual(result.suggestions, [], name + ' should not be forced into an unrelated category');
+    assert.ok(result.categories.includes('Social'), name);
+    assert.ok(result.categories.includes('Emoji & expressions'), name);
+    assert.equal(result.categories.some(category => ['Nature', 'Weather', 'Animals'].includes(category)), false, name);
   }
 });
 
