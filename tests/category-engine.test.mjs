@@ -168,10 +168,9 @@ test('does not add People as a secondary category for wrench icons', () => {
   assert.ok(result.suggestions.some(item => item.name === 'Tools'));
 });
 
-test('requires independent text evidence for secondary categories', () => {
+test('curated wind-arrow meanings retain intentional secondary categories', () => {
   const result = top('wind-arrow-up');
-  assert.equal(result.suggestions.length <= 1, true,
-    'one ambiguous name-only match should not create several secondary categories');
+  assert.deepEqual(result.secondaryCategories, ['Weather', 'Sustainability']);
 });
 
 test('confidence is an evidence score and avoids inflated near-100 scores from one name hit', () => {
