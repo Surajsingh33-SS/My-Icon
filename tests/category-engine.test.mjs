@@ -63,7 +63,7 @@ const categories = [
 ];
 
 assert.ok(Engine, 'shared classifier should expose a global API');
-assert.equal(Engine.version, 12);
+assert.equal(Engine.version, 13);
 
 function top(name, metadata = {}, options = {}) {
   return Engine.classify(name, metadata, {}, {
@@ -285,6 +285,40 @@ test('maps exclamation mark to typography and communication, not People', () => 
   assert.ok(result.categories.includes('Letters & digits'));
   assert.ok(result.categories.includes('Notifications'));
   assert.equal(result.categories.includes('People'), false);
+});
+
+
+test('prefers precise canonical categories over overlapping legacy category labels', () => {
+  const result = top('file-pdf', {
+    lucide: { categories: ['files'] },
+    ai: { searchTerms: ['document', 'pdf', 'file type'] }
+  });
+  assert.ok(result.categories.includes('File icons'));
+  assert.equal(result.categories.includes('Files'), false);
+
+  const layout = top('expand', {
+    lucide: { categories: ['layout'] }
+  });
+  assert.ok(layout.categories.includes('Layout'));
+  assert.equal(layout.categories.includes('Design & layout'), false);
+
+  const text = top('exclamation-mark', {
+    lucide: { categories: ['letters-digits', 'text'] }
+  });
+  assert.ok(text.categories.includes('Letters & digits'));
+  assert.ok(text.categories.includes('Text formatting'));
+  assert.equal(text.categories.includes('Typography'), false);
+});
+
+test('keeps legacy category labels available when no canonical replacement is supplied', () => {
+  const legacyOnly = [
+    { name: 'Files', description: 'Files and documents.' },
+    { name: 'Typography', description: 'Text, letters and punctuation.' }
+  ];
+  const result = Engine.classify('file-pdf', {
+    lucide: { tags: ['pdf document'] }
+  }, {}, { categoryData: legacyOnly, threshold: 0.30 });
+  assert.ok(result.categories.includes('Files'));
 });
 
 test('eye modifiers avoid arrow and device false positives', () => {
