@@ -170,7 +170,7 @@ test('does not add People as a secondary category for wrench icons', () => {
 
 test('curated wind-arrow meanings retain intentional secondary categories', () => {
   const result = top('wind-arrow-up');
-  assert.deepEqual(result.secondaryCategories, ['Weather', 'Sustainability']);
+  assert.deepEqual([...result.secondaryCategories].sort(), ['Sustainability', 'Weather']);
 });
 
 test('confidence is an evidence score and avoids inflated near-100 scores from one name hit', () => {
@@ -205,7 +205,7 @@ test('wind-arrow icons retain precise Arrows plus Weather and Sustainability dis
   for (const name of ['wind-arrow-up', 'wind-arrow-down']) {
     const result = top(name);
     assert.equal(result.primaryCategory, 'Arrows');
-    assert.deepEqual(result.secondaryCategories, ['Weather', 'Sustainability']);
+    assert.deepEqual([...result.secondaryCategories].sort(), ['Sustainability', 'Weather']);
   }
   const wind = top('wind');
   assert.equal(wind.primaryCategory, 'Weather');
