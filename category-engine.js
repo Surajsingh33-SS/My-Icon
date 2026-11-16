@@ -163,7 +163,7 @@
   // embeddings cannot reliably distinguish. These rules only affect the named
   // families; all other icons continue through the evidence-based classifier.
   const ICON_CATEGORY_RULES = [
-    { pattern: /^zodiac(?:-|$)/, allow: ['Social', 'Emoji & expressions', 'Communication', 'People'], reason: 'Zodiac symbols have social/astrology and emoji meanings; individual tags may support communication or people.' },
+    { pattern: /^zodiac(?:-|$)/, allow: ['Social', 'Emoji', 'Emoji & expressions', 'Communication', 'People'], reason: 'Zodiac symbols have social/astrology and emoji meanings; individual tags may support communication or people.' },
     { pattern: /^zap(?:-off)?$/, allow: ['Devices'], force: ['Devices'], reason: 'Lightning/power indicator.' },
     { pattern: /^camera$/, allow: ['Photography', 'Media'], force: ['Photography', 'Media'], reason: 'Camera used for photography and image/media capture.' },
     { pattern: /^worm$/, allow: ['Animals'], force: ['Animals'], reason: 'Animal/invertebrate icon.' },
@@ -171,10 +171,10 @@
     { pattern: /^wind$/, allow: ['Weather', 'Sustainability'], force: ['Weather', 'Sustainability'], reason: 'Wind/weather condition with environmental and renewable-energy meaning.' },
     { pattern: /^workflow$/, suppress: true, reason: 'Generic workflow concept has no reliable match in the current taxonomy.' },
     { pattern: /^wrench(?:-|$)/, allow: ['Tools'], reason: 'Tool family; not a person category.' },
-    { pattern: /^eye(?:-|$)/, allow: ['Accessibility', 'Security', 'Photography', 'Design & layout'], reason: 'Eye family: visibility, privacy and visual access.' },
+    { pattern: /^eye(?:-|$)/, allow: ['Accessibility', 'Security', 'Photography', 'Design', 'Layout', 'Design & layout'], reason: 'Eye family: visibility, privacy and visual access.' },
     { pattern: /^expand$/, allow: ['Arrows', 'Design & layout'], reason: 'Expand/collapse and interface layout control.' },
     { pattern: /^euro$/, allow: ['Business'], force: ['Business'], reason: 'Currency symbol; finance category.' },
-    { pattern: /^exclamation-mark$/, allow: ['Typography', 'Communication'], reason: 'Punctuation symbol used for emphasis and alerts.' }
+    { pattern: /^exclamation-mark$/, allow: ['Letters & digits', 'Text formatting', 'Notifications', 'Typography', 'Communication'], reason: 'Punctuation symbol used for emphasis and alerts.' }
   ];
 
   function normalize(value) {
