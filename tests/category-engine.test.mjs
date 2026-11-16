@@ -161,7 +161,7 @@ test('zodiac metadata maps to Social and Emoji rather than being blanket-suppres
     threshold: 0.30
   });
   assert.ok(result.categories.includes('Social'));
-  assert.ok(result.categories.includes('Emoji & expressions'));
+  assert.ok(result.categories.includes('Emoji'));
   assert.ok(result.categories.includes('Communication'));
   assert.equal(result.categories.includes('Nature'), false);
   assert.equal(result.categories.includes('Weather'), false);
@@ -199,7 +199,7 @@ test('zodiac family limits suggestions to relevant social and expressive categor
       threshold: 0.30
     });
     assert.ok(result.categories.includes('Social'), name);
-    assert.ok(result.categories.includes('Emoji & expressions'), name);
+    assert.ok(result.categories.includes('Emoji'), name);
     assert.equal(result.categories.some(category => ['Nature', 'Weather', 'Animals'].includes(category)), false, name);
   }
 });
@@ -238,7 +238,7 @@ test('generic workflow is not assigned a weak connectivity category', () => {
 
 test('maps Lucide official categories into a richer Icon Maker taxonomy', () => {
   const result = top('eye', { lucide: { categories: ['accessibility', 'photography', 'design', 'security'] } });
-  assert.deepEqual(result.officialCategories, ['Accessibility', 'Photography', 'Design & layout', 'Security']);
+  assert.deepEqual(result.officialCategories, ['Accessibility', 'Photography', 'Design', 'Security']);
   assert.equal(result.suggestions.some(item => item.name === 'Devices'), false);
 });
 
