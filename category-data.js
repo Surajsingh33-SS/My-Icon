@@ -1,5 +1,33 @@
 export const CATEGORY_DATA = [
   {
+    "name": "Design & layout",
+    "description": "Interface composition, alignment, grids, panels, layout controls and visual design."
+  },
+  {
+    "name": "Development",
+    "description": "Programming, source control, code, developer tools, databases and software workflows."
+  },
+  {
+    "name": "Typography",
+    "description": "Text, fonts, letters, digits, punctuation and typographic symbols."
+  },
+  {
+    "name": "Photography",
+    "description": "Viewing, cameras, lenses, exposure, image capture and photographic controls."
+  },
+  {
+    "name": "Science",
+    "description": "Scientific concepts, laboratory equipment, experiments and scientific disciplines."
+  },
+  {
+    "name": "Math & symbols",
+    "description": "Mathematics, equations, geometric forms and mathematical notation."
+  },
+  {
+    "name": "Emoji & expressions",
+    "description": "Emoji, emoticons, facial expressions, moods and reactions."
+  },
+  {
     "name": "Accessibility",
     "description": "Accessibility, inclusion and assistive technology."
   },
