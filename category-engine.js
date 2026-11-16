@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  const VERSION = 11;
+  const VERSION = 12;
   const STOP = new Set([
     'icon','icons','outline','line','simple','symbol','small','large','left','right',
     'up','down','plus','minus','the','and','for','with','of','to','a','an'
@@ -38,6 +38,62 @@
     'travel':'Maps & travel', 'multimedia':'Media', 'medical':'Health',
     'seasons':'Nature'
   };
+
+  Object.assign(OFFICIAL_MAP, {
+    "accessibility":"Accessibility",
+    "accounts-access":"Accounts & access",
+    "account-access":"Accounts & access",
+    "animals":"Animals",
+    "arrows":"Arrows",
+    "buildings":"Buildings",
+    "charts":"Charts",
+    "communication":"Communication",
+    "connectivity":"Connectivity",
+    "cursors":"Cursors",
+    "design":"Design",
+    "coding-development":"Coding & development",
+    "development":"Coding & development",
+    "devices":"Devices",
+    "emoji":"Emoji",
+    "file-icons":"File icons",
+    "files":"File icons",
+    "finance":"Finance",
+    "food-beverage":"Food & beverage",
+    "food":"Food & beverage",
+    "gaming":"Gaming",
+    "home":"Home",
+    "layout":"Layout",
+    "letters-digits":"Letters & digits",
+    "mail":"Mail",
+    "mathematics":"Mathematics",
+    "math":"Mathematics",
+    "medical":"Medical",
+    "health":"Medical",
+    "multimedia":"Multimedia",
+    "media":"Multimedia",
+    "nature":"Nature",
+    "navigation-places":"Navigation & places",
+    "maps":"Navigation & places",
+    "notifications":"Notifications",
+    "people":"People",
+    "photography":"Photography",
+    "science":"Science",
+    "seasons":"Seasons",
+    "security":"Security",
+    "shapes":"Shapes",
+    "shopping":"Shopping",
+    "social":"Social",
+    "sports":"Sports",
+    "sustainability":"Sustainability",
+    "text-formatting":"Text formatting",
+    "text":"Text formatting",
+    "time-calendar":"Time & calendar",
+    "time":"Time & calendar",
+    "tools":"Tools",
+    "transportation":"Transportation",
+    "travel":"Travel",
+    "weather":"Weather"
+  });
 
   // Curated discriminative concepts. These complement (never replace) authored
   // per-icon metadata and reduce accidental matches from broad category descriptions.
@@ -77,6 +133,31 @@
     'Transportation':['car','vehicle','truck','bus','train','railway','tram','airplane','plane','helicopter','ship','boat','sailboat','bicycle','bike','motorcycle','scooter','rocket','taxi','ambulance','fire truck','traffic','fuel','gas station','charging station'],
     'Weather':['weather','temperature','forecast','thermometer','sunny','cloudy','rain','rainy','storm','thunder','lightning','snow','snowfall','windy','humidity','fog','tornado','hurricane','sunrise','sunset']
   };
+
+  Object.assign(TERMS, {
+    "Accounts & access": ["account","accounts","sign in","sign-in","log in","login","log out","logout","user account","access control","permission","permissions","authentication","authorization","identity","profile access"],
+    "Charts": ["chart","charts","graph","graphs","plot","analytics","statistics","data visualization","bar chart","line chart","pie chart","histogram","trend"],
+    "Cursors": ["cursor","mouse pointer","pointer","hand pointer","text cursor","selection cursor","cursor state","pointing"],
+    "Design": ["graphic design","visual design","design","color palette","palette","swatch","gradient","creative","illustration","paint","style","artboard"],
+    "Coding & development": ["code","coding","programming","developer","development","source code","git","branch","commit","terminal","api","debug","database","software"],
+    "Emoji": ["emoji","emoticon","face","grinning","smile","laugh","angry","sad","happy","mood","reaction","expression"],
+    "File icons": ["file","folder","document","pdf","spreadsheet","archive","zip","attachment","file type","directory"],
+    "Finance": ["finance","financial","money","currency","coin","cash","bank","payment","invoice","receipt","wallet","credit card","debit card","tax","investment","budget","accounting"],
+    "Food & beverage": ["food","beverage","drink","coffee","tea","cup","mug","glass","bottle","pizza","burger","bread","cake","fruit","vegetable","meal","restaurant","cooking","chef"],
+    "Layout": ["layout","grid","panel","columns","rows","align","alignment","spacing","resize","position","interface","sidebar","dashboard","split view"],
+    "Letters & digits": ["letter","letters","alphabet","digit","digits","numeral","number","character","punctuation","uppercase","lowercase","abc","123"],
+    "Mail": ["mail","email","e-mail","inbox","envelope","letterbox","post","postal","correspondence","send mail"],
+    "Mathematics": ["math","mathematics","calculate","calculation","equation","arithmetic","plus","minus","multiply","divide","equals","percent","infinity","pi","sigma","integral","root","geometry"],
+    "Medical": ["medical","medicine","health","healthcare","doctor","nurse","hospital","clinic","pill","syringe","stethoscope","thermometer","heartbeat","first aid","bandage","dental"],
+    "Multimedia": ["multimedia","media","image","photo","picture","camera","video","film","movie","audio","music","sound","speaker","headphone","waveform","playback"],
+    "Navigation & places": ["map","maps","location","pin","marker","compass","globe","navigation","route","destination","landmark","country","city","place","geography"],
+    "Notifications": ["notification","notifications","alert","alerts","reminder","warning","badge","bell","status update","attention"],
+    "Seasons": ["season","seasons","spring","summer","autumn","fall","winter","seasonal","solstice","equinox"],
+    "Shapes": ["shape","shapes","geometry","geometric","circle","square","triangle","rectangle","polygon","hexagon","pentagon","oval"],
+    "Text formatting": ["text formatting","format text","bold","italic","underline","strikethrough","paragraph","heading","list","bullet list","numbered list","indent","align text","rich text"],
+    "Time & calendar": ["time","clock","calendar","date","schedule","alarm clock","timer","stopwatch","hourglass","deadline","appointment","month","day","week"],
+    "Travel": ["travel","trip","journey","passport","suitcase","luggage","ticket","boarding pass","hotel booking","vacation","holiday"]
+  });
 
   // Curated icon-family rules resolve known ambiguities that generic text
   // embeddings cannot reliably distinguish. These rules only affect the named
@@ -292,8 +373,9 @@
     const accepted = primary
       ? [primary, ...ranked.slice(1).filter(item => item.signals.secondaryEligible)]
       : [];
-    const secondary = accepted.slice(1, Math.max(1, Number(options.maxSuggestions) || 6));
-    const publicSuggestions = accepted.slice(0, Math.max(1, Number(options.maxSuggestions) || 6))
+    const suggestionLimit = Math.max(1, Number(options.maxSuggestions) || categoryData.length || 43);
+    const secondary = accepted.slice(1, suggestionLimit);
+    const publicSuggestions = accepted.slice(0, suggestionLimit)
       .map(({ _required, ...item }, index) => ({
         ...item,
         role: index === 0 ? 'primary' : 'secondary'
