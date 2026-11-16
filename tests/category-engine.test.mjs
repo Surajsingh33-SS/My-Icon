@@ -25,6 +25,7 @@ const categories = [
   { name: 'Security', description: 'Privacy and protection.' },
   { name: 'Shopping', description: 'Stores and products.' },
   { name: 'Sports', description: 'Sports and exercise.' },
+  { name: 'Sustainability', description: 'Renewable energy and environmental protection.' },
   { name: 'Time', description: 'Clocks and calendars.' },
   { name: 'Tools', description: 'Tools and repair.' },
   { name: 'Transportation', description: 'Vehicles and transport.' },
@@ -32,7 +33,7 @@ const categories = [
 ];
 
 assert.ok(Engine, 'shared classifier should expose a global API');
-assert.equal(Engine.version, 8);
+assert.equal(Engine.version, 9);
 
 function top(name, metadata = {}, options = {}) {
   return Engine.classify(name, metadata, {}, {
@@ -194,13 +195,16 @@ test('zap and zap-off are assigned to electrical devices rather than weather', (
   }
 });
 
-test('wind and directional wind arrows use distinct categories', () => {
-  const wind = top('wind');
-  assert.deepEqual(wind.categories, ['Weather']);
+test('wind-arrow icons retain precise Arrows plus Weather and Sustainability discovery', () => {
   for (const name of ['wind-arrow-up', 'wind-arrow-down']) {
     const result = top(name);
-    assert.deepEqual(result.categories, ['Arrows']);
+    assert.equal(result.primaryCategory, 'Arrows');
+    assert.deepEqual(result.secondaryCategories, ['Weather', 'Sustainability']);
   }
+  const wind = top('wind');
+  assert.equal(wind.primaryCategory, 'Weather');
+  assert.ok(wind.categories.includes('Sustainability'));
+  assert.equal(wind.categories.includes('Arrows'), false);
 });
 
 test('worm is kept in Animals without weak unrelated secondary suggestions', () => {
