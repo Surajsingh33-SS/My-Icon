@@ -6,9 +6,10 @@ import { loadVisualModel, getIconVisualScores, VISUAL_MODEL_ID } from './visual-
 
 const Engine = window.IconCategoryEngine;
 const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
-const BATCH_SIZE = 18;
-// Keep a small number of CLIP jobs in flight to improve throughput without
-// overwhelming browser memory or the ONNX runtime.
+const BATCH_SIZE = 25;
+// Text-only benchmark: four independent inference workers share each 25-icon batch.
+// Keep visual processing separate; its existing concurrency remains unchanged.
+const TEXT_CONCURRENCY = 4;
 const VISUAL_CONCURRENCY = 6;
 const DB_NAME = 'icon-maker-ai-categorization';
 const STORE_NAME = 'results';
@@ -243,8 +244,27 @@ async function runTextBenchmark() {
       const names = pendingNames.slice(0, BATCH_SIZE);
       if (!names.length) break;
       const descriptions = createIconDescriptions(names);
-      const output = await extractor(descriptions, { pooling: 'mean', normalize: true });
-      const vectors = output.tolist();
+      const vectors = new Array(names.length);
+      let workerCursor = 0;
+      const workerCount = Math.min(TEXT_CONCURRENCY, names.length);
+      const textWorker = async () => {
+        while (true) {
+          const start = workerCursor;
+          workerCursor += Math.ceil(names.length / workerCount);
+          if (start >= names.length) return;
+          const end = Math.min(names.length, start + Math.ceil(names.length / workerCount));
+          const output = await extractor(descriptions.slice(start, end), {
+            pooling: 'mean',
+            normalize: true
+          });
+          output.tolist().forEach((vector, offset) => {
+            vectors[start + offset] = vector;
+          });
+          // Each worker handles one slice of this batch; no icon is processed twice.
+          if (workerCursor >= names.length) return;
+        }
+      };
+      await Promise.all(Array.from({ length: workerCount }, () => textWorker()));
       const existingByName = new Map(existingRecords.map(record => [record.name, record]));
       const checkpoints = [];
       for (let index = 0; index < names.length; index++) {
