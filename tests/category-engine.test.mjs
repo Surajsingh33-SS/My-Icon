@@ -267,6 +267,7 @@ test('maps Lucide official categories into a richer Icon Maker taxonomy', () => 
 test('maps finance and layout official categories without semantic drift', () => {
   const currency = top('euro', { lucide: { categories: ['finance'] } });
   assert.ok(currency.categories.includes('Finance'));
+  assert.equal(currency.primaryCategory, 'Finance');
   assert.equal(currency.categories.includes('Arrows'), false);
   const expand = top('expand', { lucide: { categories: ['arrows', 'layout'] } });
   assert.ok(expand.categories.includes('Arrows'));
@@ -282,7 +283,7 @@ test('recognizes emoji family as expressions rather than forcing generic People'
 test('maps exclamation mark to typography and communication, not People', () => {
   const result = top('exclamation-mark', { lucide: { categories: ['letters-digits', 'text', 'notifications'] } });
   assert.ok(result.categories.includes('Letters & digits'));
-  assert.ok(result.categories.includes('Communication'));
+  assert.ok(result.categories.includes('Notifications'));
   assert.equal(result.categories.includes('People'), false);
 });
 
