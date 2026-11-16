@@ -100,6 +100,10 @@ export const CATEGORY_DATA = [
     "description": "People, users, profiles, groups and teams."
   },
   {
+    "name": "Social",
+    "description": "Social relationships, communities, identity, astrology and interpersonal concepts."
+  },
+  {
     "name": "Security",
     "description": "Security, privacy, locks and protection."
   },
