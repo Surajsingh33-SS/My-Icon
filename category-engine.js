@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  const VERSION = 12;
+  const VERSION = 13;
   const STOP = new Set([
     'icon','icons','outline','line','simple','symbol','small','large','left','right',
     'up','down','plus','minus','the','and','for','with','of','to','a','an'
@@ -94,6 +94,33 @@
     "travel":"Travel",
     "weather":"Weather"
   });
+
+  // Older broad category labels remain in category-data.js for compatibility,
+  // but when their newer, more precise categories exist, only the newer labels
+  // are emitted. This prevents duplicate/competing AI suggestions without
+  // deleting legacy category definitions or touching saved manual assignments.
+  const LEGACY_CATEGORY_REPLACEMENTS = {
+    'Design & layout': ['Design', 'Layout'],
+    'Development': ['Coding & development'],
+    'Typography': ['Letters & digits', 'Text formatting'],
+    'Math & symbols': ['Mathematics', 'Shapes'],
+    'Emoji & expressions': ['Emoji'],
+    'Audio & music': ['Multimedia'],
+    'Files': ['File icons'],
+    'Food & drink': ['Food & beverage'],
+    'Maps & travel': ['Navigation & places', 'Travel'],
+    'Media': ['Multimedia'],
+    'Health': ['Medical'],
+    'Time': ['Time & calendar']
+  };
+
+  function getActiveCategoryData(categoryData) {
+    const available = new Set(categoryData.map(item => item && item.name).filter(Boolean));
+    return categoryData.filter(category => {
+      const replacements = LEGACY_CATEGORY_REPLACEMENTS[category && category.name];
+      return !replacements || !replacements.some(name => available.has(name));
+    });
+  }
 
   // Curated discriminative concepts. These complement (never replace) authored
   // per-icon metadata and reduce accidental matches from broad category descriptions.
@@ -222,7 +249,8 @@
   }
 
   function classify(name, meta = {}, existing = {}, options = {}) {
-    const categoryData = Array.isArray(options.categoryData) ? options.categoryData : [];
+    const suppliedCategoryData = Array.isArray(options.categoryData) ? options.categoryData : [];
+    const categoryData = getActiveCategoryData(suppliedCategoryData);
     const lucide = meta && meta.lucide || {};
     const ai = meta && meta.ai || {};
     const metadataEdits = existing && existing.metadataEdits || {};
