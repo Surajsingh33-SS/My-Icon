@@ -607,6 +607,33 @@ async function renderResults(query = '') {
   }
 }
 
+async function exportAuditData() {
+  try {
+    const records = await getAllRecords();
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      engineVersion: Engine.version,
+      iconCount: iconNames.length,
+      categoryData: CATEGORY_DATA,
+      iconMetadata: ICON_METADATA,
+      results: records
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'icon-maker-full-catalog-audit-v' + Engine.version + '.json';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    $('status').textContent = 'Audit export created with ' + records.length +
+      ' saved records and metadata for ' + iconNames.length + ' icons. Upload the JSON here for full-catalog review.';
+  } catch (error) {
+    $('status').textContent = 'Could not export audit data: ' + error.message;
+  }
+}
+
 async function initialize() {
   try {
     if (!Engine || typeof Engine.classify !== 'function') {
@@ -621,6 +648,7 @@ async function initialize() {
   }
 }
 
+$('export-audit').addEventListener('click', exportAuditData);
 $('load').addEventListener('click', loadModel);
 $('load-visual').addEventListener('click', loadVisualAI);
 $('start').addEventListener('click', async () => {
