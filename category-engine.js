@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  const VERSION = 8;
+  const VERSION = 9;
   const STOP = new Set([
     'icon','icons','outline','line','simple','symbol','small','large','left','right',
     'up','down','plus','minus','the','and','for','with','of','to','a','an'
@@ -17,7 +17,7 @@
     files:'Files', food:'Food & drink', 'food-beverage':'Food & drink',
     gaming:'Gaming', health:'Health', home:'Home', maps:'Maps & travel',
     'maps-travel':'Maps & travel', media:'Media', nature:'Nature',
-    people:'People', security:'Security', shopping:'Shopping', sports:'Sports',
+    people:'People', security:'Security', shopping:'Shopping', sports:'Sports', sustainability:'Sustainability',
     time:'Time', tools:'Tools', transportation:'Transportation', weather:'Weather',
     'accessibility':'Accessibility', 'account':'People', 'account-user':'People',
     'animals-pets':'Animals', 'arrows-directions':'Arrows', 'audio-music':'Audio & music',
@@ -55,6 +55,7 @@
     'Security':['security','lock','unlock','password','key','shield','privacy','safe','secure','authentication','fingerprint','biometric','verified','certificate','keyhole','protection','alarm','警'],
     'Shopping':['shopping','cart','basket','bag','store','shop','product','package','parcel','delivery','shipping','barcode','tag','price tag','discount','coupon','gift','box','checkout','market','retail'],
     'Sports':['sport','sports','fitness','exercise','workout','athlete','ball','football','soccer','basketball','tennis','volleyball','baseball','golf','cycling','bicycle sport','swimming','medal','podium','running','weightlifting','dumbbell','yoga','skateboard','surfboard'],
+    'Sustainability':['sustainability','renewable energy','clean energy','wind energy','wind power','solar energy','solar power','environmental protection','climate action','eco friendly','green energy','energy efficiency','conservation','recycling','carbon neutral','carbon footprint'],
     'Time':['time','clock','watch time','calendar','date','schedule','alarm clock','timer','stopwatch','hourglass','history','duration','deadline','appointment','reminder','month','day','week'],
     'Tools':['tool','tools','wrench','hammer','screwdriver','saw','drill','gear','settings','cog','spanner','pliers','ruler','scissors','paintbrush','brush','pencil','pen','construction','repair','maintenance','tuning','sliders','utility'],
     'Transportation':['car','vehicle','truck','bus','train','railway','tram','airplane','plane','helicopter','ship','boat','sailboat','bicycle','bike','motorcycle','scooter','rocket','taxi','ambulance','fire truck','traffic','fuel','gas station','charging station'],
@@ -68,8 +69,8 @@
     { pattern: /^zodiac(?:-|$)/, suppress: true, reason: 'Astrology is not represented by the current category taxonomy.' },
     { pattern: /^zap(?:-off)?$/, allow: ['Devices'], force: ['Devices'], reason: 'Lightning/power indicator.' },
     { pattern: /^worm$/, allow: ['Animals'], reason: 'Animal/invertebrate icon.' },
-    { pattern: /^wind-arrow-(?:up|down)$/, allow: ['Arrows'], reason: 'Directional arrow icon.' },
-    { pattern: /^wind$/, allow: ['Weather'], reason: 'Wind/weather condition icon.' },
+    { pattern: /^wind-arrow-(?:up|down)$/, allow: ['Arrows', 'Weather', 'Sustainability'], reason: 'Directional wind indicator with weather and renewable-energy meaning.' },
+    { pattern: /^wind$/, allow: ['Weather', 'Sustainability'], reason: 'Wind/weather condition with environmental and renewable-energy meaning.' },
     { pattern: /^workflow$/, suppress: true, reason: 'Generic workflow concept has no reliable match in the current taxonomy.' },
     { pattern: /^wrench(?:-|$)/, allow: ['Tools'], reason: 'Tool family; not a person category.' }
   ];
