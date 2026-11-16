@@ -184,7 +184,7 @@ test('zodiac metadata maps to Social and Emoji rather than being blanket-suppres
   });
   assert.ok(result.categories.includes('Social'));
   assert.ok(result.categories.includes('Emoji'));
-  assert.ok(result.categories.includes('Notifications'));
+  assert.equal(result.categories.includes('Notifications'), false);
   assert.equal(result.categories.includes('Nature'), false);
   assert.equal(result.categories.includes('Weather'), false);
 });
