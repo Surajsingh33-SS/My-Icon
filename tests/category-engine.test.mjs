@@ -79,11 +79,11 @@ test('recognizes distinct icon concepts from names', () => {
     ['dog', 'Animals'],
     ['wifi', 'Connectivity'],
     ['file-pdf', 'File icons'],
-    ['coffee', 'Food & drink'],
+    ['coffee', 'Food & beverage'],
     ['shield-check', 'Security'],
-    ['calendar-days', 'Time'],
+    ['calendar-days', 'Time & calendar'],
     ['car-front', 'Transportation'],
-    ['camera', 'Media'],
+    ['camera', 'Multimedia'],
     ['accessibility', 'Accessibility']
   ];
   for (const [name, expected] of cases) {
