@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  const VERSION = 10;
+  const VERSION = 11;
   const STOP = new Set([
     'icon','icons','outline','line','simple','symbol','small','large','left','right',
     'up','down','plus','minus','the','and','for','with','of','to','a','an'
@@ -34,7 +34,7 @@
     'photography':'Photography', 'science':'Science', 'math':'Math & symbols',
     'shapes':'Math & symbols', 'emoji':'Emoji & expressions',
     'finance':'Business', 'charts':'Business', 'mail':'Communication',
-    'notifications':'Communication', 'social':'People', 'navigation':'Maps & travel',
+    'notifications':'Communication', 'social':'Social', 'navigation':'Maps & travel',
     'travel':'Maps & travel', 'multimedia':'Media', 'medical':'Health',
     'seasons':'Nature'
   };
@@ -49,13 +49,14 @@
     'Science':['science','scientific','microscope','laboratory','lab','chemistry','biology','physics','atom','molecule','dna','experiment','specimen','telescope'],
     'Math & symbols':['math','mathematics','calculate','equation','plus','minus','multiply','divide','equals','percent','infinity','pi','sigma','integral','root','symbol','shape','geometry','circle','square','triangle'],
     'Emoji & expressions':['emoji','emoticon','expression','grinning','smile','smiling','laugh','laughing','angry','sad','happy','happiness','mood','feeling','reaction','face'],
+    'Social':['social','astrology','zodiac','horoscope','star sign','constellation','personality','compatibility','relationship','friendship','community','networking','duality','adaptability'],
     'Accessibility':['accessibility','wheelchair','assistive','screen reader','hearing impaired','visual impairment','disability','braille','captions','closed captions','sign language'],
     'Animals':['animal','pet','dog','cat','bird','fish','whale','horse','paw','wildlife','insect','bug','butterfly','rabbit','turtle','snake','bear','fox','deer','pig','cow','sheep','dinosaur'],
     'Arrows':['arrow','chevron','caret','direction','north','south','east','west','diagonal','rotate','turn','redirect','undo','redo','move','transfer','swap','shuffle','sort'],
     'Audio & music':['audio','music','sound','volume','speaker','headphone','headphones','microphone','mic','waveform','equalizer','playlist','radio','podcast','mute','song','guitar','piano','drum'],
     'Buildings':['building','office','skyscraper','factory','warehouse','school','hospital building','church','temple','mosque','bank building','stadium','hotel','apartment','house building'],
     'Business':['business','briefcase','work','finance','financial','bank','payment','invoice','receipt','wallet','cash','money','currency','coin','credit card','debit card','tax','investment','chart','sales','contract','calculator','budget'],
-    'Communication':['message','chat','comment','conversation','mail','email','inbox','phone call','call','voicemail','notification','bell','send','reply','mention','sms','message bubble','speech bubble','contact'],
+    'Communication':['message','chat','comment','conversation','communication','mail','email','inbox','phone call','call','voicemail','notification','bell','send','reply','mention','sms','message bubble','speech bubble','contact'],
     'Connectivity':['wifi','wi-fi','wifi signal','wireless','wireless network','connect to the internet','bluetooth','network','internet','signal','antenna','router','ethernet','connection','satellite','hotspot','cellular','rss'],
     'Devices':['computer','laptop','desktop','monitor','keyboard','mouse','phone','smartphone','tablet','printer','server','cpu','chip','hard drive','usb','webcam','watch','device','battery','plug','charger'],
     'Files':['file','folder','document','paper','page','pdf','spreadsheet','archive','zip','attachment','clipboard','notebook','directory','file type','copy file'],
@@ -66,7 +67,7 @@
     'Maps & travel':['map','location','pin','marker','compass','globe','world','navigation','route','destination','landmark','country','city','travel','trip','journey','passport','suitcase','luggage','ticket','hotel booking','mountain map'],
     'Media':['image','photo','picture','camera','video','film','movie','gallery','landscape photo','image file','aperture','shutter','frame','crop','scan','slideshow','projector','clapperboard'],
     'Nature':['nature','plant','tree','flower','leaf','forest','grass','seedling','cactus','mushroom','earth','environment','recycle','mountain','volcano','ocean','sea','river','lake','sun','moon','star','cloud','rainbow','wind','snowflake','fire','water drop'],
-    'People':['person','people','user','users','profile','avatar','account','team','group','family','man','woman','child','baby','human','face','smile','contact','employee','customer','guest','person standing'],
+    'People':['person','people','user','users','profile','avatar','account','team','group','family','twin','twins','man','woman','child','baby','human','face','smile','contact','employee','customer','guest','person standing'],
     'Security':['security','lock','unlock','password','key','shield','privacy','safe','secure','authentication','fingerprint','biometric','verified','certificate','keyhole','protection','alarm','hide','conceal','mask','hidden','invisible','privacy mode','stealth','restricted','警'],
     'Shopping':['shopping','cart','basket','bag','store','shop','product','package','parcel','delivery','shipping','barcode','tag','price tag','discount','coupon','gift','box','checkout','market','retail'],
     'Sports':['sport','sports','fitness','exercise','workout','athlete','ball','football','soccer','basketball','tennis','volleyball','baseball','golf','cycling','bicycle sport','swimming','medal','podium','running','weightlifting','dumbbell','yoga','skateboard','surfboard'],
@@ -81,7 +82,7 @@
   // embeddings cannot reliably distinguish. These rules only affect the named
   // families; all other icons continue through the evidence-based classifier.
   const ICON_CATEGORY_RULES = [
-    { pattern: /^zodiac(?:-|$)/, suppress: true, reason: 'Astrology is not represented by the current category taxonomy.' },
+    { pattern: /^zodiac(?:-|$)/, allow: ['Social', 'Emoji & expressions', 'Communication', 'People'], reason: 'Zodiac symbols have social/astrology and emoji meanings; individual tags may support communication or people.' },
     { pattern: /^zap(?:-off)?$/, allow: ['Devices'], force: ['Devices'], reason: 'Lightning/power indicator.' },
     { pattern: /^camera$/, allow: ['Photography', 'Media'], force: ['Photography', 'Media'], reason: 'Camera used for photography and image/media capture.' },
     { pattern: /^worm$/, allow: ['Animals'], force: ['Animals'], reason: 'Animal/invertebrate icon.' },
@@ -253,7 +254,8 @@
           ? Math.min(minimum, confidence * 0.90)
           : minimum;
       const independentTextSupport = matchedTextSources.size >= 2;
-      const secondaryEligible = forcedByRule || isOfficial ||
+      const directMetadataSupport = tagScore >= 0.20 || aliasScore >= 0.16 || useCaseScore >= 0.19;
+      const secondaryEligible = forcedByRule || isOfficial || directMetadataSupport ||
         (lexical >= 0.30 && independentTextSupport) ||
         modelAgreement;
       return {
