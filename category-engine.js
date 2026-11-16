@@ -227,7 +227,7 @@
           ? Math.min(minimum, confidence * 0.90)
           : minimum;
       const independentTextSupport = matchedTextSources.size >= 2;
-      const secondaryEligible = isOfficial ||
+      const secondaryEligible = forcedByRule || isOfficial ||
         (lexical >= 0.30 && independentTextSupport) ||
         modelAgreement;
       return {
