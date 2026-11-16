@@ -172,7 +172,7 @@
     { pattern: /^workflow$/, suppress: true, reason: 'Generic workflow concept has no reliable match in the current taxonomy.' },
     { pattern: /^wrench(?:-|$)/, allow: ['Tools'], reason: 'Tool family; not a person category.' },
     { pattern: /^eye(?:-|$)/, allow: ['Accessibility', 'Security', 'Photography', 'Design', 'Layout', 'Design & layout'], reason: 'Eye family: visibility, privacy and visual access.' },
-    { pattern: /^expand$/, allow: ['Arrows', 'Design & layout'], reason: 'Expand/collapse and interface layout control.' },
+    { pattern: /^expand$/, allow: ['Arrows', 'Layout', 'Design & layout'], reason: 'Expand/collapse and interface layout control.' },
     { pattern: /^euro$/, allow: ['Business'], force: ['Business'], reason: 'Currency symbol; finance category.' },
     { pattern: /^exclamation-mark$/, allow: ['Letters & digits', 'Text formatting', 'Notifications', 'Typography', 'Communication'], reason: 'Punctuation symbol used for emphasis and alerts.' }
   ];
