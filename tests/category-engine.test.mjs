@@ -4,7 +4,14 @@ import '../category-engine.js';
 
 const Engine = globalThis.IconCategoryEngine;
 const categories = [
-  { name: 'Accessibility', description: 'Accessibility and assistive technology.' },
+  { name: 'Design & layout', description: 'Interface composition, alignment and layout.' },
+  { name: 'Development', description: 'Programming, source control and code.' },
+  { name: 'Typography', description: 'Text, fonts, letters and punctuation.' },
+  { name: 'Photography', description: 'Viewing, cameras and photographic controls.' },
+  { name: 'Science', description: 'Scientific concepts and laboratory equipment.' },
+  { name: 'Math & symbols', description: 'Mathematics and geometric symbols.' },
+  { name: 'Emoji & expressions', description: 'Emoji, facial expressions and reactions.' },
+  { name: 'Accessibility', description: 'Accessibility and assistive technology.'
   { name: 'Animals', description: 'Animals, pets and wildlife.' },
   { name: 'Arrows', description: 'Direction and movement.' },
   { name: 'Audio & music', description: 'Music and sound.' },
@@ -33,7 +40,7 @@ const categories = [
 ];
 
 assert.ok(Engine, 'shared classifier should expose a global API');
-assert.equal(Engine.version, 9);
+assert.equal(Engine.version, 10);
 
 function top(name, metadata = {}, options = {}) {
   return Engine.classify(name, metadata, {}, {
@@ -215,4 +222,41 @@ test('worm is kept in Animals without weak unrelated secondary suggestions', () 
 test('generic workflow is not assigned a weak connectivity category', () => {
   const result = top('workflow');
   assert.deepEqual(result.suggestions, []);
+});
+
+
+test('maps Lucide official categories into a richer Icon Maker taxonomy', () => {
+  const result = top('eye', { lucide: { categories: ['accessibility', 'photography', 'design', 'security'] } });
+  assert.deepEqual(result.officialCategories, ['Accessibility', 'Photography', 'Design & layout', 'Security']);
+  assert.equal(result.suggestions.some(item => item.name === 'Devices'), false);
+});
+
+test('maps finance and layout official categories without semantic drift', () => {
+  const currency = top('euro', { lucide: { categories: ['finance'] } });
+  assert.ok(currency.categories.includes('Business'));
+  assert.equal(currency.categories.includes('Arrows'), false);
+  const expand = top('expand', { lucide: { categories: ['arrows', 'layout'] } });
+  assert.ok(expand.categories.includes('Arrows'));
+  assert.ok(expand.categories.includes('Design & layout'));
+  assert.equal(expand.categories.includes('Business'), false);
+});
+
+test('recognizes emoji family as expressions rather than forcing generic People', () => {
+  const result = top('face-grinning', { lucide: { categories: ['emoji'], tags: ['happy', 'laugh', 'broad smile'] } });
+  assert.ok(result.categories.includes('Emoji & expressions'));
+});
+
+test('maps exclamation mark to typography and communication, not People', () => {
+  const result = top('exclamation-mark', { lucide: { categories: ['letters-digits', 'text', 'notifications'] } });
+  assert.ok(result.categories.includes('Typography'));
+  assert.ok(result.categories.includes('Communication'));
+  assert.equal(result.categories.includes('People'), false);
+});
+
+test('eye modifiers avoid arrow and device false positives', () => {
+  for (const name of ['eye-closed', 'eye-dashed', 'eye-off']) {
+    const result = top(name, { lucide: { tags: ['hide', 'conceal', 'mask', 'hidden', 'invisible'] }, ai: { searchTerms: ['eye', 'hide', 'privacy', 'conceal'] } });
+    assert.equal(result.categories.includes('Arrows'), false, name);
+    assert.equal(result.categories.includes('Devices'), false, name);
+  }
 });
