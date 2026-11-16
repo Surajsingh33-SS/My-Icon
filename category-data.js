@@ -134,5 +134,93 @@ export const CATEGORY_DATA = [
   {
     "name": "Weather",
     "description": "Weather, climate and temperature."
+  },
+  {
+    "name": "Accounts & access",
+    "description": "User accounts, sign-in, authentication, account management and access permissions."
+  },
+  {
+    "name": "Charts",
+    "description": "Charts, graphs, plots, analytics, statistics and data visualization."
+  },
+  {
+    "name": "Cursors",
+    "description": "Mouse pointers, cursor states, selection pointers and pointing devices."
+  },
+  {
+    "name": "Design",
+    "description": "Graphic design, visual design, color, palettes, creative tools and styling."
+  },
+  {
+    "name": "Coding & development",
+    "description": "Programming, coding, software development, source code, Git and developer workflows."
+  },
+  {
+    "name": "Emoji",
+    "description": "Emoji, emoticons, facial expressions, moods and reactions."
+  },
+  {
+    "name": "File icons",
+    "description": "Files, folders, file formats, documents and attachments."
+  },
+  {
+    "name": "Finance",
+    "description": "Money, currency, banking, payments, budgets, investments, taxes and accounting."
+  },
+  {
+    "name": "Food & beverage",
+    "description": "Food, meals, ingredients, cooking, restaurants and beverages."
+  },
+  {
+    "name": "Layout",
+    "description": "Interface layout, grids, alignment, panels, spacing, resizing and composition."
+  },
+  {
+    "name": "Letters & digits",
+    "description": "Letters, alphabets, digits, numerals, characters and punctuation symbols."
+  },
+  {
+    "name": "Mail",
+    "description": "Email, mail, inbox, envelopes, correspondence and mailing."
+  },
+  {
+    "name": "Mathematics",
+    "description": "Mathematics, calculations, equations, arithmetic, geometry and mathematical notation."
+  },
+  {
+    "name": "Medical",
+    "description": "Medical care, healthcare, doctors, clinical equipment, treatment and wellness."
+  },
+  {
+    "name": "Multimedia",
+    "description": "Images, photography, video, audio, music, playback and media controls."
+  },
+  {
+    "name": "Navigation & places",
+    "description": "Maps, places, locations, landmarks, directions, routes and geography."
+  },
+  {
+    "name": "Notifications",
+    "description": "Notifications, alerts, reminders, warnings, badges and status updates."
+  },
+  {
+    "name": "Seasons",
+    "description": "Seasons, seasonal weather, spring, summer, autumn, winter and seasonal events."
+  },
+  {
+    "name": "Shapes",
+    "description": "Geometric shapes, basic forms, polygons, circles, squares and spatial forms."
+  },
+  {
+    "name": "Text formatting",
+    "description": "Text formatting, rich text, paragraph styles, lists, alignment and editing."
+  },
+  {
+    "name": "Time & calendar",
+    "description": "Time, clocks, calendars, dates, schedules, timers and reminders."
+  },
+  {
+    "name": "Travel",
+    "description": "Travel, trips, journeys, luggage, passports, tickets and accommodation."
   }
 ];
