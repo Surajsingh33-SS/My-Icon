@@ -11,7 +11,7 @@ const categories = [
   { name: 'Science', description: 'Scientific concepts and laboratory equipment.' },
   { name: 'Math & symbols', description: 'Mathematics and geometric symbols.' },
   { name: 'Emoji & expressions', description: 'Emoji, facial expressions and reactions.' },
-  { name: 'Accessibility', description: 'Accessibility and assistive technology.'
+  { name: 'Accessibility', description: 'Accessibility and assistive technology.' },
   { name: 'Animals', description: 'Animals, pets and wildlife.' },
   { name: 'Arrows', description: 'Direction and movement.' },
   { name: 'Audio & music', description: 'Music and sound.' },
