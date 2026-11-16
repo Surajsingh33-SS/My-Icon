@@ -41,13 +41,13 @@ const categories = [
 ];
 
 assert.ok(Engine, 'shared classifier should expose a global API');
-assert.equal(Engine.version, 11);
+assert.equal(Engine.version, 12);
 
 function top(name, metadata = {}, options = {}) {
   return Engine.classify(name, metadata, {}, {
     categoryData: categories,
     threshold: 0.30,
-    maxSuggestions: 8,
+    maxSuggestions: 43,
     ...options
   });
 }
