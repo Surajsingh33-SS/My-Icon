@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Icon Maker PRO — AI Prediction Review</title>
+<style>
+:root{color-scheme:dark;font:14px system-ui;background:#0c0e14;color:#e7eaf2}
+*{box-sizing:border-box}body{max-width:1250px;margin:24px auto;padding:0 18px}
+h1{font-size:25px;margin:0 0 6px}.muted{color:#aab3c5}.panel{background:#151923;border:1px solid #2a3040;border-radius:12px;padding:16px;margin:14px 0}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,input,select{background:#202637;color:#eef;border:1px solid #39445c;border-radius:7px;padding:9px 11px}
+button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:#365b9d}
+input[type=search]{min-width:230px;flex:1}.stats{display:flex;gap:20px;flex-wrap:wrap;margin:12px 0}
+.stats b{display:block;font-size:22px}.notice{line-height:1.5}.warning{color:#f6c979}
+progress{width:100%;height:11px}.item{border-top:1px solid #30384a;padding:16px 0}
+.item h3{display:inline-block;margin:0 10px 8px 0;font-size:16px}.tag{color:#9cc7ff}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #3a455c;padding:6px 9px;border-radius:20px}
+.chip input{padding:0;margin:0}.chip small{color:#aab3c5}.section-label{font-weight:600;margin-top:12px}
+.item-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0}
+.empty{padding:25px 0;color:#aab3c5}.status{white-space:pre-wrap;line-height:1.5}
+@media(max-width:650px){body{padding:0 10px}.panel{padding:12px}.stats{gap:12px}}
+</style>
+</head>
+<body>
+<h1>Icon Maker PRO — AI Prediction Review</h1>
+<p class="muted notice">A non-destructive importer and human-review workspace for the icon prediction export. Similarity scores are not probabilities. Imported suggestions never overwrite manual category decisions. Importing does not assign categories to Gallery icons; approve each reviewed assignment explicitly.</p>
+<section class="panel">
+  <div class="controls">
+    <label for="prediction-file">Prediction JSON</label>
+    <input id="prediction-file" type="file" accept=".json,application/json">
+    <button id="import-btn" class="primary" disabled>Import predictions</button>
+    <button id="export-btn">Export review backup</button>
+  </div>
+  <p id="status" class="muted status">Choose your icon-category-predictions JSON export. No model download or benchmark run is required.</p>
+  <div class="stats">
+    <span><b id="total">0</b>Total icons</span>
+    <span><b id="with-predictions">0</b>With predictions</span>
+    <span><b id="without-predictions">0</b>Without predictions</span>
+    <span><b id="reviewed">0</b>Manually reviewed</span>
+    <span><b id="imported">No</b>Prediction file imported</span>
+  </div>
+  <progress id="progress" value="0" max="2055"></progress>
+</section>
+<section class="panel">
+  <div class="controls">
+    <input id="search" type="search" placeholder="Search icon names…">
+    <select id="filter">
+      <option value="all">All icons</option><option value="suggestions">Has AI suggestions</option>
+      <option value="empty">No AI suggestions</option><option value="unreviewed">Not manually reviewed</option>
+      <option value="reviewed">Manually reviewed</option>
+    </select>
+    <select id="sort">
+      <option value="name">Name A–Z</option><option value="score">Highest top similarity</option>
+      <option value="ambiguous">Most ambiguous top two</option><option value="lowest">Lowest top similarity</option>
+      <option value="reviewed">Reviewed first</option>
+    </select>
+  </div>
+  <div class="pagination"><button id="previous">Previous</button><span id="page-label" class="muted">Page 1</span><button id="next">Next</button></div>
+  <div id="results"></div>
+  <div class="pagination"><button id="previous-bottom">Previous</button><span id="page-label-bottom" class="muted">Page 1</span><button id="next-bottom">Next</button></div>
+</section>
+<script type="module" src="./ai-prediction-review.js"></script>
+</body>
+</html>
