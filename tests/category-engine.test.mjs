@@ -184,7 +184,7 @@ test('zodiac metadata maps to Social and Emoji rather than being blanket-suppres
   });
   assert.ok(result.categories.includes('Social'));
   assert.ok(result.categories.includes('Emoji'));
-  assert.ok(result.categories.includes('Communication'));
+  assert.ok(result.categories.includes('Notifications'));
   assert.equal(result.categories.includes('Nature'), false);
   assert.equal(result.categories.includes('Weather'), false);
 });
@@ -266,22 +266,22 @@ test('maps Lucide official categories into a richer Icon Maker taxonomy', () => 
 
 test('maps finance and layout official categories without semantic drift', () => {
   const currency = top('euro', { lucide: { categories: ['finance'] } });
-  assert.ok(currency.categories.includes('Business'));
+  assert.ok(currency.categories.includes('Finance'));
   assert.equal(currency.categories.includes('Arrows'), false);
   const expand = top('expand', { lucide: { categories: ['arrows', 'layout'] } });
   assert.ok(expand.categories.includes('Arrows'));
-  assert.ok(expand.categories.includes('Design & layout'));
+  assert.ok(expand.categories.includes('Layout'));
   assert.equal(expand.categories.includes('Business'), false);
 });
 
 test('recognizes emoji family as expressions rather than forcing generic People', () => {
   const result = top('face-grinning', { lucide: { categories: ['emoji'], tags: ['happy', 'laugh', 'broad smile'] } });
-  assert.ok(result.categories.includes('Emoji & expressions'));
+  assert.ok(result.categories.includes('Emoji'));
 });
 
 test('maps exclamation mark to typography and communication, not People', () => {
   const result = top('exclamation-mark', { lucide: { categories: ['letters-digits', 'text', 'notifications'] } });
-  assert.ok(result.categories.includes('Typography'));
+  assert.ok(result.categories.includes('Letters & digits'));
   assert.ok(result.categories.includes('Communication'));
   assert.equal(result.categories.includes('People'), false);
 });
