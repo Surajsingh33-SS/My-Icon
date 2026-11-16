@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  const VERSION = 9;
+  const VERSION = 10;
   const STOP = new Set([
     'icon','icons','outline','line','simple','symbol','small','large','left','right',
     'up','down','plus','minus','the','and','for','with','of','to','a','an'
@@ -28,12 +28,27 @@
     'maps-navigation':'Maps & travel', 'media-images':'Media', 'nature-environment':'Nature',
     'people-users':'People', 'security-privacy':'Security', 'shopping-commerce':'Shopping',
     'sports-fitness':'Sports', 'time-date':'Time', 'tools-utilities':'Tools',
-    'transportation-vehicles':'Transportation'
+    'transportation-vehicles':'Transportation',
+    'design':'Design & layout', 'layout':'Design & layout', 'cursors':'Design & layout',
+    'development':'Development', 'text':'Typography', 'letters-digits':'Typography',
+    'photography':'Photography', 'science':'Science', 'math':'Math & symbols',
+    'shapes':'Math & symbols', 'emoji':'Emoji & expressions',
+    'finance':'Business', 'charts':'Business', 'mail':'Communication',
+    'notifications':'Communication', 'social':'People', 'navigation':'Maps & travel',
+    'travel':'Maps & travel', 'multimedia':'Media', 'medical':'Health',
+    'seasons':'Nature'
   };
 
   // Curated discriminative concepts. These complement (never replace) authored
   // per-icon metadata and reduce accidental matches from broad category descriptions.
   const TERMS = {
+    'Design & layout':['design','layout','align','alignment','grid','panel','columns','rows','resize','scale','fullscreen','maximize','minimize','canvas','spacing','position','interface','ui'],
+    'Development':['development','code','coding','programming','git','branch','commit','merge','pull request','terminal','command line','braces','bracket','variable','function','workflow','database','api','bug','debug'],
+    'Typography':['text','typography','font','typeface','letter','letters','digit','number','punctuation','uppercase','lowercase','heading','paragraph','quote','exclamation','question mark','at sign','hashtag'],
+    'Photography':['photography','photo','camera','lens','aperture','shutter','viewfinder','exposure','image capture','focus','picture','visibility','view','eye'],
+    'Science':['science','scientific','microscope','laboratory','lab','chemistry','biology','physics','atom','molecule','dna','experiment','specimen','telescope'],
+    'Math & symbols':['math','mathematics','calculate','equation','plus','minus','multiply','divide','equals','percent','infinity','pi','sigma','integral','root','symbol','shape','geometry','circle','square','triangle'],
+    'Emoji & expressions':['emoji','emoticon','expression','grinning','smile','smiling','laugh','laughing','angry','sad','happy','happiness','mood','feeling','reaction','face'],
     'Accessibility':['accessibility','wheelchair','assistive','screen reader','hearing impaired','visual impairment','disability','braille','captions','closed captions','sign language'],
     'Animals':['animal','pet','dog','cat','bird','fish','whale','horse','paw','wildlife','insect','bug','butterfly','rabbit','turtle','snake','bear','fox','deer','pig','cow','sheep','dinosaur'],
     'Arrows':['arrow','chevron','caret','direction','north','south','east','west','diagonal','rotate','turn','redirect','undo','redo','move','transfer','swap','shuffle','sort'],
@@ -72,7 +87,11 @@
     { pattern: /^wind-arrow-(?:up|down)$/, allow: ['Arrows', 'Weather', 'Sustainability'], force: ['Arrows', 'Weather', 'Sustainability'], reason: 'Directional wind indicator with weather and renewable-energy meaning.' },
     { pattern: /^wind$/, allow: ['Weather', 'Sustainability'], force: ['Weather', 'Sustainability'], reason: 'Wind/weather condition with environmental and renewable-energy meaning.' },
     { pattern: /^workflow$/, suppress: true, reason: 'Generic workflow concept has no reliable match in the current taxonomy.' },
-    { pattern: /^wrench(?:-|$)/, allow: ['Tools'], reason: 'Tool family; not a person category.' }
+    { pattern: /^wrench(?:-|$)/, allow: ['Tools'], reason: 'Tool family; not a person category.' },
+    { pattern: /^eye(?:-|$)/, allow: ['Accessibility', 'Security', 'Photography'], reason: 'Eye family: visibility, privacy and visual access.' },
+    { pattern: /^expand$/, allow: ['Arrows', 'Design & layout'], reason: 'Expand/collapse and interface layout control.' },
+    { pattern: /^euro$/, allow: ['Business'], force: ['Business'], reason: 'Currency symbol; finance category.' },
+    { pattern: /^exclamation-mark$/, allow: ['Typography', 'Communication'], reason: 'Punctuation symbol used for emphasis and alerts.' }
   ];
 
   function normalize(value) {
