@@ -69,8 +69,8 @@
     { pattern: /^zodiac(?:-|$)/, suppress: true, reason: 'Astrology is not represented by the current category taxonomy.' },
     { pattern: /^zap(?:-off)?$/, allow: ['Devices'], force: ['Devices'], reason: 'Lightning/power indicator.' },
     { pattern: /^worm$/, allow: ['Animals'], reason: 'Animal/invertebrate icon.' },
-    { pattern: /^wind-arrow-(?:up|down)$/, allow: ['Arrows', 'Weather', 'Sustainability'], reason: 'Directional wind indicator with weather and renewable-energy meaning.' },
-    { pattern: /^wind$/, allow: ['Weather', 'Sustainability'], reason: 'Wind/weather condition with environmental and renewable-energy meaning.' },
+    { pattern: /^wind-arrow-(?:up|down)$/, allow: ['Arrows', 'Weather', 'Sustainability'], force: ['Arrows', 'Weather', 'Sustainability'], reason: 'Directional wind indicator with weather and renewable-energy meaning.' },
+    { pattern: /^wind$/, allow: ['Weather', 'Sustainability'], force: ['Weather', 'Sustainability'], reason: 'Wind/weather condition with environmental and renewable-energy meaning.' },
     { pattern: /^workflow$/, suppress: true, reason: 'Generic workflow concept has no reliable match in the current taxonomy.' },
     { pattern: /^wrench(?:-|$)/, allow: ['Tools'], reason: 'Tool family; not a person category.' }
   ];
