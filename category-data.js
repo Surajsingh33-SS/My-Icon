@@ -84,6 +84,10 @@ export const CATEGORY_DATA = [
     "description": "Sports, exercise and athletics."
   },
   {
+    "name": "Sustainability",
+    "description": "Sustainability, renewable energy, clean energy, environmental protection and climate-friendly technology."
+  },
+  {
     "name": "Time",
     "description": "Clocks, calendars, schedules and dates."
   },
