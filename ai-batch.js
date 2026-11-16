@@ -626,7 +626,7 @@ async function exportAuditData() {
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     $('status').textContent = 'Audit export created with ' + records.length +
       ' saved records and metadata for ' + iconNames.length + ' icons. Upload the JSON here for full-catalog review.';
   } catch (error) {
