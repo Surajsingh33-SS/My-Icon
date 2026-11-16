@@ -83,7 +83,7 @@ test('recognizes distinct icon concepts from names', () => {
     ['shield-check', 'Security'],
     ['calendar-days', 'Time & calendar'],
     ['car-front', 'Transportation'],
-    ['camera', 'Multimedia'],
+    ['camera', 'Photography'],
     ['accessibility', 'Accessibility']
   ];
   for (const [name, expected] of cases) {
