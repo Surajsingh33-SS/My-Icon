@@ -78,7 +78,7 @@ test('recognizes distinct icon concepts from names', () => {
   const cases = [
     ['dog', 'Animals'],
     ['wifi', 'Connectivity'],
-    ['file-pdf', 'Files'],
+    ['file-pdf', 'File icons'],
     ['coffee', 'Food & drink'],
     ['shield-check', 'Security'],
     ['calendar-days', 'Time'],
