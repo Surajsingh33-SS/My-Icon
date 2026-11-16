@@ -37,7 +37,29 @@ const categories = [
   { name: 'Time', description: 'Clocks and calendars.' },
   { name: 'Tools', description: 'Tools and repair.' },
   { name: 'Transportation', description: 'Vehicles and transport.' },
-  { name: 'Weather', description: 'Weather and climate.' }
+  { name: 'Weather', description: 'Weather and climate.' },
+  { name: "Accounts & access", description: "Accounts and permissions." },
+  { name: "Charts", description: "Charts and data visualization." },
+  { name: "Cursors", description: "Pointers and cursors." },
+  { name: "Design", description: "Visual design." },
+  { name: "Coding & development", description: "Software development." },
+  { name: "Emoji", description: "Emoji and emoticons." },
+  { name: "File icons", description: "Files and folders." },
+  { name: "Finance", description: "Money and banking." },
+  { name: "Food & beverage", description: "Food and drinks." },
+  { name: "Layout", description: "Interface layout." },
+  { name: "Letters & digits", description: "Letters and digits." },
+  { name: "Mail", description: "Email and mail." },
+  { name: "Mathematics", description: "Mathematics." },
+  { name: "Medical", description: "Medical care." },
+  { name: "Multimedia", description: "Audio and video media." },
+  { name: "Navigation & places", description: "Maps and places." },
+  { name: "Notifications", description: "Alerts and notifications." },
+  { name: "Seasons", description: "Seasonal concepts." },
+  { name: "Shapes", description: "Geometric shapes." },
+  { name: "Text formatting", description: "Text formatting." },
+  { name: "Time & calendar", description: "Time and calendars." },
+  { name: "Travel", description: "Travel and journeys." }
 ];
 
 assert.ok(Engine, 'shared classifier should expose a global API');
