@@ -227,7 +227,13 @@
         (emb >= 0.58 && vis >= 0.38 ? 0.24 : 0) +
         (isOfficial ? 0.58 : 0)
       );
-      if (forcedByRule) confidence = Math.max(confidence, 0.72);
+      if (forcedByRule) {
+        const forcedOrder = iconRule.force.indexOf(categoryName);
+        // Preserve the intentional order of curated rules: the first forced
+        // category is primary, later forced categories are secondary.
+        const curatedPriority = Math.max(0.72, 0.84 - Math.max(0, forcedOrder) * 0.04);
+        confidence = Math.max(confidence, curatedPriority);
+      }
 
       // Model similarity alone cannot create a category. Official category metadata
       // is strong evidence; other suggestions need at least one meaningful text hit
