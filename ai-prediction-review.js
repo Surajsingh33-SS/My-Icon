@@ -149,7 +149,7 @@ function createCard(record){
   const badge=document.createElement('span');badge.className='tag';badge.textContent=record.reviewedAt?'Manually reviewed':'Not reviewed';
   card.append(heading,badge);
   const metadata=ICON_METADATA[record.name]||{},lucide=metadata.lucide||{};
-  const official=unique((lucide.categories||[]).filter(x=>typeof x==='string'&&!/^\\$(group|extends):/i.test(x)));
+  const official=unique((lucide.categories||[]).filter(x=>typeof x==='string'&&!/^\$(group|extends):/i.test(x)));
   const existingManual=Array.isArray(record.manualCategories)?record.manualCategories:[];
   const defaults=existingManual.length?existingManual:official;
   const suggestions=record.externalPredictions?.suggestions||[];
@@ -209,7 +209,7 @@ function createCard(record){
       if(!raw)throw new Error('No saved Icon Maker PRO projects were found in this browser.');
       const manager=JSON.parse(raw);
       if(!manager||!Array.isArray(manager.projects))throw new Error('Saved project data has an unexpected format.');
-      const normalize=v=>String(v||'').trim().toLowerCase().replace(/[_\\s]+/g,'-').replace(/-+/g,'-');
+      const normalize=v=>String(v||'').trim().toLowerCase().replace(/[_\s]+/g,'-').replace(/-+/g,'-');
       const matches=manager.projects.filter(p=>normalize(p.name)===normalize(record.name)&&p.status==='finished');
       if(!matches.length)throw new Error('No finished Gallery icon named "'+record.name+'" was found.');
       matches.forEach(p=>{p.manualCategories=[...existingManual];p.categories=[...existingManual];p.categorySource='manual';p.category=existingManual[0];});
