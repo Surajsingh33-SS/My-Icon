@@ -10080,6 +10080,15 @@ function getSelectedFinishCategories() {
         let usedWidth = 0;
         let visibleCount = 0;
 
+        const allTagsWidth = tags.reduce((sum, tag) => sum + tag.getBoundingClientRect().width, 0)
+            + gap * Math.max(0, tags.length - 1);
+
+        if (allTagsWidth <= availableWidth) {
+            more.remove();
+            tags.forEach(tag => { tag.hidden = false; });
+            return;
+        }
+
         // Reserve space for the "+N more" control, then fit as many tags as possible.
         for (let i = 0; i < tags.length; i++) {
             const remaining = tags.length - i - 1;
@@ -10092,12 +10101,6 @@ function getSelectedFinishCategories() {
             if (totalWidth > availableWidth) break;
             usedWidth = nextWidth;
             visibleCount++;
-        }
-
-        if (visibleCount === tags.length) {
-            more.remove();
-            tags.forEach(tag => { tag.hidden = false; });
-            return;
         }
 
         tags.forEach((tag, index) => { tag.hidden = index >= visibleCount; });
