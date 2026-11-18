@@ -124,7 +124,7 @@ const SEARCH_SYNONYMS = {
   database: ["data", "storage", "server", "records", "sql", "table", "backend", "data store", "database server", "information", "query", "structured data", "repository", "data management", "cloud database"],
   key: ["password", "access", "security", "authentication", "unlock", "credential", "secret", "license", "encryption", "keychain", "permission", "login", "private key", "access key", "digital key"],
   eye: ["view", "visible", "visibility", "preview", "watch", "see", "show", "display", "look", "eye view", "show content", "visibility toggle", "inspect", "visual", "view details"],
-  filter: ["sort", "refine", "narrow", "筛选", "search filter", "criteria", "options", "facets", "filter results", "organize", "selection", "refine results", "limit results", "view options", "data filtering"],
+  filter: ["sort", "refine", "narrow", "search filter", "criteria", "options", "facets", "filter results", "organize", "selection", "refine results", "limit results", "view options", "data filtering"],
   sliders: ["controls", "adjustments", "preferences", "tune", "settings", "configuration", "options", "customize", "levels", "parameters", "fine tune", "control panel", "adjust values", "filter controls", "mixing"],
   menu: ["navigation", "hamburger", "options", "more", "list", "sidebar", "navigation menu", "main menu", "open menu", "app menu", "menu button", "site navigation", "commands", "actions", "menu options"],
   list: ["items", "bullets", "rows", "checklist", "tasks", "collection", "ordered list", "unordered list", "menu", "entries", "records", "list view", "content list", "item list", "organize"],
