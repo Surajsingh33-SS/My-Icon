@@ -6454,10 +6454,17 @@ function getSelectedFinishCategories() {
             // BLUE A: Change start angle
             if (action === "start") {
 
-                const angle = Math.atan2(
-                    snappedPosition.y - shape.cy,
-                    snappedPosition.x - shape.cx
-                );
+                const endpointDX = snappedPosition.x - shape.cx;
+                const endpointDY = snappedPosition.y - shape.cy;
+
+                if (dragging.snappedTo) {
+                    shape.radius = Math.max(
+                        0.3,
+                        Math.min(artboardSize, Math.hypot(endpointDX, endpointDY))
+                    );
+                }
+
+                const angle = Math.atan2(endpointDY, endpointDX);
 
                 shape.startAngle = dragging.snappedTo ? angle : snapAngle(angle);
             }
@@ -6466,10 +6473,17 @@ function getSelectedFinishCategories() {
             // BLUE B: Change end angle
             else if (action === "end") {
 
-                const angle = Math.atan2(
-                    snappedPosition.y - shape.cy,
-                    snappedPosition.x - shape.cx
-                );
+                const endpointDX = snappedPosition.x - shape.cx;
+                const endpointDY = snappedPosition.y - shape.cy;
+
+                if (dragging.snappedTo) {
+                    shape.radius = Math.max(
+                        0.3,
+                        Math.min(artboardSize, Math.hypot(endpointDX, endpointDY))
+                    );
+                }
+
+                const angle = Math.atan2(endpointDY, endpointDX);
 
                 shape.endAngle = dragging.snappedTo ? angle : snapAngle(angle);
             }
@@ -6559,6 +6573,20 @@ function getSelectedFinishCategories() {
                 dy * Math.cos(rotation);
 
             if (action === "start" || action === "end") {
+                if (dragging.snappedTo) {
+                    // Scale both ellipse radii equally so the endpoint can
+                    // reach the target without changing the ellipse's aspect ratio.
+                    const scale = Math.hypot(
+                        localX / shape.rx,
+                        localY / shape.ry
+                    );
+
+                    if (Number.isFinite(scale) && scale > 0) {
+                        shape.rx = Math.max(0.2, shape.rx * scale);
+                        shape.ry = Math.max(0.2, shape.ry * scale);
+                    }
+                }
+
                 const angle = Math.atan2(
                     localY / shape.ry,
                     localX / shape.rx
