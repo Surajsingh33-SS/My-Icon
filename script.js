@@ -5411,62 +5411,73 @@ function getSelectedFinishCategories() {
         activeSnapTargetVisual = null;
     }
 
+    // Only endpoint handles participate in snapping. Rotation, radius,
+    // resize and other helper handles are deliberately excluded.
+    function isSnapEndpoint(end) {
+        return end === "start" ||
+            end === "end" ||
+            end.startsWith("v_") ||
+            end.startsWith("h_") ||
+            end.startsWith("svg_");
+    }
+
+    function getSnapEndpoints(shape) {
+        return getShapeEndpoints(shape).filter(point => isSnapEndpoint(point.end));
+    }
+
+    function getSnapDistance() {
+        const matrix = workspace.getScreenCTM();
+        const scale = matrix
+            ? Math.max(0.0001, Math.hypot(matrix.a, matrix.b))
+            : 1;
+        return 4 / scale;
+    }
+
     function getSnappedPoint(x, y, currentShape, shiftKey = false) {
-        if (!snapEnabled || shiftKey) {
+        // A dragged control only snaps if it is an actual endpoint handle.
+        if (
+            !snapEnabled ||
+            shiftKey ||
+            !isSnapEndpoint(dragging?.sourceHandle?.handle || "")
+        ) {
+            dragging && (dragging.snappedTo = null);
             hideSnapTarget();
             if (endpointSnapIndicator) endpointSnapIndicator.style.display = "none";
             return { x, y };
         }
 
-        const snapDistance = 0.35;
-        const releaseDistance = 0.45;
-
-        if (dragging?.snappedTo) {
-            const target = getShapeEndpoints(dragging.snappedTo.shape).find(pt => pt.end === dragging.snappedTo.end);
-            if (target && Math.hypot(x - target.x, y - target.y) <= releaseDistance) {
-                showSnapTarget(target);
-                if (endpointSnapIndicator) {
-                    endpointSnapIndicator.setAttribute("cx", target.x);
-                    endpointSnapIndicator.setAttribute("cy", target.y);
-                    endpointSnapIndicator.style.display = "block";
-                }
-                return { x: target.x, y: target.y };
-            }
-            dragging.snappedTo = null;
-        }
-
         let closest = null;
-        let closestDist = snapDistance;
+        let closestDist = getSnapDistance();
 
         for (const shape of shapes) {
             if (shape === currentShape || shape.hidden || shape.locked) continue;
-            for (const pt of getShapeEndpoints(shape)) {
-                const dist = Math.hypot(x - pt.x, y - pt.y);
-                if (dist <= closestDist) {
-                    closestDist = dist;
-                    closest = pt;
+
+            for (const point of getSnapEndpoints(shape)) {
+                const distance = Math.hypot(x - point.x, y - point.y);
+                if (distance <= closestDist) {
+                    closest = point;
+                    closestDist = distance;
                 }
             }
         }
 
-        if (closest) {
-            showSnapTarget(closest);
-            dragging.snappedTo = { shape: closest.shape, end: closest.end };
-            if (endpointSnapIndicator) {
-                endpointSnapIndicator.setAttribute("cx", closest.x);
-                endpointSnapIndicator.setAttribute("cy", closest.y);
-                endpointSnapIndicator.style.display = "block";
-            }
-            return { x: closest.x, y: closest.y };
+        if (!closest) {
+            dragging.snappedTo = null;
+            hideSnapTarget();
+            if (endpointSnapIndicator) endpointSnapIndicator.style.display = "none";
+            return { x, y };
         }
 
-        hideSnapTarget();
+        dragging.snappedTo = { shape: closest.shape, end: closest.end };
+        showSnapTarget(closest);
 
         if (endpointSnapIndicator) {
-            endpointSnapIndicator.style.display = "none";
+            endpointSnapIndicator.setAttribute("cx", closest.x);
+            endpointSnapIndicator.setAttribute("cy", closest.y);
+            endpointSnapIndicator.style.display = "block";
         }
 
-        return { x, y };
+        return { x: closest.x, y: closest.y };
     }
 
     function getAlignmentBounds(shape) {
@@ -6119,8 +6130,7 @@ function getSelectedFinishCategories() {
                 type: "body",
                 previousX: pos.x,
                 previousY: pos.y,
-                snappedTo: null,
-                pendingHandleSnap: null
+                snappedTo: null
             };
             if (clickedShape.type === "curve") {
                 clickedShape.horizontalGuide.style.display = "block";
@@ -6645,115 +6655,40 @@ function getSelectedFinishCategories() {
 
             let closestSource = null;
             let closestTarget = null;
-            let closestDist = Infinity;
+            let closestDist = getSnapDistance();
 
-            // Shift or Snap OFF temporarily disables snapping.
+            // Moving a shape body uses the exact same endpoint-to-endpoint
+            // rule as dragging an endpoint handle.
             if (snapEnabled && !event.shiftKey) {
-                // Use a small screen-space release distance so a snap does not
-                // behave like an invisible wall while the shape is dragged past it.
-                const screenMatrix = workspace.getScreenCTM();
-                const screenScale = screenMatrix
-                    ? Math.max(0.0001, Math.hypot(screenMatrix.a, screenMatrix.b))
-                    : 1;
-                const bestDistance = 4 / screenScale;
+                for (const movingShape of targets) {
+                    for (const source of getSnapEndpoints(movingShape)) {
+                        for (const stationaryShape of shapes) {
+                            if (
+                                movingShapes.has(stationaryShape) ||
+                                stationaryShape.hidden ||
+                                stationaryShape.locked
+                            ) continue;
 
-                // Keep the previous snap only while the pointer remains within
-                // the same small tolerance used to acquire a snap.
-                if (dragging.sourceHandle && dragging.snappedTo) {
-                    const sourceShape = shapes.find(
-                        item => item.id === dragging.sourceHandle.shapeId
-                    );
+                            for (const target of getSnapEndpoints(stationaryShape)) {
+                                const distance = Math.hypot(
+                                    source.x + dx - target.x,
+                                    source.y + dy - target.y
+                                );
 
-                    const source = getShapeEndpoints(sourceShape).find(
-                        item => item.end === dragging.sourceHandle.handle
-                    );
-
-                    const target = getShapeEndpoints(dragging.snappedTo.shape).find(
-                        item => item.end === dragging.snappedTo.end
-                    );
-
-                    if (source && target) {
-                        const distance = Math.hypot(
-                            position.x - dragging.snapPointerX,
-                            position.y - dragging.snapPointerY
-                        );
-
-                        if (distance <= bestDistance) {
-                            closestSource = source;
-                            closestTarget = target;
-                        } else {
-                            dragging.releasedSnap = {
-                                sourceShapeId: dragging.sourceHandle.shapeId,
-                                sourceHandle: dragging.sourceHandle.handle,
-                                targetShapeId: ensureShapeId(dragging.snappedTo.shape),
-                                targetHandle: dragging.snappedTo.end
-                            };
-
-                            dragging.sourceHandle = null;
-                            dragging.snappedTo = null;
-                        }
-                    }
-                }
-
-                // Find the nearest pair of handles.
-                if (!closestTarget) {
-                    const isBlueSnapHandle = endpoint =>
-                        endpoint.end !== "rotate-a" &&
-                        endpoint.end !== "rotate-b" &&
-                        endpoint.end !== "radius" &&
-                        endpoint.end !== "corner-radius";
-
-                    for (const movingShape of targets) {
-                        for (const source of getShapeEndpoints(movingShape).filter(isBlueSnapHandle)) {
-                            for (const stationaryShape of shapes) {
-                                if (movingShapes.has(stationaryShape)) continue;
-
-                                for (const target of getShapeEndpoints(stationaryShape).filter(isBlueSnapHandle)) {
-
-                                    // Prevent immediately reconnecting to the handle just released.
-                                    if (
-                                        dragging.releasedSnap &&
-                                        ensureShapeId(source.shape) === dragging.releasedSnap.sourceShapeId &&
-                                        source.end === dragging.releasedSnap.sourceHandle &&
-                                        ensureShapeId(target.shape) === dragging.releasedSnap.targetShapeId &&
-                                        target.end === dragging.releasedSnap.targetHandle
-                                    ) {
-                                        const separation = Math.hypot(
-                                            source.x + dx - target.x,
-                                            source.y + dy - target.y
-                                        );
-
-                                        if (separation <= bestDistance) continue;
-
-                                        dragging.releasedSnap = null;
-                                    }
-
-                                    const distance = Math.hypot(
-                                        source.x + dx - target.x,
-                                        source.y + dy - target.y
-                                    );
-
-                                    if (distance < bestDistance) {
-                                        bestDistance = distance;
-                                        closestSource = source;
-                                        closestTarget = target;
-                                    }
+                                if (distance <= closestDist) {
+                                    closestDist = distance;
+                                    closestSource = source;
+                                    closestTarget = target;
                                 }
                             }
                         }
                     }
-
-                    // Snap immediately when a valid handle pair enters the
-                    // acquisition distance. A dwell timer made the interaction
-                    // feel delayed and could make handles seem obstructed.
-                    dragging.pendingHandleSnap = null;
                 }
-            } else {
-                dragging.pendingHandleSnap = null;
             }
 
             if (closestSource && closestTarget) {
-                // Correct the movement so both handles meet exactly.
+                // Move the whole selection just enough to make the two
+                // endpoint handles occupy exactly the same position.
                 dx += closestTarget.x - (closestSource.x + dx);
                 dy += closestTarget.y - (closestSource.y + dy);
 
@@ -6761,11 +6696,6 @@ function getSelectedFinishCategories() {
                     shapeId: ensureShapeId(closestSource.shape),
                     handle: closestSource.end
                 };
-
-                if (!dragging.snappedTo) {
-                    dragging.snapPointerX = position.x;
-                    dragging.snapPointerY = position.y;
-                }
                 dragging.snappedTo = {
                     shape: closestTarget.shape,
                     end: closestTarget.end
@@ -6779,8 +6709,8 @@ function getSelectedFinishCategories() {
                     endpointSnapIndicator.style.display = "block";
                 }
             } else {
-                dragging.snapPointerX = null;
-                dragging.snapPointerY = null;
+                dragging.sourceHandle = null;
+                dragging.snappedTo = null;
                 hideSnapTarget();
 
                 if (endpointSnapIndicator) {
