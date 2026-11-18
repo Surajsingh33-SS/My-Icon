@@ -6341,8 +6341,12 @@ function getSelectedFinishCategories() {
                     event.shiftKey
                 );
 
-                targetPoint.x = Math.round(snapped.x * 10) / 10;
-                targetPoint.y = Math.round(snapped.y * 10) / 10;
+                targetPoint.x = dragging.snappedTo
+                    ? snapped.x
+                    : Math.round(snapped.x * 10) / 10;
+                targetPoint.y = dragging.snappedTo
+                    ? snapped.y
+                    : Math.round(snapped.y * 10) / 10;
 
                 updatePathShape(shape);
             }
