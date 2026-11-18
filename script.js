@@ -9974,45 +9974,135 @@ function getSelectedFinishCategories() {
         return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
     }
 
+    let projectCategoryListExpanded = false;
+    let projectSearchTermsExpanded = false;
+
+    function createProjectCategoryButton(category) {
+        const badge = document.createElement("button");
+        badge.type = "button";
+        badge.className = "project-category";
+        badge.textContent = category;
+        badge.title = `Show the gallery's "${category}" category`;
+        badge.addEventListener("click", () => {
+            galleryViewCategory = "categories";
+            selectedCategoryFilter = null;
+
+            if (viewModeCategoriesBtn) viewModeCategoriesBtn.classList.add("active");
+            viewModeAllBtn?.classList.remove("active");
+
+            if (homeCategorySelect) {
+                homeCategorySelect.value = "all";
+                homeCategoryDropdown?.refresh();
+            }
+
+            renderHomeProjects();
+            closeProjectPreview();
+
+            const categoryBackButton = document.getElementById("category-gallery-back-button");
+            if (categoryBackButton) categoryBackButton.hidden = false;
+
+            const targetGroup = Array.from(
+                homeProjectGrid?.querySelectorAll(".gallery-category-group") || []
+            ).find(group => group.dataset.category === category);
+
+            targetGroup?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        return badge;
+    }
+
     function renderProjectCategoryBadges(project) {
         if (!projectCategoryBadge) return;
 
         projectCategoryBadge.replaceChildren();
         const categories = getProjectCategories(project);
-        const visibleCategories = categories.length ? categories : ["Uncategorized"];
+        const items = categories.length ? categories : ["Uncategorized"];
+        const limit = 7;
+        const expanded = projectCategoryListExpanded;
 
-        visibleCategories.forEach(category => {
-            const badge = document.createElement("button");
-            badge.type = "button";
-            badge.className = "project-category";
-            badge.textContent = category;
-            badge.title = `Show the gallery's "${category}" category`;
-            badge.addEventListener("click", () => {
-                galleryViewCategory = "categories";
-                selectedCategoryFilter = null;
-
-                if (viewModeCategoriesBtn) viewModeCategoriesBtn.classList.add("active");
-                viewModeAllBtn?.classList.remove("active");
-
-                if (homeCategorySelect) {
-                    homeCategorySelect.value = "all";
-                    homeCategoryDropdown?.refresh();
-                }
-
-                renderHomeProjects();
-                closeProjectPreview();
-
-                const categoryBackButton = document.getElementById("category-gallery-back-button");
-                if (categoryBackButton) categoryBackButton.hidden = false;
-
-                const targetGroup = Array.from(
-                    homeProjectGrid?.querySelectorAll(".gallery-category-group") || []
-                ).find(group => group.dataset.category === category);
-
-                targetGroup?.scrollIntoView({ behavior: "smooth", block: "start" });
-            });
+        items.forEach((category, index) => {
+            const badge = createProjectCategoryButton(category);
+            if (!expanded && index >= limit) badge.hidden = true;
             projectCategoryBadge.appendChild(badge);
         });
+
+        if (items.length > limit) {
+            const more = document.createElement("button");
+            more.type = "button";
+            more.className = "drawer-more-toggle";
+            more.textContent = expanded ? "Show less" : `+${items.length - limit} more`;
+            more.setAttribute("aria-expanded", String(expanded));
+            more.addEventListener("click", () => {
+                projectCategoryListExpanded = !projectCategoryListExpanded;
+                renderProjectCategoryBadges(project);
+            });
+            projectCategoryBadge.appendChild(more);
+        }
+
+        projectCategoryBadge.classList.toggle("is-expanded", expanded);
+    }
+
+    function renderProjectSearchTerms(project) {
+        if (!projectSearchTerms) return;
+
+        projectSearchTerms.replaceChildren();
+        const terms = getProjectSearchTerms(project)
+            .map(term => String(term).trim())
+            .filter(Boolean);
+        const tags = terms.map(term => {
+            const tag = document.createElement("span");
+            tag.className = "project-search-term";
+            tag.textContent = term;
+            projectSearchTerms.appendChild(tag);
+            return tag;
+        });
+
+        if (!tags.length) return;
+
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "drawer-more-toggle search-terms-more-toggle";
+        more.textContent = "Show less";
+        more.addEventListener("click", () => {
+            projectSearchTermsExpanded = !projectSearchTermsExpanded;
+            renderProjectSearchTerms(project);
+        });
+        projectSearchTerms.appendChild(more);
+
+        if (projectSearchTermsExpanded) {
+            projectSearchTerms.classList.add("is-expanded");
+            more.textContent = "Show less";
+            return;
+        }
+
+        projectSearchTerms.classList.remove("is-expanded");
+        const availableWidth = projectSearchTerms.clientWidth;
+        const gap = parseFloat(getComputedStyle(projectSearchTerms).columnGap) || 6;
+        let usedWidth = 0;
+        let visibleCount = 0;
+
+        // Reserve space for the "+N more" control, then fit as many tags as possible.
+        for (let i = 0; i < tags.length; i++) {
+            const remaining = tags.length - i - 1;
+            more.textContent = `+${remaining + 1} more`;
+            const required = tags[i].getBoundingClientRect().width;
+            const toggleWidth = more.getBoundingClientRect().width;
+            const nextWidth = usedWidth + (visibleCount ? gap : 0) + required;
+            const totalWidth = nextWidth + gap + toggleWidth;
+
+            if (totalWidth > availableWidth) break;
+            usedWidth = nextWidth;
+            visibleCount++;
+        }
+
+        if (visibleCount === tags.length) {
+            more.remove();
+            tags.forEach(tag => { tag.hidden = false; });
+            return;
+        }
+
+        tags.forEach((tag, index) => { tag.hidden = index >= visibleCount; });
+        more.textContent = `+${tags.length - visibleCount} more`;
+        more.setAttribute("aria-expanded", "false");
     }
 
     function ensureProjectCategoryEditor() {
@@ -10114,6 +10204,8 @@ function getSelectedFinishCategories() {
         if (!project || !projectDetails) return;
 
         selectedHomeProject = project;
+        projectCategoryListExpanded = false;
+        projectSearchTermsExpanded = false;
         updateHomeProjectSelection();
         if (projectRelated) projectRelated.hidden = true;
 
@@ -10141,17 +10233,8 @@ function getSelectedFinishCategories() {
             projectFavoriteBtn.innerHTML = project.favorite ? "★" : "☆";
         }
 
-        // Render search tags
-        if (projectSearchTerms) {
-            projectSearchTerms.innerHTML = "";
-            const terms = getProjectSearchTerms(project);
-            terms.forEach(t => {
-                const tag = document.createElement("span");
-                tag.className = "project-search-term";
-                tag.textContent = t;
-                projectSearchTerms.appendChild(tag);
-            });
-        }
+        // Render search terms as a single row with an expandable overflow control.
+        renderProjectSearchTerms(project);
 
         if (projectMoreSearchButton) {
             projectMoreSearchButton.title = `More icons with "${project.name}" in their name`;
@@ -10162,6 +10245,12 @@ function getSelectedFinishCategories() {
         projectDetails.classList.add("show");
         projectDetails.setAttribute("aria-hidden", "false");
     }
+
+    window.addEventListener("resize", () => {
+        if (selectedHomeProject && projectDetails?.classList.contains("show")) {
+            renderProjectSearchTerms(selectedHomeProject);
+        }
+    });
 
     function closeProjectPreview() {
         projectDetails?.classList.remove("show", "expanded");
