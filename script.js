@@ -4675,7 +4675,7 @@ function getSelectedFinishCategories() {
 
 
     function snapAngle(angle) {
-        const step = Math.PI / 90; // 2 degrees
+        const step = Math.PI / 18; // 10 degrees
         return Math.round(angle / step) * step;
     }
 
@@ -6150,12 +6150,7 @@ function getSelectedFinishCategories() {
         }
     });
 
-    let lastPointerClientX = 0;
-    let lastPointerClientY = 0;
-
     workspace.addEventListener("pointermove", event => {
-        lastPointerClientX = event.clientX;
-        lastPointerClientY = event.clientY;
         const position = getSVGPosition(event);
         if (customAxisDrag) {
             const dx = position.x - customAxisDrag.start.x, dy = position.y - customAxisDrag.start.y;
@@ -6646,17 +6641,9 @@ function getSelectedFinishCategories() {
                 }
             });
 
-            // Every member of a selected symmetry group moves together.
-            // Treat all of them as moving so a mirrored copy is never mistaken
-            // for a stationary snap target (which feels like a movement blocker).
-            const movingShapes = new Set();
-            selectedTargets.forEach(item => {
-                if (item.symmetryGroupId) {
-                    getSymmetryGroupMembers(item).forEach(member => movingShapes.add(member));
-                } else {
-                    movingShapes.add(item);
-                }
-            });
+            const movingShapes = new Set(
+                selectedTargets
+            );
 
 
             let closestSource = null;
@@ -6719,11 +6706,7 @@ function getSelectedFinishCategories() {
                     for (const movingShape of targets) {
                         for (const source of getShapeEndpoints(movingShape).filter(isBlueSnapHandle)) {
                             for (const stationaryShape of shapes) {
-                                if (
-                                    movingShapes.has(stationaryShape) ||
-                                    (movingShape.symmetryGroupId &&
-                                     stationaryShape.symmetryGroupId === movingShape.symmetryGroupId)
-                                ) continue;
+                                if (movingShapes.has(stationaryShape)) continue;
 
                                 for (const target of getShapeEndpoints(stationaryShape).filter(isBlueSnapHandle)) {
 
@@ -6760,46 +6743,12 @@ function getSelectedFinishCategories() {
                         }
                     }
 
-                    // Require the same handle pair to stay within 4 screen pixels for 1 second.
+                    // Keep whole-shape snapping immediate, as it was before the delay request.
                     if (closestSource && closestTarget) {
-                        const candidateKey = [
-                            ensureShapeId(closestSource.shape), closestSource.end,
-                            ensureShapeId(closestTarget.shape), closestTarget.end
-                        ].join(":");
-                        const now = Date.now();
-
-                        if (dragging.pendingHandleSnap?.key !== candidateKey) {
-                            dragging.pendingHandleSnap = {
-                                key: candidateKey,
-                                since: now,
-                                timer: window.setTimeout(() => {
-                                    if (dragging?.type === "body" &&
-                                        dragging.pendingHandleSnap?.key === candidateKey) {
-                                        workspace.dispatchEvent(new PointerEvent("pointermove", {
-                                            clientX: lastPointerClientX,
-                                            clientY: lastPointerClientY,
-                                            bubbles: true
-                                        }));
-                                    }
-                                }, 1000)
-                            };
-                            closestSource = null;
-                            closestTarget = null;
-                        } else if (now - dragging.pendingHandleSnap.since < 1000) {
-                            closestSource = null;
-                            closestTarget = null;
-                        }
-                    } else {
-                        if (dragging.pendingHandleSnap?.timer) {
-                            clearTimeout(dragging.pendingHandleSnap.timer);
-                        }
                         dragging.pendingHandleSnap = null;
                     }
                 }
             } else {
-                if (dragging.pendingHandleSnap?.timer) {
-                    clearTimeout(dragging.pendingHandleSnap.timer);
-                }
                 dragging.pendingHandleSnap = null;
             }
 
@@ -6957,11 +6906,6 @@ function getSelectedFinishCategories() {
         if (!dragging) {
             hideSnapTarget();
             return;
-        }
-
-        // Cancel any pending delayed whole-shape snap when the drag ends.
-        if (dragging.pendingHandleSnap?.timer) {
-            clearTimeout(dragging.pendingHandleSnap.timer);
         }
 
         // Keep a reference before clearing the active drag.
