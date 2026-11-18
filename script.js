@@ -4675,7 +4675,7 @@ function getSelectedFinishCategories() {
 
 
     function snapAngle(angle) {
-        const step = Math.PI / 18; // 10 degrees
+        const step = Math.PI / 90; // 2 degrees
         return Math.round(angle / step) * step;
     }
 
@@ -6743,8 +6743,22 @@ function getSelectedFinishCategories() {
                         }
                     }
 
-                    // Keep whole-shape snapping immediate, as it was before the delay request.
                     if (closestSource && closestTarget) {
+                        const candidateKey = [
+                            ensureShapeId(closestSource.shape), closestSource.end,
+                            ensureShapeId(closestTarget.shape), closestTarget.end
+                        ].join(":");
+                        const now = Date.now();
+
+                        if (dragging.pendingHandleSnap?.key !== candidateKey) {
+                            dragging.pendingHandleSnap = { key: candidateKey, since: now };
+                            closestSource = null;
+                            closestTarget = null;
+                        } else if (now - dragging.pendingHandleSnap.since < 1000) {
+                            closestSource = null;
+                            closestTarget = null;
+                        }
+                    } else {
                         dragging.pendingHandleSnap = null;
                     }
                 }
