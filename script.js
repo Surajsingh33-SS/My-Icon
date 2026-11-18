@@ -426,6 +426,7 @@
     let copiedShapes = [];
 
     let isRestoringProject = false;
+    let isCreatingShapeCopy = false;
     let activeHomeTab = "all"; // 'all' | 'recent' | 'favorites'
     let homeViewMode = "grid"; // 'grid' | 'list'
     let galleryViewCategory = "all"; // 'all' | 'categories'
@@ -2640,9 +2641,206 @@ function getSelectedFinishCategories() {
 
 
 
+    function getSymmetryShapeCenter(data) {
+        if (data.type === "line") {
+            return { x: (data.x1 + data.x2) / 2, y: (data.y1 + data.y2) / 2 };
+        }
+
+        if (
+            data.type === "curve" ||
+            data.type === "ellipse-arc" ||
+            data.type === "circle" ||
+            data.type === "ellipse"
+        ) {
+            return { x: data.cx, y: data.cy };
+        }
+
+        if (data.type === "rectangle") {
+            return {
+                x: data.x + data.width / 2,
+                y: data.y + data.height / 2
+            };
+        }
+
+        const points = [];
+        const addPoints = list => {
+            (list || []).forEach(point => {
+                if (Number.isFinite(point.x) && Number.isFinite(point.y)) {
+                    points.push(point);
+                }
+            });
+        };
+
+        addPoints(data.points);
+        (data.holes || []).forEach(hole =>
+            addPoints(Array.isArray(hole) ? hole : hole.points)
+        );
+
+        if (Array.isArray(data.svgEditableSegments)) {
+            data.svgEditableSegments.forEach(segment => {
+                [["x", "y"], ["x1", "y1"], ["cx", "cy"],
+                    ["cx1", "cy1"], ["cx2", "cy2"]].forEach(([xKey, yKey]) => {
+                    if (
+                        Number.isFinite(segment[xKey]) &&
+                        Number.isFinite(segment[yKey])
+                    ) {
+                        points.push({ x: segment[xKey], y: segment[yKey] });
+                    }
+                });
+            });
+        }
+
+        if (points.length) {
+            return {
+                x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+                y: points.reduce((sum, point) => sum + point.y, 0) / points.length
+            };
+        }
+
+        return { x: artboardSize / 2, y: artboardSize / 2 };
+    }
+
+    function getSymmetryGeometryKey(data) {
+        const ignored = new Set([
+            "id", "name", "color", "fill", "hidden", "locked",
+            "strokeWidth", "cap", "opacity",
+            "symmetryGroupId", "symmetryMember", "symmetryTransforms",
+            "element", "handles"
+        ]);
+
+        const clean = value => {
+            if (typeof value === "number") {
+                return Number.isFinite(value)
+                    ? Math.round(value * 10000) / 10000
+                    : null;
+            }
+
+            if (Array.isArray(value)) return value.map(clean);
+
+            if (value && typeof value === "object") {
+                const result = {};
+                Object.keys(value).sort().forEach(key => {
+                    if (!ignored.has(key)) result[key] = clean(value[key]);
+                });
+                return result;
+            }
+
+            return value;
+        };
+
+        return JSON.stringify(clean(data));
+    }
+
+    function getConcurrentSymmetrySectors(axes) {
+        if (axes.length < 2) return null;
+
+        const first = axes[0];
+        const second = axes.find(axis =>
+            Math.abs(
+                (first.x2 - first.x1) * (axis.y2 - axis.y1) -
+                (first.y2 - first.y1) * (axis.x2 - axis.x1)
+            ) > 0.000001
+        );
+
+        if (!second) return null;
+
+        const x1 = first.x1;
+        const y1 = first.y1;
+        const dx1 = first.x2 - first.x1;
+        const dy1 = first.y2 - first.y1;
+        const x2 = second.x1;
+        const y2 = second.y1;
+        const dx2 = second.x2 - second.x1;
+        const dy2 = second.y2 - second.y1;
+        const denominator = dx1 * dy2 - dy1 * dx2;
+
+        const t = ((x2 - x1) * dy2 - (y2 - y1) * dx2) / denominator;
+        const center = { x: x1 + t * dx1, y: y1 + t * dy1 };
+
+        const tolerance = Math.max(0.05, artboardSize * 0.0005);
+        const allMeet = axes.every(axis => {
+            const dx = axis.x2 - axis.x1;
+            const dy = axis.y2 - axis.y1;
+            const length = Math.hypot(dx, dy);
+            if (length < 0.000001) return false;
+
+            const distance = Math.abs(
+                dx * (center.y - axis.y1) -
+                dy * (center.x - axis.x1)
+            ) / length;
+
+            return distance <= tolerance;
+        });
+
+        if (!allMeet) return null;
+
+        const rays = [];
+        axes.forEach((axis, axisIndex) => {
+            const angle = Math.atan2(
+                axis.y2 - axis.y1,
+                axis.x2 - axis.x1
+            );
+            const normalize = value => {
+                value %= Math.PI * 2;
+                return value < 0 ? value + Math.PI * 2 : value;
+            };
+
+            rays.push({ angle: normalize(angle), axisIndex });
+            rays.push({ angle: normalize(angle + Math.PI), axisIndex });
+        });
+
+        rays.sort((a, b) => a.angle - b.angle);
+
+        // Coincident axes are one mirror boundary, not multiple boundaries.
+        const uniqueRays = [];
+        rays.forEach(ray => {
+            const previous = uniqueRays[uniqueRays.length - 1];
+            if (
+                previous &&
+                Math.abs(previous.angle - ray.angle) < 0.00001
+            ) {
+                return;
+            }
+            uniqueRays.push(ray);
+        });
+
+        if (uniqueRays.length < 2) return null;
+
+        return { center, rays: uniqueRays };
+    }
+
+    function getSymmetrySectorIndex(data, sectorMap) {
+        const center = getSymmetryShapeCenter(data);
+        const angle = Math.atan2(
+            center.y - sectorMap.center.y,
+            center.x - sectorMap.center.x
+        );
+        const normalized = angle < 0 ? angle + Math.PI * 2 : angle;
+        const rays = sectorMap.rays;
+
+        for (let i = 0; i < rays.length; i++) {
+            const next = (i + 1) % rays.length;
+            const start = rays[i].angle;
+            const end = next === 0
+                ? rays[next].angle + Math.PI * 2
+                : rays[next].angle;
+            const adjusted = normalized < start
+                ? normalized + Math.PI * 2
+                : normalized;
+
+            if (adjusted >= start - 0.000001 && adjusted < end - 0.000001) {
+                return i;
+            }
+        }
+
+        return 0;
+    }
+
     function applyLiveSymmetry(sourceShape) {
         if (
             isApplyingLiveSymmetry ||
+            isCreatingShapeCopy ||
+            isRestoringProject ||
             !sourceShape ||
             sourceShape.symmetryGroupId
         ) {
@@ -2653,8 +2851,6 @@ function getSelectedFinishCategories() {
         if (!axes.length) return;
 
         const groupId = crypto.randomUUID();
-
-        // Save the exact axes used when this group was created.
         const savedAxes = structuredClone(axes);
 
         sourceShape.symmetryGroupId = groupId;
@@ -2664,34 +2860,102 @@ function getSelectedFinishCategories() {
         isApplyingLiveSymmetry = true;
 
         try {
-            let combinations = [{
-                data: getShapeData(sourceShape),
-                transforms: []
+            const originalData = getShapeData(sourceShape);
+            const sectorMap = getConcurrentSymmetrySectors(savedAxes);
+            const queue = [{
+                data: structuredClone(originalData),
+                transforms: [],
+                sector: sectorMap
+                    ? getSymmetrySectorIndex(originalData, sectorMap)
+                    : null
             }];
 
-            savedAxes.forEach(axis => {
-                const additions = combinations.map(item => {
-                    const reflected = structuredClone(item.data);
+            const createdKeys = new Set([
+                getSymmetryGeometryKey(originalData)
+            ]);
+            const occupiedSectors = new Set(
+                sectorMap ? [queue[0].sector] : []
+            );
+            const generated = [];
+
+            // With concurrent axes, each sector has exactly two neighboring
+            // boundaries. A newly created copy is queued and checks its own
+            // two boundaries, so propagation naturally fills the whole fan.
+            // For non-concurrent axes, use geometric de-duplication and keep
+            // reflected copies inside the artboard to prevent endless growth.
+            while (queue.length) {
+                const current = queue.shift();
+                let adjacentAxes;
+
+                if (sectorMap) {
+                    const rays = sectorMap.rays;
+                    const sectorIndex = current.sector;
+                    const previousRay = rays[sectorIndex];
+                    const nextRay = rays[(sectorIndex + 1) % rays.length];
+
+                    adjacentAxes = [
+                        savedAxes[previousRay.axisIndex],
+                        savedAxes[nextRay.axisIndex]
+                    ].filter((axis, index, list) =>
+                        axis && list.indexOf(axis) === index
+                    );
+                } else {
+                    adjacentAxes = savedAxes;
+                }
+
+                adjacentAxes.forEach(axis => {
+                    const reflected = structuredClone(current.data);
                     reflectShapeData(reflected, axis);
 
-                    return {
+                    const center = getSymmetryShapeCenter(reflected);
+
+                    if (
+                        !sectorMap &&
+                        (
+                            center.x < -0.001 ||
+                            center.y < -0.001 ||
+                            center.x > artboardSize + 0.001 ||
+                            center.y > artboardSize + 0.001
+                        )
+                    ) {
+                        return;
+                    }
+
+                    const geometryKey = getSymmetryGeometryKey(reflected);
+                    if (createdKeys.has(geometryKey)) return;
+
+                    let nextSector = null;
+                    if (sectorMap) {
+                        nextSector = getSymmetrySectorIndex(reflected, sectorMap);
+                        if (occupiedSectors.has(nextSector)) return;
+                        occupiedSectors.add(nextSector);
+                    }
+
+                    createdKeys.add(geometryKey);
+
+                    const transforms = [
+                        ...current.transforms,
+                        structuredClone(axis)
+                    ];
+
+                    generated.push({
                         data: reflected,
-                        transforms: [
-                            ...item.transforms,
-                            structuredClone(axis)
-                        ]
-                    };
+                        transforms
+                    });
+
+                    queue.push({
+                        data: reflected,
+                        transforms,
+                        sector: nextSector
+                    });
                 });
+            }
 
-                combinations = combinations.concat(additions);
-            });
-
-            combinations.slice(1).forEach((item, index) => {
+            generated.forEach((item, index) => {
                 const data = item.data;
 
                 data.name =
                     `${sourceShape.name || sourceShape.type} (Symmetry)`;
-
                 data.symmetryGroupId = groupId;
                 data.symmetryMember = `member-${index + 1}`;
                 data.symmetryTransforms = item.transforms;
@@ -7304,9 +7568,15 @@ function getSelectedFinishCategories() {
                     shape.x2 = midX - (shape.x2 - midX);
                     updateLine(shape);
                 } else if (shape.type === "curve") {
-                    shape.cx = midX - (shape.cx - midX);
-                    shape.startAngle = Math.PI - shape.startAngle;
-                    shape.endAngle = Math.PI - shape.endAngle;
+                    // Reflect the arc around its own vertical centre line (x = cx).
+                    // Keep the circular centre and radius unchanged.
+                    // Swap the reflected endpoints so the arc size and direction remain correct.
+                    const oldStartAngle = shape.startAngle;
+                    const oldEndAngle = shape.endAngle;
+
+                    shape.startAngle = Math.PI - oldEndAngle;
+                    shape.endAngle = Math.PI - oldStartAngle;
+
                     updateCurve(shape);
                 } else if (shape.type === "circle") {
                     shape.cx = midX - (shape.cx - midX);
@@ -7328,9 +7598,15 @@ function getSelectedFinishCategories() {
                     shape.y2 = midY - (shape.y2 - midY);
                     updateLine(shape);
                 } else if (shape.type === "curve") {
-                    shape.cy = midY - (shape.cy - midY);
-                    shape.startAngle = -shape.startAngle;
-                    shape.endAngle = -shape.endAngle;
+                    // Reflect the arc around its own horizontal centre line (y = cy).
+                    // Keep the circular centre and radius unchanged.
+                    // Swap the reflected endpoints so the arc size and direction remain correct.
+                    const oldStartAngle = shape.startAngle;
+                    const oldEndAngle = shape.endAngle;
+
+                    shape.startAngle = -oldEndAngle;
+                    shape.endAngle = -oldStartAngle;
+
                     updateCurve(shape);
                 } else if (shape.type === "circle") {
                     shape.cy = midY - (shape.cy - midY);
@@ -7528,50 +7804,60 @@ function getSelectedFinishCategories() {
     function createShapeFromCopy(data, preserveId = false) {
         let shape;
 
-        if (data.type === "line") {
-            createLine(data.x1, data.y1);
-            shape = shapes[shapes.length - 1];
-            Object.assign(shape, data);
-            updateLine(shape);
-        } else if (data.type === "curve") {
-            createCurve(data.cx, data.cy);
-            shape = shapes[shapes.length - 1];
-            Object.assign(shape, data);
-            updateCurve(shape);
-        } else if (data.type === "ellipse-arc") {
-            createEllipseArc(data.cx, data.cy);
-            shape = shapes[shapes.length - 1];
-            Object.assign(shape, data);
-            updateEllipseArc(shape);
-        } else if (
-            data.type === "circle" ||
-            data.type === "ellipse" ||
-            data.type === "rectangle"
-        ) {
-            createOtherShape(data.type, 12, 12);
-            shape = shapes[shapes.length - 1];
-            Object.assign(shape, data);
-            updateBasicShape(shape);
-        } else if (data.type === "path") {
-            const el = document.createElementNS(SVG_NS, "path");
+        // Rebuilding or duplicating an existing shape must not create a new
+        // live-symmetry group. Its symmetry members are already in the data.
+        const wasCreatingShapeCopy = isCreatingShapeCopy;
+        isCreatingShapeCopy = true;
 
-            shape = {
-                ...structuredClone(data),
-                element: el,
-                handles: []
-            };
+        try {
+            if (data.type === "line") {
+                createLine(data.x1, data.y1);
+                shape = shapes[shapes.length - 1];
+                Object.assign(shape, data);
+                updateLine(shape);
+            } else if (data.type === "curve") {
+                createCurve(data.cx, data.cy);
+                shape = shapes[shapes.length - 1];
+                Object.assign(shape, data);
+                updateCurve(shape);
+            } else if (data.type === "ellipse-arc") {
+                createEllipseArc(data.cx, data.cy);
+                shape = shapes[shapes.length - 1];
+                Object.assign(shape, data);
+                updateEllipseArc(shape);
+            } else if (
+                data.type === "circle" ||
+                data.type === "ellipse" ||
+                data.type === "rectangle"
+            ) {
+                createOtherShape(data.type, 12, 12);
+                shape = shapes[shapes.length - 1];
+                Object.assign(shape, data);
+                updateBasicShape(shape);
+            } else if (data.type === "path") {
+                const el = document.createElementNS(SVG_NS, "path");
 
-            workspace.appendChild(el);
-            shapes.push(shape);
+                shape = {
+                    ...structuredClone(data),
+                    element: el,
+                    handles: []
+                };
 
-            updatePathShape(shape);
+                workspace.appendChild(el);
+                shapes.push(shape);
+
+                updatePathShape(shape);
+            }
+
+            if (shape) {
+                shape.id = preserveId && data.id
+                    ? data.id
+                    : crypto.randomUUID();
+            }
+        } finally {
+            isCreatingShapeCopy = wasCreatingShapeCopy;
         }
 
-        if (shape) {
-            shape.id = preserveId && data.id
-                ? data.id
-                : crypto.randomUUID();
-        }
         return shape;
     }
 
