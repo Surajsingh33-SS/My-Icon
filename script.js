@@ -6577,7 +6577,7 @@ function getSelectedFinishCategories() {
                         0,
                         Math.min(
                             Math.min(shape.width, shape.height) / 2,
-                            snappedPosition.x - shape.x
+                            position.x - shape.x
                         )
                     );
 
