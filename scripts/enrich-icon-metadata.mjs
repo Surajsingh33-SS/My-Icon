@@ -307,8 +307,7 @@ function buildSearchTerms(name, descriptor, oldAi = {}) {
   const lookupTokens = new Set([
     ...nameTokens,
     ...tags.map(normalizeSearchTerm),
-    ...aliases.map(normalizeSearchTerm),
-    ...phraseWords
+    ...aliases.map(normalizeSearchTerm)
   ]);
   for (const token of lookupTokens) {
     const compact = token.replace(/\s+/g, "");
