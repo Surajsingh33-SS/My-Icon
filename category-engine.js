@@ -99,6 +99,24 @@
     "weather":"Weather"
   });
 
+  Object.assign(OFFICIAL_MAP, {
+    "account": "Accounts & access",
+    "account-user": "Accounts & access",
+    "audio": "Multimedia",
+    "audio-music": "Multimedia",
+    "music": "Multimedia",
+    "business-finance": "Finance",
+    "files-folders": "File icons",
+    "food-drink": "Food & beverage",
+    "health-wellness": "Medical",
+    "maps-travel": "Navigation & places",
+    "maps-navigation": "Navigation & places",
+    "media-images": "Multimedia",
+    "time-date": "Time & calendar",
+    "tools-utilities": "Tools",
+    "development": "Coding & development"
+  });
+
   // AI predictions are restricted to the requested Lucide taxonomy.
   // Custom and user-created categories remain available to manual categorization.
   const ALLOWED_AI_CATEGORIES = new Set([

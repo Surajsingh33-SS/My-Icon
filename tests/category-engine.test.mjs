@@ -114,7 +114,7 @@ test('maps official categories and ignores Lucide $extends relationships', () =>
   const result = top('user-round', {
     lucide: { categories: ['account', '$extends:user', '$group:people'] }
   });
-  assert.deepEqual(result.officialCategories, ['People']);
+  assert.deepEqual(result.officialCategories, ['Accounts & access']);
   assert.deepEqual(result.officialCategoryValues, ['account']);
   assert.equal(result.suggestions[0].name, 'People');
 });
