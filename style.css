@@ -4171,3 +4171,41 @@ body.light-theme #save-project-button:hover {
         font-size: 21px;
     }
 }
+
+
+
+/* Icon title shares the action row, staying left of the drawer controls. */
+.project-details-toolbar {
+    justify-content: flex-start;
+}
+
+.project-toolbar-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0 auto 0 0;
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.35px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.project-details-toolbar .drawer-icon-btn,
+.project-details-toolbar .project-details-close {
+    flex: 0 0 38px;
+}
+
+@media (max-width: 700px) {
+    .project-toolbar-name {
+        font-size: 16px;
+    }
+
+    .project-details-toolbar {
+        gap: 6px;
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+}
