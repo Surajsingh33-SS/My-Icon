@@ -9835,6 +9835,7 @@ function getSelectedFinishCategories() {
                 .forEach(catName => {
                     const groupContainer = document.createElement("div");
                     groupContainer.className = "gallery-category-group";
+                    groupContainer.dataset.category = catName;
 
                     const header = document.createElement("div");
                     header.className = "gallery-category-header";
@@ -9881,6 +9882,8 @@ function getSelectedFinishCategories() {
         viewModeAllBtn.classList.add("active");
         viewModeCategoriesBtn?.classList.remove("active");
         galleryViewCategory = "all";
+        const categoryBackButton = document.getElementById("category-gallery-back-button");
+        if (categoryBackButton) categoryBackButton.hidden = true;
         renderHomeProjects();
     });
 
@@ -9888,7 +9891,26 @@ function getSelectedFinishCategories() {
         viewModeCategoriesBtn.classList.add("active");
         viewModeAllBtn?.classList.remove("active");
         galleryViewCategory = "categories";
+        const categoryBackButton = document.getElementById("category-gallery-back-button");
+        if (categoryBackButton) categoryBackButton.hidden = true;
         renderHomeProjects();
+    });
+
+    document.getElementById("category-gallery-back-button")?.addEventListener("click", () => {
+        const categoryBackButton = document.getElementById("category-gallery-back-button");
+        if (categoryBackButton) categoryBackButton.hidden = true;
+
+        galleryViewCategory = "all";
+        selectedCategoryFilter = null;
+        viewModeAllBtn?.classList.add("active");
+        viewModeCategoriesBtn?.classList.remove("active");
+        if (homeCategorySelect) {
+            homeCategorySelect.value = "all";
+            homeCategoryDropdown?.refresh();
+        }
+
+        renderHomeProjects();
+        homeProjectGrid?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
 
     clearCategoryFilterBtn?.addEventListener("click", () => {
@@ -9950,6 +9972,47 @@ function getSelectedFinishCategories() {
         );
 
         return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+
+    function renderProjectCategoryBadges(project) {
+        if (!projectCategoryBadge) return;
+
+        projectCategoryBadge.replaceChildren();
+        const categories = getProjectCategories(project);
+        const visibleCategories = categories.length ? categories : ["Uncategorized"];
+
+        visibleCategories.forEach(category => {
+            const badge = document.createElement("button");
+            badge.type = "button";
+            badge.className = "project-category";
+            badge.textContent = category;
+            badge.title = `Show the gallery's "${category}" category`;
+            badge.addEventListener("click", () => {
+                galleryViewCategory = "categories";
+                selectedCategoryFilter = null;
+
+                if (viewModeCategoriesBtn) viewModeCategoriesBtn.classList.add("active");
+                viewModeAllBtn?.classList.remove("active");
+
+                if (homeCategorySelect) {
+                    homeCategorySelect.value = "all";
+                    homeCategoryDropdown?.refresh();
+                }
+
+                renderHomeProjects();
+                closeProjectPreview();
+
+                const categoryBackButton = document.getElementById("category-gallery-back-button");
+                if (categoryBackButton) categoryBackButton.hidden = false;
+
+                const targetGroup = Array.from(
+                    homeProjectGrid?.querySelectorAll(".gallery-category-group") || []
+                ).find(group => group.dataset.category === category);
+
+                targetGroup?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+            projectCategoryBadge.appendChild(badge);
+        });
     }
 
     function ensureProjectCategoryEditor() {
@@ -10014,7 +10077,7 @@ function getSelectedFinishCategories() {
                 }
                 saveProjectManager();
                 panel.hidden = true;
-                projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+                renderProjectCategoryBadges(project);
                 renderHomeProjects();
                 renderManagementTable();
                 showToast("Manual categories saved.", "success");
@@ -10028,7 +10091,7 @@ function getSelectedFinishCategories() {
                 refreshProjectAutomaticCategories(project);
                 saveProjectManager();
                 panel.hidden = true;
-                projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+                renderProjectCategoryBadges(project);
                 renderHomeProjects();
                 renderManagementTable();
                 showToast("Automatic categories restored.", "success");
@@ -10055,7 +10118,7 @@ function getSelectedFinishCategories() {
         if (projectRelated) projectRelated.hidden = true;
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
-        if (projectCategoryBadge) projectCategoryBadge.textContent = getProjectCategories(project).join(" · ");
+        renderProjectCategoryBadges(project);
         ensureProjectCategoryEditor();
         if (projectDateBadge) projectDateBadge.textContent = `Saved ${new Date(project.savedAt).toLocaleDateString()}`;
 
@@ -10109,6 +10172,15 @@ function getSelectedFinishCategories() {
         selectedHomeProject = null;
         updateHomeProjectSelection();
     }
+
+    document.getElementById("project-global-preview-button")?.addEventListener("click", () => {
+        const sidebarScroll = document.querySelector(".sidebar-scroll-area");
+        const globalPreview = document.querySelector(".sidebar-customization");
+        if (!sidebarScroll || !globalPreview) return;
+        sidebarScroll.scrollTo({ top: 0, behavior: "smooth" });
+        globalPreview.classList.add("global-preview-focus");
+        window.setTimeout(() => globalPreview.classList.remove("global-preview-focus"), 900);
+    });
 
     projectDetailsClose?.addEventListener("click", closeProjectPreview);
     // Move drawer upward and reveal related icons
