@@ -213,13 +213,16 @@ const CATEGORY_SEARCH_TERMS = {
   design: ["design", "creative", "graphics", "visual"],
   development: ["developer", "programming", "coding", "software"],
   devices: ["device", "hardware", "technology", "electronics"],
+  emoji: ["emoji", "emoticon", "expression", "reaction", "smiley"],
   files: ["file", "document", "attachment", "storage"],
+  gaming: ["game", "gaming", "player", "controller", "play"],
   finance: ["finance", "money", "payment", "currency"],
   food: ["food", "meal", "cooking", "dining"],
   "food-beverage": ["food", "drink", "beverage", "cooking"],
   home: ["home", "household", "domestic", "interior"],
   layout: ["layout", "arrangement", "alignment", "structure"],
   mail: ["email", "mail", "inbox", "message"],
+  math: ["math", "mathematics", "calculation", "number", "equation"],
   medical: ["medical", "health", "healthcare", "wellness"],
   multimedia: ["media", "audio", "video", "visual"],
   nature: ["nature", "outdoors", "environment", "plant"],
@@ -228,11 +231,13 @@ const CATEGORY_SEARCH_TERMS = {
   people: ["person", "people", "profile", "user"],
   photography: ["photo", "camera", "image", "picture"],
   science: ["science", "research", "experiment", "laboratory"],
+  seasons: ["season", "spring", "summer", "autumn", "winter"],
   security: ["security", "privacy", "protection", "secure"],
   shapes: ["shape", "geometry", "outline", "form"],
   shopping: ["shopping", "store", "retail", "purchase"],
   social: ["social", "community", "sharing", "network"],
   sports: ["sport", "fitness", "exercise", "game"],
+  sustainability: ["eco", "green", "environment", "renewable", "sustainable"],
   text: ["text", "typography", "font", "writing"],
   time: ["time", "clock", "schedule", "duration"],
   tools: ["tool", "utility", "equipment", "settings"],
@@ -336,7 +341,8 @@ function buildSearchTerms(name, descriptor, oldAi = {}) {
   const seen = new Set();
   for (const value of candidates) {
     const term = normalizeSearchTerm(value);
-    if (!term || term.length < 2 || term === normalizeSearchTerm(name) ||
+    if (!term || term.length < 2 || SEARCH_STOP_WORDS.has(term) ||
+        term === normalizeSearchTerm(name) ||
         /^\$(group|extends):/i.test(String(value))) continue;
     if (!seen.has(term)) {
       seen.add(term);
