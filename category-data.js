@@ -204,10 +204,6 @@ export const CATEGORY_DATA = [
     "description": "Notifications, alerts, reminders, warnings, badges and status updates."
   },
   {
-    "name": "Seasons",
-    "description": "Seasons, seasonal weather, spring, summer, autumn, winter and seasonal events."
-  },
-  {
     "name": "Shapes",
     "description": "Geometric shapes, basic forms, polygons, circles, squares and spatial forms."
   },
@@ -222,5 +218,17 @@ export const CATEGORY_DATA = [
   {
     "name": "Travel",
     "description": "Travel, trips, journeys, luggage, passports, tickets and accommodation."
+  }
+  {
+    "name": "AI",
+    "description": "Artificial intelligence, machine learning, generative models, AI assistants and intelligent automation."
+  },
+  {
+    "name": "Education",
+    "description": "Learning, teaching, schools, students, classrooms, courses and educational activities."
+  },
+  {
+    "name": "Logistics",
+    "description": "Shipping, delivery, parcels, freight, warehouses, inventory and supply-chain operations."
   }
 ];

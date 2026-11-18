@@ -253,6 +253,38 @@ const HIGH_POPULARITY_TOKENS = new Set([
   "download", "upload", "share", "menu", "arrow", "eye", "filter", "grid", "list"
 ]);
 
+function getIconFamilySearchTerms(name) {
+  const key = String(name || '').toLowerCase().replace(/_/g, '-');
+  if (/^heart(?:-|$)/.test(key)) {
+    return [
+      'love', 'like', 'favorite', 'favourite', 'affection', 'care', 'romance',
+      'relationship', 'valentine', 'appreciation', 'gratitude', 'compassion',
+      'kindness', 'support', 'heart shape', 'cardiac', 'heartbeat', 'heart rate',
+      'wellness', 'health', 'reaction', 'wishlist', 'saved favorite'
+    ];
+  }
+  if (/^ellipse-(vertical|horizontal)$/.test(key)) {
+    const vertical = key.endsWith('vertical');
+    const variants = vertical
+      ? ['vertical ellipse', 'vertical oval', 'upright oval', 'tall oval', 'portrait oval',
+         'standing oval', 'narrow ellipse', 'up and down oval', 'y axis ellipse',
+         'portrait orientation', 'vertical shape', 'upright ellipse']
+      : ['horizontal ellipse', 'horizontal oval', 'wide oval', 'flat oval', 'landscape oval',
+         'sideways ellipse', 'wide ellipse', 'left to right oval', 'x axis ellipse',
+         'landscape orientation', 'horizontal shape', 'lying oval'];
+    return [
+      ...variants, 'ellipse', 'oval', 'oval shape', 'geometric oval', 'geometric shape',
+      'elongated circle', 'closed curve', 'conic section', 'mathematical ellipse',
+      'geometry', 'shape'
+    ];
+  }
+  if (/^ellipse(?:-|$)/.test(key)) {
+    return ['oval', 'oval shape', 'geometric oval', 'geometric shape', 'elongated circle',
+      'closed curve', 'conic section', 'mathematical ellipse', 'geometry', 'shape'];
+  }
+  return [];
+}
+
 function normalizeSearchTerm(value) {
   return String(value || "").toLowerCase().trim()
     .replace(/[_-]+/g, " ")
@@ -296,6 +328,7 @@ function buildSearchTerms(name, descriptor, oldAi = {}) {
     name.replace(/[-_]/g, " "),
     ...nameTokens
   ];
+  candidates.push(...getIconFamilySearchTerms(name));
 
   // Turn contributor-authored phrases into useful individual search words too.
   // Generic sentence verbs and filler words are excluded.
@@ -439,12 +472,30 @@ async function main() {
           metadataFetchedAt: new Date().toISOString()
         };
         success++;
-      } else if (result.missing) {
-        missing++;
-        // Keep the existing record untouched when Lucide has no descriptor.
       } else {
-        failed++;
-        console.warn('Failed: ' + name + ' (' + result.error + ')');
+        if (result.missing) {
+          missing++;
+        } else {
+          failed++;
+          console.warn('Failed: ' + name + ' (' + result.error + ')');
+        }
+
+        // Keep search useful even when Lucide has no descriptor or the fetch fails.
+        // Reuse locally saved metadata and add curated terms from the icon family.
+        const fallbackDescriptor = {
+          tags: cleanStrings(oldLucide.tags),
+          aliases: Array.isArray(oldLucide.aliases) ? oldLucide.aliases : [],
+          categories: cleanStrings(oldLucide.categories),
+          'use-cases': cleanStrings(oldLucide.useCases || oldLucide['use-cases'])
+        };
+        metadata[name] = {
+          ...old,
+          ai: {
+            ...oldAi,
+            description: buildDescription(name, fallbackDescriptor, oldAi),
+            searchTerms: buildSearchTerms(name, fallbackDescriptor, oldAi)
+          }
+        };
       }
 
       processed++;
@@ -459,11 +510,12 @@ async function main() {
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, targets.length) }, worker));
   if (!dryRun) await queueSave(metadata);
 
-  const enrichedItems = Object.values(metadata).filter(item =>
+  const allItems = Object.values(metadata);
+  const enrichedItems = allItems.filter(item =>
     item?.metadataSource === 'lucide-icons/lucide'
   );
   const enrichedCount = enrichedItems.length;
-  const termCounts = enrichedItems.map(item => item?.ai?.searchTerms?.length || 0).sort((a, b) => a - b);
+  const termCounts = allItems.map(item => item?.ai?.searchTerms?.length || 0).sort((a, b) => a - b);
   const medianTerms = termCounts.length
     ? termCounts[Math.floor(termCounts.length / 2)]
     : 0;
@@ -474,6 +526,7 @@ async function main() {
   console.log('Missing official descriptors: ' + missing);
   console.log('Fetch failures (safe to rerun): ' + failed);
   console.log('Total records with official metadata: ' + enrichedCount + '/' + names.length);
+  console.log('Icons included in search-term coverage report: ' + allItems.length);
   console.log('Search-term count: min ' + (termCounts[0] ?? 0) +
     ' | median ' + medianTerms + ' | max ' + (termCounts.at(-1) ?? 0));
   console.log('Icons still below 15 relevant terms: ' + belowTarget);

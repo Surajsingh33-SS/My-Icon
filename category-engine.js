@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  const VERSION = 13;
+  const VERSION = 14;
   const STOP = new Set([
     'icon','icons','outline','line','simple','symbol','small','large','left','right',
     'up','down','plus','minus','the','and','for','with','of','to','a','an'
@@ -40,6 +40,10 @@
   };
 
   Object.assign(OFFICIAL_MAP, {
+    "ai":"AI",
+    "artificial-intelligence":"AI",
+    "education":"Education",
+    "logistics":"Logistics",
     "accessibility":"Accessibility",
     "accounts-access":"Accounts & access",
     "account-access":"Accounts & access",
@@ -95,31 +99,24 @@
     "weather":"Weather"
   });
 
-  // Older broad category labels remain in category-data.js for compatibility,
-  // but when their newer, more precise categories exist, only the newer labels
-  // are emitted. This prevents duplicate/competing AI suggestions without
-  // deleting legacy category definitions or touching saved manual assignments.
-  const LEGACY_CATEGORY_REPLACEMENTS = {
-    'Design & layout': ['Design', 'Layout'],
-    'Development': ['Coding & development'],
-    'Typography': ['Letters & digits', 'Text formatting'],
-    'Math & symbols': ['Mathematics', 'Shapes'],
-    'Emoji & expressions': ['Emoji'],
-    'Audio & music': ['Multimedia'],
-    'Files': ['File icons'],
-    'Food & drink': ['Food & beverage'],
-    'Maps & travel': ['Navigation & places', 'Travel'],
-    'Media': ['Multimedia'],
-    'Health': ['Medical'],
-    'Time': ['Time & calendar']
-  };
+  // AI predictions are restricted to the requested Lucide taxonomy.
+  // Custom and user-created categories remain available to manual categorization.
+  const ALLOWED_AI_CATEGORIES = new Set([
+    'Accessibility', 'Accounts & access', 'AI', 'Animals', 'Arrows', 'Buildings',
+    'Charts', 'Communication', 'Connectivity', 'Cursors', 'Design',
+    'Coding & development', 'Devices', 'Education', 'Emoji', 'File icons',
+    'Finance', 'Food & beverage', 'Gaming', 'Home', 'Layout', 'Letters & digits',
+    'Logistics', 'Mail', 'Mathematics', 'Medical', 'Multimedia', 'Nature',
+    'Navigation & places', 'Notifications', 'People', 'Photography', 'Science',
+    'Security', 'Shapes', 'Shopping', 'Social', 'Sports', 'Sustainability',
+    'Text formatting', 'Time & calendar', 'Tools', 'Transportation', 'Travel',
+    'Weather'
+  ]);
 
   function getActiveCategoryData(categoryData) {
-    const available = new Set(categoryData.map(item => item && item.name).filter(Boolean));
-    return categoryData.filter(category => {
-      const replacements = LEGACY_CATEGORY_REPLACEMENTS[category && category.name];
-      return !replacements || !replacements.some(name => available.has(name));
-    });
+    return categoryData.filter(category =>
+      category && ALLOWED_AI_CATEGORIES.has(category.name)
+    );
   }
 
   // Curated discriminative concepts. These complement (never replace) authored
@@ -162,6 +159,9 @@
   };
 
   Object.assign(TERMS, {
+    "AI": ["ai", "artificial intelligence", "machine learning", "generative ai", "neural network", "prompt", "ai assistant", "ai model", "automation", "smart assistant", "chatbot", "robot assistant", "model training", "text generation", "image generation"],
+    "Education": ["education", "learning", "school", "student", "teacher", "classroom", "lesson", "course", "study", "knowledge", "graduation", "academic", "teaching", "homework", "exam"],
+    "Logistics": ["logistics", "delivery", "shipping", "parcel", "cargo", "freight", "warehouse", "supply chain", "dispatch", "shipment", "package tracking", "inventory", "distribution", "fulfillment", "transport order"],
     "Accounts & access": ["account","accounts","sign in","sign-in","log in","login","log out","logout","user account","access control","permission","permissions","authentication","authorization","identity","profile access"],
     "Charts": ["chart","charts","graph","graphs","plot","analytics","statistics","data visualization","bar chart","line chart","pie chart","histogram","trend"],
     "Cursors": ["cursor","mouse pointer","pointer","hand pointer","text cursor","selection cursor","cursor state","pointing"],
@@ -180,7 +180,7 @@
     "Navigation & places": ["map","maps","location","pin","marker","compass","globe","navigation","route","destination","landmark","country","city","place","geography"],
     "Notifications": ["notification","notifications","alert","alerts","reminder","warning","badge","bell","status update","attention"],
     "Seasons": ["season","seasons","spring","summer","autumn","fall","winter","seasonal","solstice","equinox"],
-    "Shapes": ["shape","shapes","geometry","geometric","circle","square","triangle","rectangle","polygon","hexagon","pentagon","oval"],
+    "Shapes": ["shape","shapes","geometry","geometric","circle","square","triangle","rectangle","polygon","hexagon","pentagon","oval","ellipse","elliptical","oval shape","geometric oval","elongated circle","conic section"],
     "Text formatting": ["text formatting","format text","bold","italic","underline","strikethrough","paragraph","heading","list","bullet list","numbered list","indent","align text","rich text"],
     "Time & calendar": ["time","clock","calendar","date","schedule","alarm clock","timer","stopwatch","hourglass","deadline","appointment","month","day","week"],
     "Travel": ["travel","trip","journey","passport","suitcase","luggage","ticket","boarding pass","hotel booking","vacation","holiday"]
@@ -192,7 +192,7 @@
   const ICON_CATEGORY_RULES = [
     { pattern: /^zodiac(?:-|$)/, allow: ['Social', 'Emoji', 'Emoji & expressions', 'Communication', 'People'], reason: 'Zodiac symbols have social/astrology and emoji meanings; individual tags may support communication or people.' },
     { pattern: /^zap(?:-off)?$/, allow: ['Devices'], force: ['Devices'], reason: 'Lightning/power indicator.' },
-    { pattern: /^camera$/, allow: ['Photography', 'Media'], force: ['Photography', 'Media'], reason: 'Camera used for photography and image/media capture.' },
+    { pattern: /^camera$/, allow: ['Photography', 'Multimedia'], force: ['Photography', 'Multimedia'], reason: 'Camera used for photography and image/media capture.' },
     { pattern: /^worm$/, allow: ['Animals'], force: ['Animals'], reason: 'Animal/invertebrate icon.' },
     { pattern: /^wind-arrow-(?:up|down)$/, allow: ['Arrows', 'Weather', 'Sustainability'], force: ['Arrows', 'Weather', 'Sustainability'], reason: 'Directional wind indicator with weather and renewable-energy meaning.' },
     { pattern: /^wind$/, allow: ['Weather', 'Sustainability'], force: ['Weather', 'Sustainability'], reason: 'Wind/weather condition with environmental and renewable-energy meaning.' },
@@ -364,9 +364,14 @@
           : minimum;
       const independentTextSupport = matchedTextSources.size >= 2;
       const directMetadataSupport = tagScore >= 0.20 || aliasScore >= 0.16 || useCaseScore >= 0.19;
-      const secondaryEligible = forcedByRule || isOfficial || directMetadataSupport ||
-        (lexical >= 0.30 && independentTextSupport) ||
-        modelAgreement;
+      // Secondary categories need independent corroboration. One broad
+      // metadata hit can still support a primary category, but cannot multiply
+      // the icon into several categories by itself.
+      const strongSecondaryTextSupport = lexical >= 0.34 &&
+        independentTextSupport && directMetadataSupport;
+      const secondaryEligible = forcedByRule || isOfficial ||
+        strongSecondaryTextSupport ||
+        (modelAgreement && hasTextEvidence);
       return {
         name: categoryName,
         score: confidence,
@@ -420,7 +425,13 @@
     };
   }
 
-  const api = { version: VERSION, classify, normalize, officialCategoryMap: OFFICIAL_MAP };
+  const api = {
+    version: VERSION,
+    classify,
+    normalize,
+    officialCategoryMap: OFFICIAL_MAP,
+    allowedCategories: [...ALLOWED_AI_CATEGORIES]
+  };
   root.IconCategoryEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

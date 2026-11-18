@@ -39,6 +39,9 @@ const categories = [
   { name: 'Transportation', description: 'Vehicles and transport.' },
   { name: 'Weather', description: 'Weather and climate.' },
   { name: "Accounts & access", description: "Accounts and permissions." },
+  { name: "AI", description: "Artificial intelligence and machine learning." },
+  { name: "Education", description: "Learning and teaching." },
+  { name: "Logistics", description: "Shipping and supply chain." },
   { name: "Charts", description: "Charts and data visualization." },
   { name: "Cursors", description: "Pointers and cursors." },
   { name: "Design", description: "Visual design." },
@@ -55,7 +58,6 @@ const categories = [
   { name: "Multimedia", description: "Audio and video media." },
   { name: "Navigation & places", description: "Maps and places." },
   { name: "Notifications", description: "Alerts and notifications." },
-  { name: "Seasons", description: "Seasonal concepts." },
   { name: "Shapes", description: "Geometric shapes." },
   { name: "Text formatting", description: "Text formatting." },
   { name: "Time & calendar", description: "Time and calendars." },
@@ -63,13 +65,13 @@ const categories = [
 ];
 
 assert.ok(Engine, 'shared classifier should expose a global API');
-assert.equal(Engine.version, 13);
+assert.equal(Engine.version, 14);
 
 function top(name, metadata = {}, options = {}) {
   return Engine.classify(name, metadata, {}, {
     categoryData: categories,
     threshold: 0.30,
-    maxSuggestions: 43,
+    maxSuggestions: 45,
     ...options
   });
 }
@@ -143,6 +145,27 @@ test('exposes primary and secondary categories without changing the suggestion s
     assert.ok(Array.isArray(item.evidence));
     assert.ok(['primary', 'secondary'].includes(item.role));
   }
+});
+
+
+test('maps AI, Education and Logistics official categories', () => {
+  for (const [slug, expected] of [['ai', 'AI'], ['education', 'Education'], ['logistics', 'Logistics']]) {
+    const result = top('sample-icon', { lucide: { categories: [slug] } });
+    assert.equal(result.primaryCategory, expected);
+  }
+});
+
+test('ellipse orientation variants are classified as Shapes without layout noise', () => {
+  for (const name of ['ellipse-horizontal', 'ellipse-vertical']) {
+    const result = top(name);
+    assert.equal(result.primaryCategory, 'Shapes');
+    assert.deepEqual(result.categories, ['Shapes']);
+  }
+});
+
+test('weak single-source matches do not create secondary category assignments', () => {
+  const result = top('custom-mark', { lucide: { tags: ['message'] } });
+  assert.equal(result.suggestions.length <= 1, true);
 });
 
 test('manual review fields are not modified by the classifier', () => {
@@ -310,15 +333,18 @@ test('prefers precise canonical categories over overlapping legacy category labe
   assert.equal(text.categories.includes('Typography'), false);
 });
 
-test('keeps legacy category labels available when no canonical replacement is supplied', () => {
+test('never emits categories outside the requested Lucide taxonomy', () => {
   const legacyOnly = [
     { name: 'Files', description: 'Files and documents.' },
-    { name: 'Typography', description: 'Text, letters and punctuation.' }
+    { name: 'Typography', description: 'Text, letters and punctuation.' },
+    { name: 'Seasons', description: 'Seasonal concepts.' }
   ];
   const result = Engine.classify('file-pdf', {
     lucide: { tags: ['pdf document'] }
   }, {}, { categoryData: legacyOnly, threshold: 0.30 });
-  assert.ok(result.categories.includes('Files'));
+  assert.deepEqual(result.categories, []);
+  assert.equal(Engine.allowedCategories.length, 45);
+  assert.equal(new Set(Engine.allowedCategories).size, 45);
 });
 
 test('eye modifiers avoid arrow and device false positives', () => {
