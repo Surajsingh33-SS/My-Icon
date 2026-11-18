@@ -6573,12 +6573,13 @@ function getSelectedFinishCategories() {
                 const dy = snappedPosition.y - dragging.startY;
                 const action = dragging.action;
                 if (dragging.action === "corner-radius") {
-                    shape.cornerRadius = Math.max(
-                        0,
-                        Math.min(
-                            Math.min(shape.width, shape.height) / 2,
-                            position.x - shape.x
-                        )
+                    const maxRadius = Math.min(shape.width, shape.height) / 2;
+                    const rawRadius = Math.max(0, Math.min(maxRadius, position.x - shape.x));
+
+                    // Round to 0.2-unit increments for finer, predictable radius control.
+                    shape.cornerRadius = Math.min(
+                        maxRadius,
+                        Math.round(rawRadius / 0.2) * 0.2
                     );
 
                     updateBasicShape(shape);
