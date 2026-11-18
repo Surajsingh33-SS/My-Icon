@@ -258,6 +258,8 @@
     const liveSymmetryHCheckbox = document.getElementById("live-symmetry-h");
     const liveSymmetryVCheckbox = document.getElementById("live-symmetry-v");
     const customMirrorToolBtn = document.getElementById("custom-mirror-tool-btn");
+    const mirrorAxisModeSelect = document.getElementById("mirror-axis-mode");
+    const mirrorAxisCountInput = document.getElementById("mirror-axis-count");
 
     // Properties & Measurements
     const propertiesPanel = document.getElementById("properties-panel");
@@ -437,6 +439,9 @@
     let customMirrorAxes = []; // [{ id, x1, y1, x2, y2, active }]
     let isPlacingMirrorAxis = false;
     let mirrorAxisPlacementPoints = [];
+    let selectedCustomAxisGroupId = null;
+    let copiedCustomAxes = [];
+    let customAxisDrag = null;
 
     let isMarqueeActive = false;
     let marqueeStart = null;
@@ -862,6 +867,7 @@
                 pathStyle: pathStyleToggle?.checked ? "curve" : "straight"
             },
             connections: structuredClone(connections),
+            customMirrorAxes: structuredClone(customMirrorAxes),
             shapes: shapes.map(shape => {
                 const data = {};
                 Object.keys(shape).forEach(key => {
@@ -1629,6 +1635,10 @@ function getSelectedFinishCategories() {
             connections = Array.isArray(projectData.connections)
                 ? structuredClone(projectData.connections)
                 : [];
+            customMirrorAxes = Array.isArray(projectData.customMirrorAxes)
+                ? structuredClone(projectData.customMirrorAxes)
+                : [];
+            selectedCustomAxisGroupId = null;
             selectedShape = null;
             selectedShapes = [];
 
@@ -1641,6 +1651,8 @@ function getSelectedFinishCategories() {
                     });
                 }
             });
+
+            renderCustomMirrorAxes();
 
             // Restore selection
             const savedIndex = projectData.selectedShapeIndex;
@@ -1683,6 +1695,8 @@ function getSelectedFinishCategories() {
                 return { shape, data };
             }),
             connections: structuredClone(connections),
+            customMirrorAxes: structuredClone(customMirrorAxes),
+            selectedCustomAxisGroupId,
             selectedShape,
             selectedShapes: [...selectedShapes]
         };
@@ -1691,6 +1705,7 @@ function getSelectedFinishCategories() {
     function getHistoryKey(snapshot) {
         return JSON.stringify({
             connections: snapshot.connections,
+            customMirrorAxes: snapshot.customMirrorAxes || [],
             shapes: snapshot.shapes.map(item => item.data),
             selectedShape: snapshot.shapes.findIndex(item => item.shape === snapshot.selectedShape),
             selectedShapes: snapshot.selectedShapes.map(shape => snapshot.shapes.findIndex(item => item.shape === shape))
@@ -1782,7 +1797,10 @@ function getSelectedFinishCategories() {
             }
         });
 
-        // Restore persistent handle connections.
+        // Restore custom mirror axes and persistent handle connections.
+        customMirrorAxes = structuredClone(snapshot.customMirrorAxes || []);
+        selectedCustomAxisGroupId = snapshot.selectedCustomAxisGroupId || null;
+        renderCustomMirrorAxes();
         connections = structuredClone(snapshot.connections || []);
         // 6. Restore geometry updates
         shapes.forEach(shape => {
@@ -3742,6 +3760,10 @@ function getSelectedFinishCategories() {
 
 
     function selectShape(shape, additive = false) {
+        if (shape && selectedCustomAxisGroupId) {
+            selectedCustomAxisGroupId = null;
+            renderCustomMirrorAxes();
+        }
         const oldPrimary = selectedShape;
 
         if (
@@ -5329,21 +5351,115 @@ function getSelectedFinishCategories() {
         }
     }
 
+    function getCustomAxisGroupMembers(groupId) {
+        return customMirrorAxes.filter(axis => (axis.groupId || axis.id) === groupId);
+    }
+    function selectCustomAxis(axis) {
+        selectedCustomAxisGroupId = axis.groupId || axis.id;
+        selectedShape = null;
+        selectedShapes = [];
+        shapes.forEach(shape => shape.element?.classList.remove("is-selected"));
+        renderCustomMirrorAxes();
+    }
+    function snapCustomAxisAngle(angle) {
+        const quarterTurn = Math.PI / 2;
+        const nearest = Math.round(angle / quarterTurn) * quarterTurn;
+        const difference = Math.atan2(Math.sin(angle - nearest), Math.cos(angle - nearest));
+        const snapRange = 5 * Math.PI / 180;
+        return Math.abs(difference) <= snapRange ? nearest : angle;
+    }
+    function updateUniformAxisGroup(groupId, center, angle, halfLength) {
+        const members = getCustomAxisGroupMembers(groupId), count = members.length;
+        members.forEach((axis, index) => {
+            const a = angle + index * Math.PI / count;
+            const dx = Math.cos(a) * halfLength, dy = Math.sin(a) * halfLength;
+            axis.x1 = center.x - dx; axis.y1 = center.y - dy;
+            axis.x2 = center.x + dx; axis.y2 = center.y + dy;
+        });
+    }
+    function copyCustomAxisGroup() {
+        if (!selectedCustomAxisGroupId) return false;
+        copiedCustomAxes = getCustomAxisGroupMembers(selectedCustomAxisGroupId).map(axis => structuredClone(axis));
+        if (!copiedCustomAxes.length) return false;
+        showToast(`Copied ${copiedCustomAxes.length} custom axis(es)`, "info");
+        return true;
+    }
+    function pasteCustomAxisGroup() {
+        if (!copiedCustomAxes.length) return false;
+        beginHistoryAction();
+        const groupId = `axis-group-${crypto.randomUUID()}`;
+        customMirrorAxes.push(...copiedCustomAxes.map(axis => ({
+            ...structuredClone(axis), id: `axis-${crypto.randomUUID()}`, groupId,
+            x1: axis.x1 + COPY_OFFSET, y1: axis.y1 + COPY_OFFSET,
+            x2: axis.x2 + COPY_OFFSET, y2: axis.y2 + COPY_OFFSET
+        })));
+        selectedCustomAxisGroupId = groupId;
+        renderCustomMirrorAxes();
+        commitHistoryAction();
+        showToast("Pasted custom axis group", "success");
+        return true;
+    }
+    function duplicateCustomAxisGroup() {
+        if (!copyCustomAxisGroup()) return;
+        pasteCustomAxisGroup();
+    }
+    function deleteSelectedCustomAxisGroup() {
+        if (!selectedCustomAxisGroupId) return false;
+        const previousLength = customMirrorAxes.length;
+        beginHistoryAction();
+        customMirrorAxes = customMirrorAxes.filter(axis => (axis.groupId || axis.id) !== selectedCustomAxisGroupId);
+        selectedCustomAxisGroupId = null;
+        renderCustomMirrorAxes();
+        commitHistoryAction();
+        if (customMirrorAxes.length !== previousLength) showToast("Deleted custom axis", "success");
+        return customMirrorAxes.length !== previousLength;
+    }
+    function translateCustomAxisGroup(groupId, dx, dy, originals) {
+        customMirrorAxes = customMirrorAxes.map(axis => {
+            if ((axis.groupId || axis.id) !== groupId) return axis;
+            const original = originals.find(item => item.id === axis.id);
+            return { ...axis, x1: original.x1 + dx, y1: original.y1 + dy,
+                x2: original.x2 + dx, y2: original.y2 + dy };
+        });
+    }
     function renderCustomMirrorAxes() {
         if (!customMirrorAxesGroup) return;
         customMirrorAxesGroup.innerHTML = "";
         customMirrorAxes.forEach(axis => {
             const line = document.createElementNS(SVG_NS, "line");
-            line.setAttribute("x1", axis.x1);
-            line.setAttribute("y1", axis.y1);
-            line.setAttribute("x2", axis.x2);
-            line.setAttribute("y2", axis.y2);
-            line.setAttribute("stroke", "#EC4899");
-            line.setAttribute("stroke-width", "0.35");
+            line.setAttribute("x1", axis.x1); line.setAttribute("y1", axis.y1);
+            line.setAttribute("x2", axis.x2); line.setAttribute("y2", axis.y2);
+            line.setAttribute("stroke", (axis.groupId || axis.id) === selectedCustomAxisGroupId ? "#F97316" : "#EC4899");
+            line.setAttribute("stroke-width", (axis.groupId || axis.id) === selectedCustomAxisGroupId ? "0.48" : "0.35");
             line.setAttribute("stroke-dasharray", "0.8 0.5");
-            line.setAttribute("opacity", "0.9");
-            line.setAttribute("pointer-events", "none");
+            line.setAttribute("opacity", "0.95");
+            line.setAttribute("pointer-events", "stroke");
+            line.classList.add("custom-axis-line");
+            line.dataset.axisId = axis.id;
             customMirrorAxesGroup.appendChild(line);
+        });
+        if (!selectedCustomAxisGroupId) return;
+        const members = getCustomAxisGroupMembers(selectedCustomAxisGroupId);
+        const handleAxes = members.some(axis => axis.uniform) ? members.slice(0, 1) : members;
+        handleAxes.forEach(axis => {
+            const addHandle = (x, y, action) => {
+                const hit = document.createElementNS(SVG_NS, "circle");
+                hit.setAttribute("cx", x); hit.setAttribute("cy", y);
+                hit.setAttribute("r", "0.95"); hit.setAttribute("fill", "transparent");
+                hit.setAttribute("pointer-events", "all");
+                hit.classList.add("custom-axis-handle");
+                hit.dataset.axisId = axis.id; hit.dataset.axisAction = action;
+                customMirrorAxesGroup.appendChild(hit);
+                const visible = document.createElementNS(SVG_NS, "circle");
+                visible.setAttribute("cx", x); visible.setAttribute("cy", y);
+                visible.setAttribute("r", "0.32");
+                visible.setAttribute("fill", action === "center" ? "#10B981" : "#F97316");
+                visible.setAttribute("pointer-events", "none");
+                customMirrorAxesGroup.appendChild(visible);
+            };
+            addHandle(axis.x1, axis.y1, "start");
+            addHandle(axis.x2, axis.y2, "end");
+            addHandle((axis.x1 + axis.x2) / 2, (axis.y1 + axis.y2) / 2, "center");
         });
     }
 
@@ -5356,42 +5472,64 @@ function getSelectedFinishCategories() {
 
         const pos = getSVGPosition(event);
 
-        // Custom Mirror Axis 2-Point Placement Mode
+        // Two-point free axis or a uniform fan arrangement.
         if (isPlacingMirrorAxis) {
             if (event.button !== 0) return;
-
-            const point = {
-                x: Math.round(pos.x * 2) / 2,
-                y: Math.round(pos.y * 2) / 2
-            };
-
-            if (mirrorAxisPlacementPoints.length === 0) {
+            const point = { x: Math.round(pos.x * 2) / 2, y: Math.round(pos.y * 2) / 2 };
+            if (!mirrorAxisPlacementPoints.length) {
+                beginHistoryAction();
                 mirrorAxisPlacementPoints.push(point);
-                showToast("First point placed. Click the second point.", "info");
+                showToast(mirrorAxisModeSelect?.value === "uniform"
+                    ? "Click the centre, then set the direction and visible length."
+                    : "First endpoint placed. Click the second endpoint.", "info");
             } else {
                 const start = mirrorAxisPlacementPoints[0];
-
-                if (point.x !== start.x || point.y !== start.y) {
-                    customMirrorAxes.push({
-                        id: `axis-${Date.now()}`,
-                        x1: start.x,
-                        y1: start.y,
-                        x2: point.x,
-                        y2: point.y,
-                        active: true
-                    });
-
-                    renderCustomMirrorAxes();
-                    showToast("Custom mirror axis set!", "success");
-                } else {
-                    showToast("Choose a different second point.", "warning");
+                const dx = point.x - start.x, dy = point.y - start.y;
+                const halfLength = Math.hypot(dx, dy);
+                if (halfLength < 0.25) {
+                    showToast("Choose a point farther from the first point.", "warning");
+                    return;
                 }
-
+                const groupId = `axis-group-${crypto.randomUUID()}`;
+                if (mirrorAxisModeSelect?.value === "uniform") {
+                    const count = Math.max(2, Math.min(24, Math.round(Number(mirrorAxisCountInput?.value) || 3)));
+                    const baseAngle = Math.atan2(dy, dx);
+                    for (let index = 0; index < count; index++) {
+                        const angle = baseAngle + index * Math.PI / count;
+                        const vx = Math.cos(angle) * halfLength, vy = Math.sin(angle) * halfLength;
+                        customMirrorAxes.push({ id: `axis-${crypto.randomUUID()}`, groupId, uniform: true,
+                            x1: start.x - vx, y1: start.y - vy, x2: start.x + vx, y2: start.y + vy, active: true });
+                    }
+                    showToast(`Created ${count} equally spaced axes (${(180 / count).toFixed(2)}° apart)`, "success");
+                } else {
+                    customMirrorAxes.push({ id: `axis-${crypto.randomUUID()}`, groupId, uniform: false,
+                        x1: start.x, y1: start.y, x2: point.x, y2: point.y, active: true });
+                    showToast("Custom mirror axis set!", "success");
+                }
+                selectedCustomAxisGroupId = groupId;
                 mirrorAxisPlacementPoints = [];
                 isPlacingMirrorAxis = false;
                 customMirrorToolBtn?.classList.remove("active");
+                renderCustomMirrorAxes();
+                commitHistoryAction();
             }
-
+            return;
+        }
+        const axisHandle = event.target.closest?.(".custom-axis-handle");
+        const axisLine = event.target.closest?.(".custom-axis-line");
+        if (axisHandle || axisLine) {
+            const target = axisHandle || axisLine;
+            const axis = customMirrorAxes.find(item => item.id === target.dataset.axisId);
+            if (!axis) return;
+            selectCustomAxis(axis);
+            if (axisHandle) {
+                beginHistoryAction();
+                workspace.setPointerCapture?.(event.pointerId);
+                customAxisDrag = { groupId: axis.groupId || axis.id, axisId: axis.id,
+                    action: axisHandle.dataset.axisAction, start: pos,
+                    original: structuredClone(getCustomAxisGroupMembers(axis.groupId || axis.id)) };
+                event.preventDefault();
+            }
             return;
         }
 
@@ -5742,6 +5880,46 @@ function getSelectedFinishCategories() {
 
     workspace.addEventListener("pointermove", event => {
         const position = getSVGPosition(event);
+        if (customAxisDrag) {
+            const dx = position.x - customAxisDrag.start.x, dy = position.y - customAxisDrag.start.y;
+            const primary = customAxisDrag.original.find(axis => axis.id === customAxisDrag.axisId) || customAxisDrag.original[0];
+            if (primary) {
+                if (primary.uniform && customAxisDrag.action !== "center") {
+                    const center = { x: (primary.x1 + primary.x2) / 2, y: (primary.y1 + primary.y2) / 2 };
+                    const target = customAxisDrag.action === "start"
+                        ? { x: primary.x1 + dx, y: primary.y1 + dy }
+                        : { x: primary.x2 + dx, y: primary.y2 + dy };
+                    const targetAngle = snapCustomAxisAngle(Math.atan2(target.y - center.y, target.x - center.x));
+                    updateUniformAxisGroup(customAxisDrag.groupId, center, targetAngle,
+                        Math.max(0.25, Math.hypot(target.x - center.x, target.y - center.y)));
+                } else if (customAxisDrag.action === "center") {
+                    const originalCenter = { x: (primary.x1 + primary.x2) / 2, y: (primary.y1 + primary.y2) / 2 };
+                    const snappedCenter = { x: Math.round(originalCenter.x + dx), y: Math.round(originalCenter.y + dy) };
+                    translateCustomAxisGroup(customAxisDrag.groupId,
+                        snappedCenter.x - originalCenter.x, snappedCenter.y - originalCenter.y,
+                        customAxisDrag.original);
+                } else {
+                    const axis = customMirrorAxes.find(item => item.id === customAxisDrag.axisId);
+                    if (axis && customAxisDrag.action === "start") {
+                        const fixed = { x: primary.x2, y: primary.y2 };
+                        const moving = { x: primary.x1 + dx, y: primary.y1 + dy };
+                        const length = Math.hypot(moving.x - fixed.x, moving.y - fixed.y);
+                        const angle = snapCustomAxisAngle(Math.atan2(moving.y - fixed.y, moving.x - fixed.x));
+                        axis.x1 = fixed.x + Math.cos(angle) * length;
+                        axis.y1 = fixed.y + Math.sin(angle) * length;
+                    } else if (axis) {
+                        const fixed = { x: primary.x1, y: primary.y1 };
+                        const moving = { x: primary.x2 + dx, y: primary.y2 + dy };
+                        const length = Math.hypot(moving.x - fixed.x, moving.y - fixed.y);
+                        const angle = snapCustomAxisAngle(Math.atan2(moving.y - fixed.y, moving.x - fixed.x));
+                        axis.x2 = fixed.x + Math.cos(angle) * length;
+                        axis.y2 = fixed.y + Math.sin(angle) * length;
+                    }
+                }
+                renderCustomMirrorAxes();
+            }
+            return;
+        }
 
         // Grid Hover Highlight
         if (gridHighlightToggle?.checked && gridHoverMarker) {
@@ -6412,6 +6590,13 @@ function getSelectedFinishCategories() {
     });
 
     function stopMovement(event) {
+        if (customAxisDrag) {
+            if (workspace.hasPointerCapture?.(event?.pointerId)) workspace.releasePointerCapture(event.pointerId);
+            customAxisDrag = null;
+            renderCustomMirrorAxes();
+            commitHistoryAction();
+            return;
+        }
         if (event && event.target.hasPointerCapture?.(event.pointerId)) {
             event.target.releasePointerCapture(event.pointerId);
         }
@@ -7390,6 +7575,11 @@ function getSelectedFinishCategories() {
         return shape;
     }
 
+    mirrorAxisModeSelect?.addEventListener("change", () => {
+        if (mirrorAxisCountInput) mirrorAxisCountInput.disabled = mirrorAxisModeSelect.value !== "uniform";
+    });
+    if (mirrorAxisCountInput) mirrorAxisCountInput.disabled = mirrorAxisModeSelect?.value !== "uniform";
+
     transformToolbar?.addEventListener("click", event => {
         const btn = event.target.closest(".tool-action-btn");
         if (!btn) return;
@@ -7405,8 +7595,11 @@ function getSelectedFinishCategories() {
             btn.classList.toggle("active", isPlacingMirrorAxis);
 
             if (isPlacingMirrorAxis) {
-                showToast("Click 2 points on the canvas to place a custom mirror axis", "info");
+                showToast(mirrorAxisModeSelect?.value === "uniform"
+                    ? "Click a centre point, then a direction/length point."
+                    : "Click two endpoints to place a custom mirror axis", "info");
             } else {
+                if (historyBeforeAction) commitHistoryAction();
                 showToast("Custom mirror tool canceled", "info");
             }
         }
@@ -7422,14 +7615,15 @@ function getSelectedFinishCategories() {
         }
     });
     clearCustomAxisBtn?.addEventListener("click", () => {
+        if (customMirrorAxes.length) beginHistoryAction();
         customMirrorAxes = [];
+        selectedCustomAxisGroupId = null;
         mirrorAxisPlacementPoints = [];
         isPlacingMirrorAxis = false;
-
+        customAxisDrag = null;
         customMirrorToolBtn?.classList.remove("active");
-
         renderCustomMirrorAxes();
-
+        if (historyBeforeAction) commitHistoryAction();
         showToast("Custom mirror axis removed", "success");
     });
 
@@ -10356,11 +10550,13 @@ if (finishCategoryManuallyChanged) {
 
         if (ctrl && key === "d") {
             event.preventDefault();
-            duplicateSelectedShapes();
+            if (selectedCustomAxisGroupId) duplicateCustomAxisGroup();
+            else duplicateSelectedShapes();
             return;
         }
 
         if (ctrl && key === "c") {
+            if (copyCustomAxisGroup()) { event.preventDefault(); return; }
             event.preventDefault();
             copySelectedShapes();
             return;
@@ -10368,11 +10564,12 @@ if (finishCategoryManuallyChanged) {
 
         if (ctrl && key === "v") {
             event.preventDefault();
-            pasteCopiedShapes();
+            if (!pasteCustomAxisGroup()) pasteCopiedShapes();
             return;
         }
 
         if (event.key === "Delete" || event.key === "Backspace") {
+            if (deleteSelectedCustomAxisGroup()) { event.preventDefault(); return; }
             deleteButton?.click();
             return;
         }
