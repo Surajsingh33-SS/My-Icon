@@ -4175,11 +4175,11 @@ body.light-theme #save-project-button:hover {
 }
 
 .project-info-footer .project-drawer-utility-row {
-    justify-content: stretch;
+    justify-content: flex-end;
 }
 
 .project-info-footer .project-utility-button {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-width: 0;
 }
 
