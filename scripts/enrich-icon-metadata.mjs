@@ -97,7 +97,7 @@ const SEARCH_SYNONYMS = {
   download: ["save", "export", "get file", "retrieve", "download file", "receive", "transfer", "save locally", "import to device", "offline copy", "file download", "fetch", "pull file", "download content", "save to computer"],
   upload: ["import", "send file", "attach", "submit", "transfer", "add file", "upload file", "cloud upload", "share file", "select file", "file transfer", "send", "publish", "bring in", "add attachment"],
   share: ["send", "distribute", "forward", "collaborate", "publish", "social", "share link", "invite", "give access", "send to others", "sharing", "spread", "pass along", "share content", "collaboration"],
-  link: ["url", "hyperlink", " 연결", "web address", "website", "connect", "reference", "chain", "permalink", "external link", "copy link", "linked", "connection", "web link", "anchor"],
+  link: ["url", "hyperlink", " connection", "web address", "website", "connect", "reference", "chain", "permalink", "external link", "copy link", "linked", "connection", "web link", "anchor"],
   globe: ["world", "earth", "internet", "website", "global", "international", "planet", "web", "worldwide", "language", "network", "global access", "online", "world map", "internationalization"],
   wifi: ["wireless", "internet", "network", "connection", "wi-fi", "signal", "online", "hotspot", "connectivity", "wireless network", "internet access", "router", "wireless signal", "network status", "connect"],
   bluetooth: ["wireless", "device pairing", "pairing", "connection", "connectivity", "short range", "peripheral", "wireless device", "bluetooth connection", "device link", "headphones", "accessory", "sync device", "pair device", "radio"],
