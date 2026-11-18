@@ -318,7 +318,7 @@ function buildSearchTerms(name, descriptor, oldAi = {}) {
 
   // Prefer high-signal source terms and curated synonyms. Do not fabricate filler
   // such as "icon", "graphic", or "button" to hit the target.
-  return result.slice(0, Math.min(30, Math.max(target, Math.min(result.length, 15))));
+  return result.slice(0, Math.min(30, Math.max(15, Math.min(target, result.length))));
 }
 function buildDescription(name, descriptor, oldAi = {}) {
   const useCases = cleanStrings(descriptor['use-cases'])
@@ -421,16 +421,24 @@ async function main() {
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, targets.length) }, worker));
   if (!dryRun) await queueSave(metadata);
 
-  const enrichedCount = Object.values(metadata).filter(item =>
-    item?.metadataSource === 'lucide-icons/lucide' &&
-    item?.lucide?.tags?.length
-  ).length;
+  const enrichedItems = Object.values(metadata).filter(item =>
+    item?.metadataSource === 'lucide-icons/lucide'
+  );
+  const enrichedCount = enrichedItems.length;
+  const termCounts = enrichedItems.map(item => item?.ai?.searchTerms?.length || 0).sort((a, b) => a - b);
+  const medianTerms = termCounts.length
+    ? termCounts[Math.floor(termCounts.length / 2)]
+    : 0;
+  const belowTarget = termCounts.filter(count => count < 15).length;
 
   console.log('\nFinished.');
   console.log('Enriched this run: ' + success);
   console.log('Missing official descriptors: ' + missing);
   console.log('Fetch failures (safe to rerun): ' + failed);
   console.log('Total records with official metadata: ' + enrichedCount + '/' + names.length);
+  console.log('Search-term count: min ' + (termCounts[0] ?? 0) +
+    ' | median ' + medianTerms + ' | max ' + (termCounts.at(-1) ?? 0));
+  console.log('Icons still below 15 relevant terms: ' + belowTarget);
   if (failed) console.log('Run the same command again to retry failed icons.');
   if (dryRun) console.log('Dry run complete; no files were written.');
 }
