@@ -6471,14 +6471,12 @@ function getSelectedFinishCategories() {
             // GREEN: Change radius vertically
             else if (action === "radius") {
 
-                const movement = dragging.startY - snappedPosition.y;
+                // Use the unsnapped pointer position and retain 0.2-unit precision.
+                const movement = dragging.startY - position.y;
                 const newRadius = dragging.startRadius + movement;
+                const clampedRadius = Math.max(0.3, Math.min(artboardSize, newRadius));
 
-                // Curve radius changes in 1-pixel increments, including while Shift is held.
-                shape.radius = Math.max(
-                    0.3,
-                    Math.min(artboardSize, Math.round(newRadius))
-                );
+                shape.radius = Math.round(clampedRadius / 0.2) * 0.2;
             }
 
             updateCurve(shape);
@@ -6574,8 +6572,11 @@ function getSelectedFinishCategories() {
                     const maxRadius = Math.min(shape.width, shape.height) / 2;
                     const rawRadius = Math.max(0, Math.min(maxRadius, position.x - shape.x));
 
-                    // Rectangle corner radius changes in 1-pixel increments.
-                    shape.cornerRadius = Math.min(maxRadius, Math.round(rawRadius));
+                    // Use the unsnapped pointer and update in fine 0.2-unit increments.
+                    shape.cornerRadius = Math.min(
+                        maxRadius,
+                        Math.round(rawRadius / 0.2) * 0.2
+                    );
 
                     updateBasicShape(shape);
                     return;
