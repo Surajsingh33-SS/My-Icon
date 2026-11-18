@@ -6646,9 +6646,17 @@ function getSelectedFinishCategories() {
                 }
             });
 
-            const movingShapes = new Set(
-                selectedTargets
-            );
+            // Every member of a selected symmetry group moves together.
+            // Treat all of them as moving so a mirrored copy is never mistaken
+            // for a stationary snap target (which feels like a movement blocker).
+            const movingShapes = new Set();
+            selectedTargets.forEach(item => {
+                if (item.symmetryGroupId) {
+                    getSymmetryGroupMembers(item).forEach(member => movingShapes.add(member));
+                } else {
+                    movingShapes.add(item);
+                }
+            });
 
 
             let closestSource = null;
@@ -6711,7 +6719,11 @@ function getSelectedFinishCategories() {
                     for (const movingShape of targets) {
                         for (const source of getShapeEndpoints(movingShape).filter(isBlueSnapHandle)) {
                             for (const stationaryShape of shapes) {
-                                if (movingShapes.has(stationaryShape)) continue;
+                                if (
+                                    movingShapes.has(stationaryShape) ||
+                                    (movingShape.symmetryGroupId &&
+                                     stationaryShape.symmetryGroupId === movingShape.symmetryGroupId)
+                                ) continue;
 
                                 for (const target of getShapeEndpoints(stationaryShape).filter(isBlueSnapHandle)) {
 
@@ -6945,6 +6957,11 @@ function getSelectedFinishCategories() {
         if (!dragging) {
             hideSnapTarget();
             return;
+        }
+
+        // Cancel any pending delayed whole-shape snap when the drag ends.
+        if (dragging.pendingHandleSnap?.timer) {
+            clearTimeout(dragging.pendingHandleSnap.timer);
         }
 
         // Keep a reference before clearing the active drag.
