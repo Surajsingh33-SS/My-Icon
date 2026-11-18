@@ -4675,7 +4675,7 @@ function getSelectedFinishCategories() {
 
 
     function snapAngle(angle) {
-        const step = Math.PI / 90; // 2 degrees
+        const step = Math.PI / 180; // 1 degree
         return Math.round(angle / step) * step;
     }
 
