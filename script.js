@@ -10204,13 +10204,6 @@ function getSelectedFinishCategories() {
         renderHomeProjects();
     });
 
-    previewStrokeWidth?.addEventListener("input", () => {
-        if (!selectedHomeProject) return;
-        const val = Number(previewStrokeWidth.value) || 2;
-        previewStrokeValue.textContent = val.toFixed(1);
-        projectPreviewImage.src = getPreviewSVG(selectedHomeProject, val);
-    });
-
     projectEditButton?.addEventListener("click", () => {
         if (!selectedHomeProject) return;
         const id = selectedHomeProject.id;
