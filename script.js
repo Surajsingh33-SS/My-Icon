@@ -4717,15 +4717,22 @@ function getSelectedFinishCategories() {
         const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
         const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
 
+        const sweep = shape.sweepFlag ?? 1;
+
         let delta = shape.endAngle - shape.startAngle;
 
-        while (delta < 0) delta += Math.PI * 2;
-        while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+        if (sweep === 1) {
+            while (delta < 0) delta += Math.PI * 2;
+            while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+        } else {
+            while (delta > 0) delta -= Math.PI * 2;
+            while (delta <= -Math.PI * 2) delta += Math.PI * 2;
+        }
 
-        const largeArc = delta > Math.PI ? 1 : 0;
+        const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
 
         const curvePath =
-            `M ${startX} ${startY} A ${shape.radius} ${shape.radius} 0 ${largeArc} ${shape.sweepFlag ?? 1} ${endX} ${endY}`;
+            `M ${startX} ${startY} A ${shape.radius} ${shape.radius} 0 ${largeArc} ${sweep} ${endX} ${endY}`;
 
         // Main curve
         shape.element.setAttribute("d", curvePath);
@@ -8001,14 +8008,21 @@ function getSelectedFinishCategories() {
                 const endX = shape.cx + shape.radius * Math.cos(shape.endAngle);
                 const endY = shape.cy + shape.radius * Math.sin(shape.endAngle);
 
+                const sweep = shape.sweepFlag ?? 1;
+
                 let delta = shape.endAngle - shape.startAngle;
 
-                while (delta < 0) delta += Math.PI * 2;
-                while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+                if (sweep === 1) {
+                    while (delta < 0) delta += Math.PI * 2;
+                    while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+                } else {
+                    while (delta > 0) delta -= Math.PI * 2;
+                    while (delta <= -Math.PI * 2) delta += Math.PI * 2;
+                }
 
-                const largeArc = delta > Math.PI ? 1 : 0;
+                const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
 
-                const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} 1 ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
+                const pathD = `M ${formatSVGNumber(startX)} ${formatSVGNumber(startY)} A ${formatSVGNumber(shape.radius)} ${formatSVGNumber(shape.radius)} 0 ${largeArc} ${sweep} ${formatSVGNumber(endX)} ${formatSVGNumber(endY)}`;
 
                 artwork.push(
                     `    <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${formatSVGNumber(shape.strokeWidth)}" stroke-linecap="round"/>`
