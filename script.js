@@ -6150,7 +6150,12 @@ function getSelectedFinishCategories() {
         }
     });
 
+    let lastPointerClientX = 0;
+    let lastPointerClientY = 0;
+
     workspace.addEventListener("pointermove", event => {
+        lastPointerClientX = event.clientX;
+        lastPointerClientY = event.clientY;
         const position = getSVGPosition(event);
         if (customAxisDrag) {
             const dx = position.x - customAxisDrag.start.x, dy = position.y - customAxisDrag.start.y;
@@ -6752,7 +6757,20 @@ function getSelectedFinishCategories() {
                         const now = Date.now();
 
                         if (dragging.pendingHandleSnap?.key !== candidateKey) {
-                            dragging.pendingHandleSnap = { key: candidateKey, since: now };
+                            dragging.pendingHandleSnap = {
+                                key: candidateKey,
+                                since: now,
+                                timer: window.setTimeout(() => {
+                                    if (dragging?.type === "body" &&
+                                        dragging.pendingHandleSnap?.key === candidateKey) {
+                                        workspace.dispatchEvent(new PointerEvent("pointermove", {
+                                            clientX: lastPointerClientX,
+                                            clientY: lastPointerClientY,
+                                            bubbles: true
+                                        }));
+                                    }
+                                }, 1000)
+                            };
                             closestSource = null;
                             closestTarget = null;
                         } else if (now - dragging.pendingHandleSnap.since < 1000) {
@@ -6760,10 +6778,16 @@ function getSelectedFinishCategories() {
                             closestTarget = null;
                         }
                     } else {
+                        if (dragging.pendingHandleSnap?.timer) {
+                            clearTimeout(dragging.pendingHandleSnap.timer);
+                        }
                         dragging.pendingHandleSnap = null;
                     }
                 }
             } else {
+                if (dragging.pendingHandleSnap?.timer) {
+                    clearTimeout(dragging.pendingHandleSnap.timer);
+                }
                 dragging.pendingHandleSnap = null;
             }
 
