@@ -516,39 +516,42 @@
                         <!-- ICON INFORMATION -->
                         <div class="project-info">
 
-                            <div class="project-info-heading">
-                                <span class="project-version">24 × 24</span>
+                            <!-- Scrollable icon information; actions below remain pinned to the drawer bottom. -->
+                            <div class="project-info-scroll">
+                                <div class="project-info-heading">
+                                    <span class="project-version">24 × 24</span>
+                                </div>
+
+                                <div class="project-meta-row">
+                                    <div class="project-category-list" id="project-category-badge"></div>
+                                    <span class="project-date" id="project-date-badge"></span>
+                                </div>
+
+                                <div class="project-search-terms" id="project-search-terms"></div>
+                                <div id="project-category-editor" class="project-category-editor" hidden></div>
                             </div>
 
-                            <div class="project-meta-row">
-                                <div class="project-category-list" id="project-category-badge"></div>
-                                <span class="project-date" id="project-date-badge"></span>
-                            </div>
+                            <!-- Fixed bottom action area -->
+                            <div class="project-info-footer">
+                                <div class="project-drawer-utility-row">
+                                    <button type="button" id="project-global-preview-button" class="project-utility-button">
+                                        Global Preview
+                                    </button>
+                                    <button type="button" id="project-edit-categories" class="project-utility-button">
+                                        Edit categories
+                                    </button>
+                                </div>
 
-                            <div class="project-search-terms" id="project-search-terms"></div>
-
-                            <div id="project-category-editor" class="project-category-editor" hidden></div>
-
-                            <!-- Keep these actions directly above Export Icon at the bottom of the drawer. -->
-                            <div class="project-drawer-utility-row">
-                                <button type="button" id="project-global-preview-button" class="project-utility-button">
-                                    Global Preview
+                                <button id="project-export-button" class="btn btn-primary project-export-button">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <path d="M7 10l5 5 5-5" />
+                                        <path d="M12 15V3" />
+                                    </svg>
+                                    <span>Export Icon</span>
                                 </button>
-                                <button type="button" id="project-edit-categories" class="project-utility-button">
-                                    Edit categories
-                                </button>
                             </div>
-
-                            <!-- EXPORT BUTTON -->
-                            <button id="project-export-button" class="btn btn-primary project-export-button">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                    <path d="M7 10l5 5 5-5" />
-                                    <path d="M12 15V3" />
-                                </svg>
-                                <span>Export Icon</span>
-                            </button>
 
                         </div>
                     </div>
