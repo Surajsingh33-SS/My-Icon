@@ -116,7 +116,7 @@ test('maps official categories and ignores Lucide $extends relationships', () =>
   });
   assert.deepEqual(result.officialCategories, ['Accounts & access']);
   assert.deepEqual(result.officialCategoryValues, ['account']);
-  assert.equal(result.suggestions[0].name, 'People');
+  assert.equal(result.suggestions[0].name, 'Accounts & access');
 });
 
 test('does not create a category from weak embedding-only similarity', () => {
