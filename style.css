@@ -4242,3 +4242,53 @@ body.light-theme #save-project-button:hover {
         padding-right: 14px;
     }
 }
+
+
+/* Expandable category and search-term rows in the icon details drawer. */
+.project-category-list .project-category[hidden],
+.project-search-terms .project-search-term[hidden] {
+    display: none !important;
+}
+
+.drawer-more-toggle {
+    flex: 0 0 auto;
+    min-height: 24px;
+    padding: 3px 8px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-full);
+    background: var(--bg-surface);
+    color: var(--accent);
+    font: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.drawer-more-toggle:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.project-category-list.is-expanded {
+    align-items: center;
+}
+
+.project-search-terms {
+    flex-wrap: nowrap;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.project-search-terms .project-search-term {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.project-search-terms.is-expanded {
+    flex-wrap: wrap;
+    overflow: visible;
+}
