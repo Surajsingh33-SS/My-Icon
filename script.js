@@ -5983,12 +5983,19 @@ function getSelectedFinishCategories() {
             if (!shape) return;
             selectShape(shape);
 
+            const basicAction = basicHit.dataset.action;
+            const basicHandleStart = getShapeEndpoints(shape).find(
+                point => point.end === basicAction
+            );
+
             dragging = {
                 shape,
                 type: "basic-handle",
-                action: basicHit.dataset.action,
+                action: basicAction,
                 startX: pos.x,
                 startY: pos.y,
+                handleStartX: basicHandleStart?.x ?? pos.x,
+                handleStartY: basicHandleStart?.y ?? pos.y,
                 initialX: shape.x,
                 initialY: shape.y,
                 initialWidth: shape.width,
@@ -6452,7 +6459,7 @@ function getSelectedFinishCategories() {
                     snappedPosition.x - shape.cx
                 );
 
-                shape.startAngle = snapAngle(angle);
+                shape.startAngle = dragging.snappedTo ? angle : snapAngle(angle);
             }
 
 
@@ -6464,7 +6471,7 @@ function getSelectedFinishCategories() {
                     snappedPosition.x - shape.cx
                 );
 
-                shape.endAngle = snapAngle(angle);
+                shape.endAngle = dragging.snappedTo ? angle : snapAngle(angle);
             }
 
 
@@ -6558,9 +6565,9 @@ function getSelectedFinishCategories() {
                 );
 
                 if (action === "start") {
-                    shape.startAngle = snapAngle(angle);
+                    shape.startAngle = dragging.snappedTo ? angle : snapAngle(angle);
                 } else {
-                    shape.endAngle = snapAngle(angle);
+                    shape.endAngle = dragging.snappedTo ? angle : snapAngle(angle);
                 }
 
             } else if (action === "rx") {
@@ -6608,8 +6615,8 @@ function getSelectedFinishCategories() {
 
                 updateBasicShape(shape);
             } else if (shape.type === "rectangle") {
-                const dx = snappedPosition.x - dragging.startX;
-                const dy = snappedPosition.y - dragging.startY;
+                const dx = snappedPosition.x - dragging.handleStartX;
+                const dy = snappedPosition.y - dragging.handleStartY;
                 const action = dragging.action;
                 if (dragging.action === "corner-radius") {
                     const maxRadius = Math.min(shape.width, shape.height) / 2;
