@@ -4675,7 +4675,7 @@ function getSelectedFinishCategories() {
 
 
     function snapAngle(angle) {
-        const step = Math.PI / 18; // 10 degrees
+        const step = Math.PI / 90; // 2 degrees
         return Math.round(angle / step) * step;
     }
 
@@ -6119,7 +6119,8 @@ function getSelectedFinishCategories() {
                 type: "body",
                 previousX: pos.x,
                 previousY: pos.y,
-                snappedTo: null
+                snappedTo: null,
+                pendingHandleSnap: null
             };
             if (clickedShape.type === "curve") {
                 clickedShape.horizontalGuide.style.display = "block";
@@ -6690,14 +6691,24 @@ function getSelectedFinishCategories() {
 
                 // Find the nearest pair of handles.
                 if (!closestTarget) {
-                    let bestDistance = 0.55;
+                    // Screen-space tolerance remains consistent at every workspace zoom level.
+                    const screenMatrix = workspace.getScreenCTM();
+                    const screenScale = screenMatrix
+                        ? Math.max(0.0001, Math.hypot(screenMatrix.a, screenMatrix.b))
+                        : 1;
+                    const bestDistance = 4 / screenScale;
+                    const isBlueSnapHandle = endpoint =>
+                        endpoint.end !== "rotate-a" &&
+                        endpoint.end !== "rotate-b" &&
+                        endpoint.end !== "radius" &&
+                        endpoint.end !== "corner-radius";
 
                     for (const movingShape of targets) {
-                        for (const source of getShapeEndpoints(movingShape)) {
+                        for (const source of getShapeEndpoints(movingShape).filter(isBlueSnapHandle)) {
                             for (const stationaryShape of shapes) {
                                 if (movingShapes.has(stationaryShape)) continue;
 
-                                for (const target of getShapeEndpoints(stationaryShape)) {
+                                for (const target of getShapeEndpoints(stationaryShape).filter(isBlueSnapHandle)) {
 
                                     // Prevent immediately reconnecting to the handle just released.
                                     if (
@@ -6731,7 +6742,29 @@ function getSelectedFinishCategories() {
                             }
                         }
                     }
+
+                    // Require the same handle pair to stay within 4 screen pixels for 1 second.
+                    if (closestSource && closestTarget) {
+                        const candidateKey = [
+                            ensureShapeId(closestSource.shape), closestSource.end,
+                            ensureShapeId(closestTarget.shape), closestTarget.end
+                        ].join(":");
+                        const now = Date.now();
+
+                        if (dragging.pendingHandleSnap?.key !== candidateKey) {
+                            dragging.pendingHandleSnap = { key: candidateKey, since: now };
+                            closestSource = null;
+                            closestTarget = null;
+                        } else if (now - dragging.pendingHandleSnap.since < 1000) {
+                            closestSource = null;
+                            closestTarget = null;
+                        }
+                    } else {
+                        dragging.pendingHandleSnap = null;
+                    }
                 }
+            } else {
+                dragging.pendingHandleSnap = null;
             }
 
             if (closestSource && closestTarget) {
