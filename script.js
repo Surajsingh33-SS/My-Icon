@@ -6799,24 +6799,42 @@ function getSelectedFinishCategories() {
                 }
             }
 
-            // Keep lines inside the artboard without changing their length or direction.
+            // Calculate one shared movement limit for the entire selection.
+            // Per-shape clamping after snapping can move the source handle away
+            // from its target, making the red handles appear connected when
+            // their actual coordinates no longer match.
             let minAllowedDX = -Infinity;
             let maxAllowedDX = Infinity;
             let minAllowedDY = -Infinity;
             let maxAllowedDY = Infinity;
 
             targets.forEach(item => {
-                if (item.type !== "line") return;
+                if (item.type === "line") {
+                    const minX = Math.min(item.x1, item.x2);
+                    const maxX = Math.max(item.x1, item.x2);
+                    const minY = Math.min(item.y1, item.y2);
+                    const maxY = Math.max(item.y1, item.y2);
 
-                const minX = Math.min(item.x1, item.x2);
-                const maxX = Math.max(item.x1, item.x2);
-                const minY = Math.min(item.y1, item.y2);
-                const maxY = Math.max(item.y1, item.y2);
-
-                minAllowedDX = Math.max(minAllowedDX, -minX);
-                maxAllowedDX = Math.min(maxAllowedDX, artboardSize - maxX);
-                minAllowedDY = Math.max(minAllowedDY, -minY);
-                maxAllowedDY = Math.min(maxAllowedDY, artboardSize - maxY);
+                    minAllowedDX = Math.max(minAllowedDX, -minX);
+                    maxAllowedDX = Math.min(maxAllowedDX, artboardSize - maxX);
+                    minAllowedDY = Math.max(minAllowedDY, -minY);
+                    maxAllowedDY = Math.min(maxAllowedDY, artboardSize - maxY);
+                } else if (item.type === "rectangle") {
+                    minAllowedDX = Math.max(minAllowedDX, -item.x);
+                    maxAllowedDX = Math.min(maxAllowedDX, artboardSize - item.width - item.x);
+                    minAllowedDY = Math.max(minAllowedDY, -item.y);
+                    maxAllowedDY = Math.min(maxAllowedDY, artboardSize - item.height - item.y);
+                } else if (
+                    item.type === "circle" ||
+                    item.type === "ellipse" ||
+                    item.type === "curve" ||
+                    item.type === "ellipse-arc"
+                ) {
+                    minAllowedDX = Math.max(minAllowedDX, -item.cx);
+                    maxAllowedDX = Math.min(maxAllowedDX, artboardSize - item.cx);
+                    minAllowedDY = Math.max(minAllowedDY, -item.cy);
+                    maxAllowedDY = Math.min(maxAllowedDY, artboardSize - item.cy);
+                }
             });
 
             const originalDX = dx;
@@ -6825,7 +6843,8 @@ function getSelectedFinishCategories() {
             dx = Math.max(minAllowedDX, Math.min(maxAllowedDX, dx));
             dy = Math.max(minAllowedDY, Math.min(maxAllowedDY, dy));
 
-            // If the boundary prevented a snap, don't save a false connection.
+            // If the artboard boundary prevents the requested snap movement,
+            // cancel the pending connection instead of recording a false one.
             if (dx !== originalDX || dy !== originalDY) {
                 dragging.sourceHandle = null;
                 dragging.snappedTo = null;
