@@ -649,7 +649,6 @@
             if (dragging) {
                 dragging.snappedTo = null;
                 dragging.sourceHandle = null;
-                dragging.releasedSnap = null;
             }
 
             hideSnapTarget();
@@ -6427,8 +6426,8 @@ function getSelectedFinishCategories() {
             else if (action === "end") {
 
                 const angle = Math.atan2(
-                    position.y - shape.cy,
-                    position.x - shape.cx
+                    snappedPosition.y - shape.cy,
+                    snappedPosition.x - shape.cx
                 );
 
                 shape.endAngle = snapAngle(angle);
@@ -6767,8 +6766,6 @@ function getSelectedFinishCategories() {
             if (dx !== originalDX || dy !== originalDY) {
                 dragging.sourceHandle = null;
                 dragging.snappedTo = null;
-                dragging.snapPointerX = null;
-                dragging.snapPointerY = null;
                 hideSnapTarget();
             }
 
