@@ -9631,7 +9631,7 @@ function getSelectedFinishCategories() {
         if (!project) return [];
 
         const name = String(project.name || "").trim().toLowerCase();
-        const metadataKey = name.replace(/\\.[a-z0-9]+$/i, "").replace(/[\\s_]+/g, "-");
+        const metadataKey = name.replace(/\.[a-z0-9]+$/i, "").replace(/[\s_]+/g, "-");
         const categories = getProjectCategories(project);
         const savedTerms = Array.isArray(project.searchTerms) ? project.searchTerms : [];
         const metadataTerms = iconSearchMetadata?.[metadataKey]?.ai?.searchTerms;
@@ -9661,7 +9661,7 @@ function getSelectedFinishCategories() {
         const seen = new Set();
 
         combined.forEach(value => {
-            const term = String(value || "").trim().toLowerCase().replace(/\\s+/g, " ");
+            const term = String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
             if (!term || seen.has(term)) return;
             seen.add(term);
             unique.push(term);
