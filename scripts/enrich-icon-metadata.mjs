@@ -268,7 +268,14 @@ const SEARCH_STOP_WORDS = new Set([
   "app", "apps", "interface", "interfaces", "icon", "icons"
 ]);
 
+const RESTRICTED_SEARCH_ICON_PATTERN = /(?:^|[-_])(?:gun|pistol|rifle|firearm|weapon|sword|knife|dagger|machete|axe|bomb|grenade|crossbow|bow-arrow|spear|nunchucks|switchblade|taser|pepper-spray|beer|wine|martini|cocktail|cigar|cigarette|vape|cannabis|marijuana|joint|smoking|alcohol|liquor|whiskey|vodka|dice|slot-machine|casino|roulette|poker|gambling|jackpot|bet)(?:[-_]|$)/i;
+
 function buildSearchTerms(name, descriptor, oldAi = {}) {
+  // Do not expand search metadata for restricted-content icon subjects.
+  if (RESTRICTED_SEARCH_ICON_PATTERN.test(name)) {
+    return cleanStrings(oldAi.searchTerms).slice(0, 30);
+  }
+
   const aliases = (descriptor.aliases || [])
     .map(alias => typeof alias === "string" ? alias : alias?.name || alias?.alias || "")
     .filter(Boolean);
