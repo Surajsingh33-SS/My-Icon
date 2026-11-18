@@ -4976,7 +4976,11 @@ function getSelectedFinishCategories() {
 
             // Imported SVG editable anchors
             (shape.svgAnchors || []).forEach(anchor => {
-                add(anchor.x, anchor.y, `svg_${anchor.id}`);
+                add(
+                    anchor.x + (shape.offsetX || 0),
+                    anchor.y + (shape.offsetY || 0),
+                    `svg_${anchor.id}`
+                );
             });
         }
 
@@ -5932,8 +5936,10 @@ function getSelectedFinishCategories() {
                 startX: pos.x,
                 startY: pos.y,
 
-                anchorStartX: anchor.x,
-                anchorStartY: anchor.y,
+                // Use the visible canvas position, including any SVG offset,
+                // so snapping compares the same coordinates as line endpoints.
+                anchorStartX: anchor.x + (shape.offsetX || 0),
+                anchorStartY: anchor.y + (shape.offsetY || 0),
 
                 originalSegments: cloneSVGSegments(
                     shape.svgEditableSegments
