@@ -5410,18 +5410,40 @@ function getSelectedFinishCategories() {
         activeSnapTargetVisual = null;
     }
 
-    // Only endpoint handles participate in snapping. Rotation, radius,
-    // resize and other helper handles are deliberately excluded.
-    function isSnapEndpoint(end) {
+    // Snap the normal blue geometry handles. Rotation controls and the
+    // curve's green radius helper are intentionally excluded.
+    function isSnapEndpoint(end, shapeType) {
+        if (
+            end === "rotate-a" ||
+            end === "rotate-b" ||
+            end === "corner-radius" ||
+            (shapeType === "curve" && end === "radius")
+        ) {
+            return false;
+        }
+
         return end === "start" ||
             end === "end" ||
+            end === "radius" ||
+            end === "rx" ||
+            end === "ry" ||
+            end === "nw" ||
+            end === "n" ||
+            end === "ne" ||
+            end === "e" ||
+            end === "se" ||
+            end === "s" ||
+            end === "sw" ||
+            end === "w" ||
             end.startsWith("v_") ||
             end.startsWith("h_") ||
             end.startsWith("svg_");
     }
 
     function getSnapEndpoints(shape) {
-        return getShapeEndpoints(shape).filter(point => isSnapEndpoint(point.end));
+        return getShapeEndpoints(shape).filter(point =>
+            isSnapEndpoint(point.end, shape.type)
+        );
     }
 
     function getSnapDistance() {
@@ -5429,7 +5451,7 @@ function getSelectedFinishCategories() {
         const scale = matrix
             ? Math.max(0.0001, Math.hypot(matrix.a, matrix.b))
             : 1;
-        return 4 / scale;
+        return 8 / scale;
     }
 
     function getSnappedPoint(x, y, currentShape, shiftKey = false) {
@@ -5437,7 +5459,10 @@ function getSelectedFinishCategories() {
         if (
             !snapEnabled ||
             shiftKey ||
-            !isSnapEndpoint(dragging?.sourceHandle?.handle || "")
+            !isSnapEndpoint(
+                dragging?.sourceHandle?.handle || "",
+                dragging?.shape?.type
+            )
         ) {
             dragging && (dragging.snappedTo = null);
             hideSnapTarget();
@@ -6091,24 +6116,29 @@ function getSelectedFinishCategories() {
         }
 
         // 5. Shape Body Selection & Move
+        // The visible path can contain nested SVG elements, so accept a
+        // pointer event on the body itself or on one of its child elements.
+        const isBodyTarget = element =>
+            !!element && (
+                element === event.target ||
+                (typeof element.contains === "function" && element.contains(event.target))
+            );
+
         const clickedShape = shapes.find(item => {
-            if (item.hidden) return false;
+            if (item.hidden || item.locked) return false;
             if (
                 item.type === "circle" ||
                 item.type === "ellipse" ||
                 item.type === "rectangle" ||
                 item.type === "path"
             ) {
-                return item.element === event.target || item.strokeElement === event.target;
+                return isBodyTarget(item.element) || isBodyTarget(item.strokeElement);
             }
             if (item.type === "line") {
-                return item.hitLine === event.target || item.element === event.target;
+                return isBodyTarget(item.hitLine) || isBodyTarget(item.element);
             }
-            if (item.type === "curve") {
-                return item.hitPath === event.target || item.element === event.target;
-            }
-            if (item.type === "ellipse-arc") {
-                return item.hitPath === event.target || item.element === event.target;
+            if (item.type === "curve" || item.type === "ellipse-arc") {
+                return isBodyTarget(item.hitPath) || isBodyTarget(item.element);
             }
             return false;
         });
