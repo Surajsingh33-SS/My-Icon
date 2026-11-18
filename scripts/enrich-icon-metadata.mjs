@@ -263,19 +263,20 @@ function getIconFamilySearchTerms(name) {
       'wellness', 'health', 'reaction', 'wishlist', 'saved favorite'
     ];
   }
-  if (/^ellipse-(vertical|horizontal)$/.test(key)) {
-    const vertical = key.endsWith('vertical');
-    const variants = vertical
-      ? ['vertical ellipse', 'vertical oval', 'upright oval', 'tall oval', 'portrait oval',
-         'standing oval', 'narrow ellipse', 'up and down oval', 'y axis ellipse',
-         'portrait orientation', 'vertical shape', 'upright ellipse']
-      : ['horizontal ellipse', 'horizontal oval', 'wide oval', 'flat oval', 'landscape oval',
-         'sideways ellipse', 'wide ellipse', 'left to right oval', 'x axis ellipse',
-         'landscape orientation', 'horizontal shape', 'lying oval'];
+  if (key === 'ellipsis-vertical') {
     return [
-      ...variants, 'ellipse', 'oval', 'oval shape', 'geometric oval', 'geometric shape',
-      'elongated circle', 'closed curve', 'conic section', 'mathematical ellipse',
-      'geometry', 'shape'
+      'more options', 'overflow menu', 'kebab menu', 'three dots', 'vertical dots',
+      'vertical ellipsis', 'options menu', 'context menu', 'additional actions',
+      'more actions', 'menu button', 'action menu', 'more menu', 'dots menu',
+      'vertical options', 'extra options', 'additional options', 'menu'
+    ];
+  }
+  if (key === 'ellipsis' || key === 'ellipsis-horizontal') {
+    return [
+      'more options', 'overflow menu', 'meatballs menu', 'three dots', 'horizontal dots',
+      'horizontal ellipsis', 'options menu', 'context menu', 'additional actions',
+      'more actions', 'menu button', 'action menu', 'more menu', 'dots menu',
+      'horizontal options', 'extra options', 'additional options', 'menu'
     ];
   }
   if (/^ellipse(?:-|$)/.test(key)) {

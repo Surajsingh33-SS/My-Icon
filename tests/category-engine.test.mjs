@@ -155,12 +155,11 @@ test('maps AI, Education and Logistics official categories', () => {
   }
 });
 
-test('ellipse orientation variants are classified as Shapes without layout noise', () => {
-  for (const name of ['ellipse-horizontal', 'ellipse-vertical']) {
-    const result = top(name);
-    assert.equal(result.primaryCategory, 'Shapes');
-    assert.deepEqual(result.categories, ['Shapes']);
-  }
+test('geometric ellipse is a Shape while ellipsis menu controls are not', () => {
+  const ellipse = top('ellipse');
+  assert.equal(ellipse.primaryCategory, 'Shapes');
+  const ellipsis = top('ellipsis-vertical');
+  assert.equal(ellipsis.categories.includes('Shapes'), false);
 });
 
 test('weak single-source matches do not create secondary category assignments', () => {
