@@ -9607,29 +9607,69 @@ function getSelectedFinishCategories() {
     // ========================================================================
     // 19. HOMEPAGE GALLERY, TABS, SEARCH & DETAILS DRAWER
     // ========================================================================
+    let iconSearchMetadata = {};
+
+    // Load the enriched per-icon search vocabulary once. The drawer keeps its
+    // existing terms as a fallback if this optional metadata file is unavailable.
+    fetch("icon-metadata.json", { cache: "no-store" })
+        .then(response => {
+            if (!response.ok) throw new Error("Icon search metadata unavailable");
+            return response.json();
+        })
+        .then(metadata => {
+            iconSearchMetadata = metadata && typeof metadata === "object" ? metadata : {};
+            if (selectedHomeProject && projectDetails?.classList.contains("show")) {
+                renderProjectSearchTerms(selectedHomeProject);
+            }
+        })
+        .catch(() => {});
+
+    const restrictedSearchIconPattern =
+        /(?:^|[-_])(?:gun|pistol|rifle|firearm|weapon|sword|knife|dagger|machete|axe|bomb|grenade|crossbow|bow-arrow|spear|nunchucks|switchblade|taser|pepper-spray|beer|wine|martini|cocktail|cigar|cigarette|vape|cannabis|marijuana|joint|smoking|alcohol|liquor|whiskey|vodka|dice|slot-machine|casino|roulette|poker|gambling|jackpot|bet)(?:[-_]|$)/i;
+
     function getProjectSearchTerms(project) {
-        if (Array.isArray(project.searchTerms) && project.searchTerms.length) {
-            return project.searchTerms;
-        }
-        const name = (project.name || "").trim().toLowerCase();
+        if (!project) return [];
+
+        const name = String(project.name || "").trim().toLowerCase();
+        const metadataKey = name.replace(/\\.[a-z0-9]+$/i, "").replace(/[\\s_]+/g, "-");
         const categories = getProjectCategories(project);
-        const baseTerms = [name, ...categories].map(value => String(value).trim().toLowerCase()).filter(Boolean);
+        const savedTerms = Array.isArray(project.searchTerms) ? project.searchTerms : [];
+        const metadataTerms = iconSearchMetadata?.[metadataKey]?.ai?.searchTerms;
+        const baseTerms = [name, ...categories];
 
-        // Expanded intelligent synonym matching
-        if (["search", "magnifier", "magnifying glass", "find"].some(k => name.includes(k))) {
-            return [...baseTerms, "magnifier", "scan", "lookup", "query", "zoom", "inspect"];
-        }
-        if (["arrow", "nav", "chevron", "direction"].some(k => name.includes(k))) {
-            return [...baseTerms, "direction", "pointer", "chevron", "next", "back"];
-        }
-        if (["home", "house", "building"].some(k => name.includes(k))) {
-            return [...baseTerms, "main", "dashboard", "house", "estate"];
-        }
-        if (["user", "profile", "account", "person"].some(k => name.includes(k))) {
-            return [...baseTerms, "avatar", "member", "customer", "contact"];
+        // Do not expand search terms for restricted-content icon subjects.
+        if (restrictedSearchIconPattern.test(metadataKey)) {
+            return [...new Set([...savedTerms, ...baseTerms]
+                .map(value => String(value).trim().toLowerCase())
+                .filter(Boolean))].slice(0, 30);
         }
 
-        return baseTerms;
+        const generatedTerms = Array.isArray(metadataTerms) ? metadataTerms : [];
+        const tokens = metadataKey.split("-").filter(Boolean);
+        const popularTokens = new Set([
+            "home", "house", "user", "users", "search", "settings", "cog", "heart",
+            "star", "camera", "image", "file", "folder", "mail", "message", "phone",
+            "calendar", "clock", "map", "bell", "lock", "check", "plus", "minus",
+            "trash", "edit", "download", "upload", "share", "menu", "arrow", "eye",
+            "filter", "grid", "list"
+        ]);
+        const isPopular = tokens.some(token => popularTokens.has(token));
+        const target = isPopular ? 30 : (generatedTerms.length >= 20 ? 22 : 15);
+
+        const combined = [...savedTerms, ...generatedTerms, ...baseTerms];
+        const unique = [];
+        const seen = new Set();
+
+        combined.forEach(value => {
+            const term = String(value || "").trim().toLowerCase().replace(/\\s+/g, " ");
+            if (!term || seen.has(term)) return;
+            seen.add(term);
+            unique.push(term);
+        });
+
+        // Preserve the most useful saved terms first, then fill from the enriched
+        // Lucide metadata. Popular, widely searched icons may use up to 30 terms.
+        return unique.slice(0, target);
     }
 
     function renderHomeProjects() {
