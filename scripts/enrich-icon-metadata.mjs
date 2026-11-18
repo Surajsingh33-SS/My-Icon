@@ -255,6 +255,19 @@ function normalizeSearchTerm(value) {
     .replace(/[^\p{L}\p{N} ]/gu, "");
 }
 
+const SEARCH_STOP_WORDS = new Set([
+  "a", "an", "the", "and", "or", "to", "for", "of", "in", "on", "with", "by",
+  "from", "as", "is", "are", "be", "this", "that", "it", "its", "when", "where",
+  "while", "into", "via", "through", "at", "your", "their", "our", "using", "used",
+  "representing", "indicating", "showing", "marking", "toggling", "searching",
+  "creating", "editing", "applying", "displaying", "managing", "tracking",
+  "monitoring", "selecting", "opening", "closing", "adding", "removing",
+  "confirming", "connecting", "sending", "receiving", "navigating", "organizing",
+  "sharing", "saving", "downloading", "uploading", "viewing", "providing",
+  "allowing", "enabling", "supporting", "denoting", "signifying", "indicating",
+  "app", "apps", "interface", "interfaces", "icon", "icons"
+]);
+
 function buildSearchTerms(name, descriptor, oldAi = {}) {
   const aliases = (descriptor.aliases || [])
     .map(alias => typeof alias === "string" ? alias : alias?.name || alias?.alias || "")
@@ -272,11 +285,23 @@ function buildSearchTerms(name, descriptor, oldAi = {}) {
     ...nameTokens
   ];
 
+  // Turn contributor-authored phrases into useful individual search words too.
+  // Generic sentence verbs and filler words are excluded.
+  const sourcePhrases = [...tags, ...aliases, ...useCases];
+  const phraseWords = [];
+  for (const phrase of sourcePhrases) {
+    const words = normalizeSearchTerm(phrase).split(" ")
+      .filter(word => word.length > 2 && !SEARCH_STOP_WORDS.has(word));
+    phraseWords.push(...words);
+  }
+  candidates.push(...phraseWords);
+
   // Add only synonyms attached to the icon's own name, official tags, or aliases.
   const lookupTokens = new Set([
     ...nameTokens,
     ...tags.map(normalizeSearchTerm),
-    ...aliases.map(normalizeSearchTerm)
+    ...aliases.map(normalizeSearchTerm),
+    ...phraseWords
   ]);
   for (const token of lookupTokens) {
     const compact = token.replace(/\s+/g, "");
