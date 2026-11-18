@@ -339,6 +339,10 @@
                     </div>
                 </div>
 
+                <button type="button" id="category-gallery-back-button" class="category-gallery-back-button" hidden>
+                    ← Back to normal gallery
+                </button>
+
                 <!-- PROJECT GALLERY GRID / LIST -->
                 <section class="home-projects">
                     <div class="home-project-grid" id="home-project-grid">
@@ -517,11 +521,21 @@
                             </div>
 
                             <div class="project-meta-row">
-                                <span class="project-category" id="project-category-badge">Icon</span>
+                                <div class="project-category-list" id="project-category-badge"></div>
                                 <span class="project-date" id="project-date-badge"></span>
                             </div>
 
                             <div class="project-search-terms" id="project-search-terms"></div>
+
+                            <div class="project-drawer-utility-row">
+                                <button type="button" id="project-global-preview-button" class="project-utility-button">
+                                    Global Preview
+                                </button>
+                                <button type="button" id="project-edit-categories" class="project-utility-button">
+                                    Edit categories
+                                </button>
+                            </div>
+                            <div id="project-category-editor" class="project-category-editor" hidden></div>
 
                             <!-- PREVIEW CONTROLS -->
                             <div class="project-preview-controls">
