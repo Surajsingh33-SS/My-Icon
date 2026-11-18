@@ -6649,7 +6649,16 @@ function getSelectedFinishCategories() {
 
             // Shift or Snap OFF temporarily disables snapping.
             if (snapEnabled && !event.shiftKey) {
-                // Keep the previous snap briefly while the pointer moves away.
+                // Use a small screen-space release distance so a snap does not
+                // behave like an invisible wall while the shape is dragged past it.
+                const screenMatrix = workspace.getScreenCTM();
+                const screenScale = screenMatrix
+                    ? Math.max(0.0001, Math.hypot(screenMatrix.a, screenMatrix.b))
+                    : 1;
+                const bestDistance = 4 / screenScale;
+
+                // Keep the previous snap only while the pointer remains within
+                // the same small tolerance used to acquire a snap.
                 if (dragging.sourceHandle && dragging.snappedTo) {
                     const sourceShape = shapes.find(
                         item => item.id === dragging.sourceHandle.shapeId
@@ -6669,7 +6678,7 @@ function getSelectedFinishCategories() {
                             position.y - dragging.snapPointerY
                         );
 
-                        if (distance <= 0.8) {
+                        if (distance <= bestDistance) {
                             closestSource = source;
                             closestTarget = target;
                         } else {
@@ -6688,12 +6697,6 @@ function getSelectedFinishCategories() {
 
                 // Find the nearest pair of handles.
                 if (!closestTarget) {
-                    // Screen-space tolerance remains consistent at every workspace zoom level.
-                    const screenMatrix = workspace.getScreenCTM();
-                    const screenScale = screenMatrix
-                        ? Math.max(0.0001, Math.hypot(screenMatrix.a, screenMatrix.b))
-                        : 1;
-                    const bestDistance = 4 / screenScale;
                     const isBlueSnapHandle = endpoint =>
                         endpoint.end !== "rotate-a" &&
                         endpoint.end !== "rotate-b" &&
@@ -6720,7 +6723,7 @@ function getSelectedFinishCategories() {
                                             source.y + dy - target.y
                                         );
 
-                                        if (separation <= 0.9) continue;
+                                        if (separation <= bestDistance) continue;
 
                                         dragging.releasedSnap = null;
                                     }
@@ -6740,24 +6743,10 @@ function getSelectedFinishCategories() {
                         }
                     }
 
-                    if (closestSource && closestTarget) {
-                        const candidateKey = [
-                            ensureShapeId(closestSource.shape), closestSource.end,
-                            ensureShapeId(closestTarget.shape), closestTarget.end
-                        ].join(":");
-                        const now = Date.now();
-
-                        if (dragging.pendingHandleSnap?.key !== candidateKey) {
-                            dragging.pendingHandleSnap = { key: candidateKey, since: now };
-                            closestSource = null;
-                            closestTarget = null;
-                        } else if (now - dragging.pendingHandleSnap.since < 1000) {
-                            closestSource = null;
-                            closestTarget = null;
-                        }
-                    } else {
-                        dragging.pendingHandleSnap = null;
-                    }
+                    // Snap immediately when a valid handle pair enters the
+                    // acquisition distance. A dwell timer made the interaction
+                    // feel delayed and could make handles seem obstructed.
+                    dragging.pendingHandleSnap = null;
                 }
             } else {
                 dragging.pendingHandleSnap = null;
