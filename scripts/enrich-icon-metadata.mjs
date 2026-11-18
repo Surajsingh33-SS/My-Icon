@@ -198,6 +198,7 @@ const SEARCH_SYNONYMS = {
   server: ["hosting", "backend", "computer", "data center", "network", "cloud", "infrastructure", "database", "hardware", "system", "web server", "storage", "computing", "machine", "rack"],
   smartphone: ["mobile", "phone", "cellphone", "device", "handset", "touchscreen", "mobile device", "app", "communication", "portable", "android", "ios", "screen", "telephone", "wireless device"],
   layers: ["stack", "overlap", "order", "arrangement", "design", "graphics", "image layers", "layer panel", "depth", "composition", "objects", "elements", "z order", "group", "structure"]
+};
 
 const CATEGORY_SEARCH_TERMS = {
   accessibility: ["inclusive", "assistive", "accessible", "usability", "a11y"],
