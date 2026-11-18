@@ -6474,12 +6474,10 @@ function getSelectedFinishCategories() {
                 const movement = dragging.startY - snappedPosition.y;
                 const newRadius = dragging.startRadius + movement;
 
+                // Curve radius changes in 1-pixel increments, including while Shift is held.
                 shape.radius = Math.max(
                     0.3,
-                    Math.min(
-                        artboardSize,
-                        event.shiftKey ? newRadius : Math.round(newRadius)
-                    )
+                    Math.min(artboardSize, Math.round(newRadius))
                 );
             }
 
@@ -6576,11 +6574,8 @@ function getSelectedFinishCategories() {
                     const maxRadius = Math.min(shape.width, shape.height) / 2;
                     const rawRadius = Math.max(0, Math.min(maxRadius, position.x - shape.x));
 
-                    // Round to 0.2-unit increments for finer, predictable radius control.
-                    shape.cornerRadius = Math.min(
-                        maxRadius,
-                        Math.round(rawRadius / 0.2) * 0.2
-                    );
+                    // Rectangle corner radius changes in 1-pixel increments.
+                    shape.cornerRadius = Math.min(maxRadius, Math.round(rawRadius));
 
                     updateBasicShape(shape);
                     return;
