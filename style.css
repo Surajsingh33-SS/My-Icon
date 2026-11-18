@@ -4114,3 +4114,60 @@ body.light-theme #save-project-button:hover {
         bottom: 16px;
     }
 }
+
+
+
+/* Compact, height-aware drawer layout restored from the earlier gallery. */
+.project-info {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    padding: 14px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.project-info > .project-meta-row,
+.project-info > .project-search-terms {
+    width: 100%;
+    flex: 0 0 auto;
+}
+
+.project-info > .project-search-terms {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    min-width: 0;
+    min-height: 0;
+}
+
+.project-info > .project-preview-controls {
+    flex: 0 0 auto;
+    margin-top: 0;
+    padding-top: 10px;
+}
+
+.project-info > .project-export-button {
+    margin-top: auto;
+    flex: 0 0 auto;
+}
+
+.project-info-heading h3 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+    .project-info {
+        padding: 12px 16px;
+        gap: 9px;
+    }
+
+    .project-info-heading h3 {
+        font-size: 21px;
+    }
+}
