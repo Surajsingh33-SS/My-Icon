@@ -331,6 +331,7 @@
     const iconLibraryCount = document.getElementById("icon-library-count");
     const iconLibraryResultsCount = document.getElementById("icon-library-results-count");
     const iconLibraryCopyNamesButton = document.getElementById("icon-library-copy-names");
+    const iconLibraryProvideMetadataButton = document.getElementById("icon-library-provide-metadata");
     const homeViewSections = {
         gallery: document.getElementById("home-view-gallery"),
         "icon-library": document.getElementById("home-view-icon-library"),
@@ -9730,7 +9731,9 @@ function getSelectedFinishCategories() {
     // isolated list/detail workspace without changing Gallery behavior.
     // ========================================================================
     let selectedIconLibraryName = "";
-    let iconLibrarySavedOnly = false;
+    let iconLibraryMetadataModal = null;
+    let iconLibrarySavedOnly = true;
+    const ICON_LIBRARY_USER_METADATA_KEY = "iconMakerUserIconMetadata";
 
     function normalizeLibraryIconName(value) {
         return String(value || "")
@@ -9819,7 +9822,106 @@ function getSelectedFinishCategories() {
             : "Currently showing all library icons. Switch to saved icons only.";
     }
 
+
+    function getIconLibraryUserMetadata() {
+        try {
+            const value = JSON.parse(localStorage.getItem(ICON_LIBRARY_USER_METADATA_KEY) || "{}");
+            return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        } catch (error) { console.warn("Could not load provided icon metadata:", error); return {}; }
+    }
+
+    function parseIconLibraryUserMetadata(input) {
+        const source = String(input || "");
+        const knownIcons = new Map(getIconLibraryEntries().map(([name]) => [normalizeLibraryIconName(name), name]));
+        const knownCategories = new Map(getAllIconCategories().map(value => [value.toLowerCase(), value]));
+        const entries = [], errors = [];
+        const pattern = /\{([^{}]*)\}/g;
+        let cursor = 0, match;
+        while ((match = pattern.exec(source)) !== null) {
+            if (source.slice(cursor, match.index).trim()) errors.push("Text outside an entry. Every entry must be enclosed in { and }.");
+            cursor = pattern.lastIndex;
+            const body = match[1].trim();
+            const line = body.split(/\r?\n/).map(value => value.trim()).filter(Boolean).join(" ");
+            const colon = line.indexOf(":");
+            const dash = line.indexOf("-", colon + 1);
+            if (colon <= 0 || dash <= colon + 1 || line.indexOf(":", colon + 1) !== -1) {
+                errors.push('Invalid entry {' + body + '}. Expected: { icon-name : Category, Category - term, term }');
+                continue;
+            }
+            const iconName = line.slice(0, colon).trim();
+            const rawCategories = line.slice(colon + 1, dash).split(",").map(x => x.trim()).filter(Boolean);
+            const terms = line.slice(dash + 1).split(",").map(x => x.trim()).filter(Boolean);
+            if (!iconName || !rawCategories.length || !terms.length) {
+                errors.push('Incomplete entry for "' + (iconName || "unknown icon") + '". Add an icon name, at least one category, and at least one search term.');
+                continue;
+            }
+            const key = normalizeLibraryIconName(iconName);
+            const canonicalName = knownIcons.get(key);
+            if (!canonicalName) { errors.push('Icon "' + iconName + '" was not found in the Icon Library. Check its exact icon name.'); continue; }
+            if (entries.some(entry => normalizeLibraryIconName(entry.name) === key)) {
+                errors.push('Icon "' + canonicalName + '" appears more than once. Keep one entry per icon.'); continue;
+            }
+            const categories = [];
+            rawCategories.forEach(category => {
+                const canonical = knownCategories.get(category.toLowerCase());
+                if (!canonical) errors.push('Category "' + category + '" does not exist. Create it in Category Manager first.');
+                else if (!categories.includes(canonical)) categories.push(canonical);
+            });
+            if (categories.length !== rawCategories.length) continue;
+            entries.push({ name: canonicalName, categories, searchTerms: [...new Set(terms)] });
+        }
+        if (source.slice(cursor).trim()) errors.push("Missing closing brace }. Every entry must start with { and end with }.");
+        if (!entries.length && !errors.length) errors.push("No entries found. Add at least one complete { ... } entry.");
+        return { entries, errors };
+    }
+
+    function openIconLibraryMetadataEditor() {
+        if (!iconLibraryMetadataModal) {
+            const overlay = document.createElement("div");
+            overlay.className = "icon-library-metadata-overlay";
+            overlay.innerHTML = '<section class="icon-library-metadata-modal" role="dialog" aria-modal="true" aria-labelledby="icon-library-metadata-title">' +
+                '<header><div><h3 id="icon-library-metadata-title">Provide metadata</h3><p>Assign categories and extra search terms to multiple library icons.</p></div><button type="button" class="icon-library-metadata-close" aria-label="Close">×</button></header>' +
+                '<div class="icon-library-metadata-format"><strong>Required format</strong><code>{ icon-name : Category, Category - term, term }</code><span>Braces are mandatory. Commas separate categories and search terms; : separates the icon name; - separates categories from search terms.</span></div>' +
+                '<textarea class="icon-library-metadata-input" spellcheck="false" aria-label="Bulk icon metadata" placeholder="{&#10;settings : Tools, Productivity - gear, cog, preferences, configuration&#10;}&#10;{&#10;camera : Photography - photo, picture, lens&#10;}"></textarea>' +
+                '<div class="icon-library-metadata-feedback" aria-live="polite"></div><footer><button type="button" class="btn btn-secondary icon-library-metadata-cancel">Cancel</button><button type="button" class="btn btn-primary icon-library-metadata-save">Apply metadata</button></footer></section>';
+            document.body.appendChild(overlay);
+            const close = () => overlay.classList.remove("open");
+            overlay.querySelector(".icon-library-metadata-close").addEventListener("click", close);
+            overlay.querySelector(".icon-library-metadata-cancel").addEventListener("click", close);
+            overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
+            overlay.querySelector(".icon-library-metadata-save").addEventListener("click", () => {
+                const feedback = overlay.querySelector(".icon-library-metadata-feedback");
+                const parsed = parseIconLibraryUserMetadata(overlay.querySelector(".icon-library-metadata-input").value);
+                if (parsed.errors.length) {
+                    feedback.className = "icon-library-metadata-feedback error";
+                    feedback.textContent = parsed.errors.join(" ");
+                    return;
+                }
+                const saved = getIconLibraryUserMetadata();
+                parsed.entries.forEach(entry => {
+                    saved[normalizeLibraryIconName(entry.name)] = { name: entry.name, categories: entry.categories, searchTerms: entry.searchTerms };
+                });
+                try {
+                    localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(saved));
+                    feedback.className = "icon-library-metadata-feedback success";
+                    feedback.textContent = "Applied metadata to " + parsed.entries.length + " icon(s). Entries not included were left unchanged.";
+                    renderIconLibrary();
+                    window.setTimeout(close, 900);
+                } catch (error) {
+                    feedback.className = "icon-library-metadata-feedback error";
+                    feedback.textContent = "Could not save metadata in this browser. Check available storage and try again.";
+                }
+            });
+            iconLibraryMetadataModal = overlay;
+        }
+        iconLibraryMetadataModal.classList.add("open");
+        iconLibraryMetadataModal.querySelector(".icon-library-metadata-input").focus();
+    }
+
     function getIconLibraryCategories(iconName, record, projectMap) {
+        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(iconName)];
+        if (provided?.categories?.length) return normalizeCategoryList(provided.categories);
+
         const project = projectMap.get(normalizeLibraryIconName(iconName));
         if (project) {
             const cleanCategories = value => normalizeCategoryList(value);
@@ -9894,6 +9996,7 @@ function getSelectedFinishCategories() {
         const categories = getIconLibraryCategories(iconName, record, projectMap);
         const sourceMeta = record?.lucide || {};
         const ai = record?.ai || {};
+        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(iconName)] || {};
 
         const top = document.createElement("div");
         top.className = "icon-library-detail-top";
@@ -9938,6 +10041,8 @@ function getSelectedFinishCategories() {
             "No tags supplied");
         createIconLibraryChipGroup(iconLibraryDetails, "Aliases", sourceMeta.aliases,
             "No aliases supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Provided search terms", provided.searchTerms,
+            "No custom search terms supplied");
         createIconLibraryChipGroup(iconLibraryDetails, "Search terms", ai.searchTerms,
             "No enriched search terms supplied");
     }
@@ -10001,6 +10106,7 @@ function getSelectedFinishCategories() {
                 ...(Array.isArray(sourceMeta.aliases) ? sourceMeta.aliases : []),
                 ...(Array.isArray(sourceMeta.categories) ? sourceMeta.categories : []),
                 ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : []),
+                ...(Array.isArray(getIconLibraryUserMetadata()[normalizeLibraryIconName(name)]?.searchTerms) ? getIconLibraryUserMetadata()[normalizeLibraryIconName(name)].searchTerms : []),
                 ...categories
             ].flat().filter(Boolean).join(" ").toLowerCase();
             return words.every(word => searchable.includes(word));
@@ -10066,6 +10172,7 @@ function getSelectedFinishCategories() {
     }
 
     updateIconLibrarySavedToggle();
+    iconLibraryProvideMetadataButton?.addEventListener("click", openIconLibraryMetadataEditor);
     iconLibrarySavedToggleButton?.addEventListener("click", () => {
         iconLibrarySavedOnly = !iconLibrarySavedOnly;
         updateIconLibrarySavedToggle();
