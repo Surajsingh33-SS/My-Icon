@@ -10064,11 +10064,13 @@ function getSelectedFinishCategories() {
         const categoryFilter = iconLibraryCategoryFilter?.value || "all";
         const sourceFilter = iconLibrarySourceFilter?.value || "all";
         if (iconLibraryCopyCategoryMetadataButton) {
-            iconLibraryCopyCategoryMetadataButton.hidden = categoryFilter === "all" || categoryFilter === "__uncategorized__";
-            iconLibraryCopyCategoryMetadataButton.disabled = categoryFilter === "all" || categoryFilter === "__uncategorized__";
-            iconLibraryCopyCategoryMetadataButton.title = categoryFilter === "all" || categoryFilter === "__uncategorized__"
-                ? "Select a specific category to copy its metadata as JSON."
-                : "Copy all icon metadata assigned to " + categoryFilter + ".";
+            iconLibraryCopyCategoryMetadataButton.hidden = false;
+            iconLibraryCopyCategoryMetadataButton.disabled = false;
+            iconLibraryCopyCategoryMetadataButton.title = categoryFilter === "all"
+                ? "Copy metadata for all icons matching the current Library filters as JSON."
+                : categoryFilter === "__uncategorized__"
+                    ? "Copy metadata for all uncategorized icons matching the current Library filters as JSON."
+                    : "Copy all icon metadata assigned to " + categoryFilter + " as JSON.";
         }
 
         // Filtering now uses the cached per-icon search document. Typing only
@@ -10216,34 +10218,30 @@ function getSelectedFinishCategories() {
     iconLibraryCategoryFilter?.addEventListener("change", renderIconLibrary);
     iconLibrarySourceFilter?.addEventListener("change", renderIconLibrary);
     iconLibraryCopyCategoryMetadataButton?.addEventListener("click", async () => {
-        const category = iconLibraryCategoryFilter?.value || "all";
-        if (category === "all" || category === "__uncategorized__") return;
-        const index = getIconLibraryIndex();
-        const output = index.items
-            .filter(item => (!iconLibrarySavedOnly || index.savedNames.has(item.key)) && item.categories.includes(category))
-            .map(item => {
-                const sourceMeta = item.record?.lucide || {};
-                const ai = item.record?.ai || {};
-                const provided = index.providedMetadata[item.key] || {};
-                const metadata = { categories: item.categories.filter(value => value !== "Uncategorized") };
-                const description = provided.description || ai.description || item.project?.description;
-                if (description) metadata.description = description;
-                if (provided.meaning) metadata.meaning = provided.meaning;
-                const tags = [...new Set([...(provided.tags || []), ...(sourceMeta.tags || [])])];
-                const aliases = [...new Set([...(provided.aliases || []), ...(sourceMeta.aliases || [])])];
-                const searchTerms = [...new Set([...(provided.searchTerms || []), ...(ai.searchTerms || [])])];
-                if (tags.length) metadata.tags = tags;
-                if (aliases.length) metadata.aliases = aliases;
-                if (searchTerms.length) metadata.searchTerms = searchTerms;
-                if (provided.useCases?.length) metadata.useCases = provided.useCases;
-                if (provided.relatedConcepts?.length) metadata.relatedConcepts = provided.relatedConcepts;
-                return [item.name, metadata];
-            });
-        if (!output.length) { showToast("There are no icons in this category to copy.", "info"); return; }
+        const items = Array.isArray(iconLibraryCurrentFiltered) ? iconLibraryCurrentFiltered : [];
+        const output = items.map(item => {
+            const sourceMeta = item.record?.lucide || {};
+            const ai = item.record?.ai || {};
+            const provided = iconLibraryCurrentProvidedMetadata?.[item.key] || {};
+            const metadata = { categories: item.categories.filter(value => value !== "Uncategorized") };
+            const description = provided.description || ai.description || item.project?.description;
+            if (description) metadata.description = description;
+            if (provided.meaning) metadata.meaning = provided.meaning;
+            const tags = [...new Set([...(provided.tags || []), ...(sourceMeta.tags || [])])];
+            const aliases = [...new Set([...(provided.aliases || []), ...(sourceMeta.aliases || [])])];
+            const searchTerms = [...new Set([...(provided.searchTerms || []), ...(ai.searchTerms || [])])];
+            if (tags.length) metadata.tags = tags;
+            if (aliases.length) metadata.aliases = aliases;
+            if (searchTerms.length) metadata.searchTerms = searchTerms;
+            if (provided.useCases?.length) metadata.useCases = provided.useCases;
+            if (provided.relatedConcepts?.length) metadata.relatedConcepts = provided.relatedConcepts;
+            return [item.name, metadata];
+        });
+        if (!output.length) { showToast("There are no icons matching the current Library filters to copy.", "info"); return; }
         const text = JSON.stringify(Object.fromEntries(output), null, 2);
         try {
             await navigator.clipboard.writeText(text);
-            showToast("Copied JSON metadata for " + output.length.toLocaleString() + " " + category + " icon(s).", "success");
+            showToast("Copied JSON metadata for " + output.length.toLocaleString() + " icon(s).", "success");
         } catch (error) {
             const textarea = document.createElement("textarea");
             textarea.value = text;
@@ -10253,7 +10251,7 @@ function getSelectedFinishCategories() {
             textarea.select();
             const copied = document.execCommand("copy");
             textarea.remove();
-            showToast(copied ? "Copied JSON metadata for " + output.length.toLocaleString() + " " + category + " icon(s)." : "Clipboard access was blocked by the browser.", copied ? "success" : "error");
+            showToast(copied ? "Copied JSON metadata for " + output.length.toLocaleString() + " icon(s)." : "Clipboard access was blocked by the browser.", copied ? "success" : "error");
         }
     });
 
