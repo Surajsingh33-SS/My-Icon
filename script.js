@@ -462,6 +462,11 @@
     const canvasContextMenu = document.getElementById("canvas-context-menu");
     const toastContainer = document.getElementById("toast-container");
     const transformToolbar = document.getElementById("transform-toolbar");
+    // Portal the toolbar to <body> so ancestor stacking/overflow contexts in
+    // the editor workspace cannot place it underneath the side panels.
+    if (transformToolbar && transformToolbar.parentElement !== document.body) {
+        document.body.appendChild(transformToolbar);
+    }
     const clearCustomAxisBtn = document.getElementById("clear-custom-axis-btn");
 
     // Settings View Controls
