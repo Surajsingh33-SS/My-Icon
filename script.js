@@ -9668,36 +9668,68 @@ function getSelectedFinishCategories() {
     }
 
     function parseIconLibraryUserMetadata(input) {
-        const source = String(input || "");
+        const source = String(input || "").trim();
         const knownIcons = new Map(getIconLibraryEntries().map(([name]) => [normalizeLibraryIconName(name), name]));
         const knownCategories = new Map(getAllIconCategories().map(value => [value.toLowerCase(), value]));
         const entries = [], errors = [];
+        const listFields = ["categories", "tags", "aliases", "searchTerms", "useCases", "relatedConcepts"];
+        const textFields = ["description", "meaning"];
+        const allowedFields = new Set([...listFields, ...textFields]);
+
+        if (source.startsWith("{")) {
+            try {
+                const parsed = JSON.parse(source);
+                if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("The JSON root must be an object.");
+                Object.entries(parsed).forEach(([iconName, data]) => {
+                    const key = normalizeLibraryIconName(iconName);
+                    const canonicalName = knownIcons.get(key);
+                    if (!canonicalName) { errors.push('Icon "' + iconName + '" was not found in the Icon Library.'); return; }
+                    if (entries.some(entry => normalizeLibraryIconName(entry.name) === key)) { errors.push('Icon "' + canonicalName + '" appears more than once.'); return; }
+                    if (!data || typeof data !== "object" || Array.isArray(data)) { errors.push('Metadata for "' + canonicalName + '" must be an object.'); return; }
+                    const entry = { name: canonicalName };
+                    Object.entries(data).forEach(([field, value]) => {
+                        if (!allowedFields.has(field)) { errors.push('Unknown field "' + field + '" in "' + canonicalName + '".'); return; }
+                        if (listFields.includes(field)) {
+                            if (!Array.isArray(value) || value.some(item => typeof item !== "string")) { errors.push('"' + field + '" for "' + canonicalName + '" must be an array of strings.'); return; }
+                            const cleaned = [...new Set(value.map(item => item.trim()).filter(Boolean))];
+                            if (field === "categories") {
+                                const canonicalCategories = [];
+                                cleaned.forEach(category => {
+                                    const canonical = knownCategories.get(category.toLowerCase());
+                                    if (!canonical) errors.push('Category "' + category + '" does not exist. Create it in Category Manager first.');
+                                    else if (!canonicalCategories.includes(canonical)) canonicalCategories.push(canonical);
+                                });
+                                if (canonicalCategories.length !== cleaned.length) return;
+                                entry[field] = canonicalCategories;
+                            } else entry[field] = cleaned;
+                        } else if (typeof value === "string") entry[field] = value.trim();
+                        else errors.push('"' + field + '" for "' + canonicalName + '" must be a string.');
+                    });
+                    if (Object.keys(entry).length > 1) entries.push(entry);
+                    else errors.push('No valid metadata fields were supplied for "' + canonicalName + '".');
+                });
+                if (!entries.length && !errors.length) errors.push("No icon metadata entries found.");
+                return { entries, errors };
+            } catch (jsonError) {
+                // Keep compatibility with the older brace-based format.
+            }
+        }
+
         const pattern = /\{([^{}]*)\}/g;
         let cursor = 0, match;
         while ((match = pattern.exec(source)) !== null) {
-            if (source.slice(cursor, match.index).trim()) errors.push("Text outside an entry. Every entry must be enclosed in { and }.");
+            if (source.slice(cursor, match.index).trim()) errors.push("Text outside an entry. Use JSON or the legacy brace format.");
             cursor = pattern.lastIndex;
-            const body = match[1].trim();
-            const line = body.split(/\r?\n/).map(value => value.trim()).filter(Boolean).join(" ");
+            const line = match[1].split(/\r?\n/).map(value => value.trim()).filter(Boolean).join(" ");
             const colon = line.indexOf(":");
             const dash = line.indexOf("-", colon + 1);
-            if (colon <= 0 || dash <= colon + 1 || line.indexOf(":", colon + 1) !== -1) {
-                errors.push('Invalid entry {' + body + '}. Expected: { icon-name : Category, Category - term, term }');
-                continue;
-            }
+            if (colon <= 0 || dash <= colon + 1 || line.indexOf(":", colon + 1) !== -1) { errors.push("Invalid legacy entry. Expected: { icon-name : Category, Category - term, term }"); continue; }
             const iconName = line.slice(0, colon).trim();
             const rawCategories = line.slice(colon + 1, dash).split(",").map(x => x.trim()).filter(Boolean);
             const terms = line.slice(dash + 1).split(",").map(x => x.trim()).filter(Boolean);
-            if (!iconName || !rawCategories.length || !terms.length) {
-                errors.push('Incomplete entry for "' + (iconName || "unknown icon") + '". Add an icon name, at least one category, and at least one search term.');
-                continue;
-            }
-            const key = normalizeLibraryIconName(iconName);
-            const canonicalName = knownIcons.get(key);
-            if (!canonicalName) { errors.push('Icon "' + iconName + '" was not found in the Icon Library. Check its exact icon name.'); continue; }
-            if (entries.some(entry => normalizeLibraryIconName(entry.name) === key)) {
-                errors.push('Icon "' + canonicalName + '" appears more than once. Keep one entry per icon.'); continue;
-            }
+            const canonicalName = knownIcons.get(normalizeLibraryIconName(iconName));
+            if (!canonicalName) { errors.push('Icon "' + iconName + '" was not found in the Icon Library.'); continue; }
+            if (!rawCategories.length || !terms.length) { errors.push('Legacy entry for "' + canonicalName + '" needs categories and search terms.'); continue; }
             const categories = [];
             rawCategories.forEach(category => {
                 const canonical = knownCategories.get(category.toLowerCase());
@@ -9707,8 +9739,8 @@ function getSelectedFinishCategories() {
             if (categories.length !== rawCategories.length) continue;
             entries.push({ name: canonicalName, categories, searchTerms: [...new Set(terms)] });
         }
-        if (source.slice(cursor).trim()) errors.push("Missing closing brace }. Every entry must start with { and end with }.");
-        if (!entries.length && !errors.length) errors.push("No entries found. Add at least one complete { ... } entry.");
+        if (source.slice(cursor).trim()) errors.push("Missing closing brace }. Check the legacy entry format.");
+        if (!entries.length && !errors.length) errors.push("No entries found. Paste valid JSON or the legacy brace format.");
         return { entries, errors };
     }
 
@@ -9717,9 +9749,9 @@ function getSelectedFinishCategories() {
             const overlay = document.createElement("div");
             overlay.className = "icon-library-metadata-overlay";
             overlay.innerHTML = '<section class="icon-library-metadata-modal" role="dialog" aria-modal="true" aria-labelledby="icon-library-metadata-title">' +
-                '<header><div><h3 id="icon-library-metadata-title">Provide metadata</h3><p>Assign categories and extra search terms to multiple library icons.</p></div><button type="button" class="icon-library-metadata-close" aria-label="Close">×</button></header>' +
-                '<div class="icon-library-metadata-format"><strong>Required format</strong><code>{ icon-name : Category, Category - term, term }</code><span>Braces are mandatory. Commas separate categories and search terms; : separates the icon name; - separates categories from search terms.</span></div>' +
-                '<textarea class="icon-library-metadata-input" spellcheck="false" aria-label="Bulk icon metadata" placeholder="{&#10;settings : Tools, Productivity - gear, cog, preferences, configuration&#10;}&#10;{&#10;camera : Photography - photo, picture, lens&#10;}"></textarea>' +
+                '<header><div><h3 id="icon-library-metadata-title">Provide metadata</h3><p>Supply detailed icon information in bulk. You can provide any fields you have.</p></div><button type="button" class="icon-library-metadata-close" aria-label="Close">×</button></header>' +
+                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [] } }</code><span>Only include fields you want to update. Omitted fields are preserved. List fields must be arrays of strings. The older brace format is still supported.</span></div>' +
+                '<textarea class="icon-library-metadata-input" spellcheck="false" aria-label="Bulk icon metadata" placeholder="{&#10;  &quot;settings&quot;: {&#10;    &quot;categories&quot;: [&quot;Tools&quot;, &quot;Productivity&quot;],&#10;    &quot;description&quot;: &quot;A gear icon for app settings.&quot;,&#10;    &quot;meaning&quot;: &quot;Configuration and preferences.&quot;,&#10;    &quot;tags&quot;: [&quot;gear&quot;, &quot;cog&quot;],&#10;    &quot;aliases&quot;: [&quot;cog&quot;, &quot;gear&quot;],&#10;    &quot;searchTerms&quot;: [&quot;preferences&quot;, &quot;configuration&quot;],&#10;    &quot;useCases&quot;: [&quot;Application settings&quot;],&#10;    &quot;relatedConcepts&quot;: [&quot;sliders&quot;, &quot;wrench&quot;]&#10;  }&#10;}"></textarea>' +
                 '<div class="icon-library-metadata-feedback" aria-live="polite"></div><footer><button type="button" class="btn btn-secondary icon-library-metadata-cancel">Cancel</button><button type="button" class="btn btn-primary icon-library-metadata-save">Apply metadata</button></footer></section>';
             document.body.appendChild(overlay);
             const close = () => overlay.classList.remove("open");
@@ -9731,7 +9763,8 @@ function getSelectedFinishCategories() {
                 const parsed = parseIconLibraryUserMetadata(overlay.querySelector(".icon-library-metadata-input").value);
                 const saved = getIconLibraryUserMetadata();
                 parsed.entries.forEach(entry => {
-                    saved[normalizeLibraryIconName(entry.name)] = { name: entry.name, categories: entry.categories, searchTerms: entry.searchTerms };
+                    const key = normalizeLibraryIconName(entry.name);
+                    saved[key] = { ...(saved[key] || {}), ...entry, name: entry.name };
                 });
                 try {
                     if (parsed.entries.length) {
@@ -9900,14 +9933,20 @@ function getSelectedFinishCategories() {
         createIconLibraryChipGroup(iconLibraryDetails, "Source categories", sourceMeta.categories,
             "No source categories supplied");
         createIconLibraryChipGroup(iconLibraryDetails, "Description",
-            ai.description || project?.description ? [ai.description || project.description] : [],
+            provided.description || ai.description || project?.description ? [provided.description || ai.description || project.description] : [],
             "No description available");
-        createIconLibraryChipGroup(iconLibraryDetails, "Tags", sourceMeta.tags,
-            "No tags supplied");
-        createIconLibraryChipGroup(iconLibraryDetails, "Aliases", sourceMeta.aliases,
-            "No aliases supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Meaning",
+            provided.meaning ? [provided.meaning] : [], "No meaning supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Tags",
+            [...(provided.tags || []), ...(sourceMeta.tags || [])], "No tags supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Aliases",
+            [...(provided.aliases || []), ...(sourceMeta.aliases || [])], "No aliases supplied");
         createIconLibraryChipGroup(iconLibraryDetails, "Provided search terms", provided.searchTerms,
             "No custom search terms supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Use cases", provided.useCases,
+            "No use cases supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Related concepts", provided.relatedConcepts,
+            "No related concepts supplied");
         // Keep Library details identical to the Gallery drawer: use the shared
         // search-term builder so saved, enriched, provided, and category terms
         // are combined and deduplicated in exactly the same way.
@@ -9946,12 +9985,14 @@ function getSelectedFinishCategories() {
             const sourceMeta = record?.lucide || {};
             const ai = record?.ai || {};
             const projectData = project?.data && typeof project.data === "object" ? project.data : {};
-            const userTerms = providedMetadata[key]?.searchTerms;
+            const provided = providedMetadata[key] || {};
             const searchable = [
                 name, ai.description, project?.description, project?.keywords,
                 project?.searchTerms, projectData.description, projectData.keywords,
                 sourceMeta.tags, sourceMeta.aliases, sourceMeta.categories,
-                ai.searchTerms, userTerms, categories
+                ai.searchTerms, provided.description, provided.meaning,
+                provided.tags, provided.aliases, provided.searchTerms,
+                provided.useCases, provided.relatedConcepts, categories
             ].flat(Infinity).filter(Boolean).join(" ").toLowerCase();
 
             return { name, record, project, categories, source, searchable, key };
@@ -10177,37 +10218,32 @@ function getSelectedFinishCategories() {
     iconLibraryCopyCategoryMetadataButton?.addEventListener("click", async () => {
         const category = iconLibraryCategoryFilter?.value || "all";
         if (category === "all" || category === "__uncategorized__") return;
-
         const index = getIconLibraryIndex();
         const output = index.items
-            .filter(item =>
-                (!iconLibrarySavedOnly || index.savedNames.has(item.key)) &&
-                item.categories.includes(category)
-            )
+            .filter(item => (!iconLibrarySavedOnly || index.savedNames.has(item.key)) && item.categories.includes(category))
             .map(item => {
                 const sourceMeta = item.record?.lucide || {};
                 const ai = item.record?.ai || {};
                 const provided = index.providedMetadata[item.key] || {};
-                const terms = [...new Set([
-                    item.name,
-                    ...(Array.isArray(provided.searchTerms) ? provided.searchTerms : []),
-                    ...(Array.isArray(sourceMeta.tags) ? sourceMeta.tags : []),
-                    ...(Array.isArray(sourceMeta.aliases) ? sourceMeta.aliases : []),
-                    ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : [])
-                ].map(value => String(value || "").trim().replace(/\s+/g, " ")).filter(Boolean))];
-                const categories = item.categories.filter(value => value !== "Uncategorized");
-                return "{\n" + item.name + " : " + categories.join(", ") + " - " + terms.join(", ") + "\n}";
+                const metadata = { categories: item.categories.filter(value => value !== "Uncategorized") };
+                const description = provided.description || ai.description || item.project?.description;
+                if (description) metadata.description = description;
+                if (provided.meaning) metadata.meaning = provided.meaning;
+                const tags = [...new Set([...(provided.tags || []), ...(sourceMeta.tags || [])])];
+                const aliases = [...new Set([...(provided.aliases || []), ...(sourceMeta.aliases || [])])];
+                const searchTerms = [...new Set([...(provided.searchTerms || []), ...(ai.searchTerms || [])])];
+                if (tags.length) metadata.tags = tags;
+                if (aliases.length) metadata.aliases = aliases;
+                if (searchTerms.length) metadata.searchTerms = searchTerms;
+                if (provided.useCases?.length) metadata.useCases = provided.useCases;
+                if (provided.relatedConcepts?.length) metadata.relatedConcepts = provided.relatedConcepts;
+                return [item.name, metadata];
             });
-
-        if (!output.length) {
-            showToast("There are no icons in this category to copy.", "info");
-            return;
-        }
-
-        const text = output.join("\n");
+        if (!output.length) { showToast("There are no icons in this category to copy.", "info"); return; }
+        const text = JSON.stringify(Object.fromEntries(output), null, 2);
         try {
             await navigator.clipboard.writeText(text);
-            showToast("Copied metadata for " + output.length.toLocaleString() + " " + category + " icon(s).", "success");
+            showToast("Copied JSON metadata for " + output.length.toLocaleString() + " " + category + " icon(s).", "success");
         } catch (error) {
             const textarea = document.createElement("textarea");
             textarea.value = text;
@@ -10217,9 +10253,7 @@ function getSelectedFinishCategories() {
             textarea.select();
             const copied = document.execCommand("copy");
             textarea.remove();
-            showToast(copied
-                ? "Copied metadata for " + output.length.toLocaleString() + " " + category + " icon(s)."
-                : "Clipboard access was blocked by the browser.", copied ? "success" : "error");
+            showToast(copied ? "Copied JSON metadata for " + output.length.toLocaleString() + " " + category + " icon(s)." : "Clipboard access was blocked by the browser.", copied ? "success" : "error");
         }
     });
 
