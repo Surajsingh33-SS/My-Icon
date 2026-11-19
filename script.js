@@ -1246,6 +1246,60 @@ function getSelectedFinishCategories() {
         };
     }
 
+    // Finished Gallery icons must have unique names. Drafts may share
+    // the default "Untitled project" name until they are finished.
+    function normalizeProjectName(name) {
+        return String(name || "").normalize("NFKC").trim().toLowerCase()
+            .replace(/[\\s_-]+/g, " ");
+    }
+
+    function findDuplicateFinishedIconName(name, ignoreProjectId = null) {
+        const normalized = normalizeProjectName(name);
+        if (!normalized) return null;
+        return projectManager.projects.find(project =>
+            project.status === "finished" &&
+            project.id !== ignoreProjectId &&
+            normalizeProjectName(project.name) === normalized
+        ) || null;
+    }
+
+    function mergeImportedProjects(importedProjects, requestedActiveId = null) {
+        const seenNames = new Set(projectManager.projects
+            .filter(project => project.status === "finished")
+            .map(project => normalizeProjectName(project.name)).filter(Boolean));
+        const seenIds = new Set(projectManager.projects.map(project => project.id));
+        const added = [];
+        let skippedDuplicateNames = 0;
+        let skippedDuplicateIds = 0;
+
+        importedProjects.forEach(project => {
+            if (!project || typeof project !== "object" || Array.isArray(project)) return;
+            if (project.id && seenIds.has(project.id)) {
+                skippedDuplicateIds++;
+                return;
+            }
+            if (project.status === "finished") {
+                const name = normalizeProjectName(project.name);
+                if (!name || seenNames.has(name)) {
+                    skippedDuplicateNames++;
+                    return;
+                }
+                seenNames.add(name);
+            }
+            const imported = { ...project };
+            if (!imported.id) imported.id = crypto.randomUUID();
+            seenIds.add(imported.id);
+            projectManager.projects.push(imported);
+            added.push(imported);
+        });
+
+        if (added.length) {
+            const requestedActive = added.find(project => project.id === requestedActiveId);
+            projectManager.activeProjectId = (requestedActive || added[0]).id;
+        }
+        return { added, skippedDuplicateNames, skippedDuplicateIds };
+    }
+
 
     function loadProjectManager() {
         try {
@@ -11528,6 +11582,14 @@ document.getElementById("add-custom-category")?.addEventListener("click", () => 
             return;
         }
 
+        const duplicate = findDuplicateFinishedIconName(name, projectManager.activeProjectId);
+        if (duplicate) {
+            showToast('An icon named "' + duplicate.name + '" already exists. Choose a different name.', "error");
+            finishIconName.focus();
+            finishIconName.select();
+            return;
+        }
+
         const colorOption = document.querySelector(
             'input[name="finish-style-choice"]:checked'
         )?.value || "original";
@@ -11609,24 +11671,47 @@ if (finishCategoryManuallyChanged) {
         reader.onload = e => {
             try {
                 const parsed = JSON.parse(e.target.result);
+                let importedProjects = [];
+                let requestedActiveId = null;
+
                 if (parsed.projectManager && Array.isArray(parsed.projectManager.projects)) {
-                    projectManager = parsed.projectManager;
+                    importedProjects = parsed.projectManager.projects;
+                    requestedActiveId = parsed.projectManager.activeProjectId || null;
                 } else if (Array.isArray(parsed.projects)) {
-                    projectManager = parsed;
+                    importedProjects = parsed.projects;
+                    requestedActiveId = parsed.activeProjectId || null;
                 } else if (parsed.shapes && parsed.version) {
-                    // Single project import
-                    const p = createProject(parsed);
-                    projectManager.projects.push(p);
-                    projectManager.activeProjectId = p.id;
+                    importedProjects = [createProject(parsed)];
                 } else {
                     throw new Error("Unrecognized project file format.");
+                }
+
+                // Merge rather than replace: current projects are preserved.
+                saveProjectToBrowser();
+                const result = mergeImportedProjects(importedProjects, requestedActiveId);
+
+                if (!result.added.length) {
+                    const reasons = [];
+                    if (result.skippedDuplicateNames) reasons.push(result.skippedDuplicateNames + " duplicate icon name(s)");
+                    if (result.skippedDuplicateIds) reasons.push(result.skippedDuplicateIds + " already-imported project(s)");
+                    showToast(reasons.length
+                        ? "Nothing imported: " + reasons.join(" and ") + " were skipped."
+                        : "No valid new projects were found in this backup.", "error");
+                    return;
                 }
 
                 saveProjectManager();
                 restoreProjectFromBrowser();
                 renderHomeProjects();
                 renderUnfinishedProjects();
-                showToast("Project backup restored successfully", "success");
+                renderManagementTable();
+
+                const skipped = result.skippedDuplicateNames + result.skippedDuplicateIds;
+                showToast(
+                    "Imported " + result.added.length + " project(s) without replacing existing icons." +
+                    (skipped ? " Skipped " + skipped + " duplicate(s)." : ""),
+                    "success"
+                );
             } catch (err) {
                 alert(`Could not import file: ${err.message}`);
             }
