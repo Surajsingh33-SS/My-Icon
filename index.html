@@ -1467,16 +1467,24 @@
                     ).join("\n\n");
 
                     try {
+                        let copied = false;
                         if (navigator.clipboard && window.isSecureContext) {
-                            await navigator.clipboard.writeText(report);
-                        } else {
+                            try {
+                                await navigator.clipboard.writeText(report);
+                                copied = true;
+                            } catch (_) {
+                                // Try the legacy clipboard method if browser permission blocks the modern API.
+                            }
+                        }
+
+                        if (!copied) {
                             const textarea = document.createElement("textarea");
                             textarea.value = report;
                             textarea.style.position = "fixed";
                             textarea.style.opacity = "0";
                             document.body.appendChild(textarea);
                             textarea.select();
-                            const copied = document.execCommand("copy");
+                            copied = document.execCommand("copy");
                             textarea.remove();
                             if (!copied) throw new Error("Clipboard copy was blocked by the browser.");
                         }
