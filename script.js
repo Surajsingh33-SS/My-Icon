@@ -323,8 +323,16 @@
 
     // Project Manager Views
     const sidebarOptions = document.querySelectorAll(".sidebar-option");
+    const iconLibrarySearchInput = document.getElementById("icon-library-search-input");
+    const iconLibraryCategoryFilter = document.getElementById("icon-library-category-filter");
+    const iconLibraryResultsList = document.getElementById("icon-library-results-list");
+    const iconLibraryDetails = document.getElementById("icon-library-details");
+    const iconLibraryCount = document.getElementById("icon-library-count");
+    const iconLibraryResultsCount = document.getElementById("icon-library-results-count");
+    const iconLibraryCopyNamesButton = document.getElementById("icon-library-copy-names");
     const homeViewSections = {
         gallery: document.getElementById("home-view-gallery"),
+        iconLibrary: document.getElementById("home-view-icon-library"),
         projects: document.getElementById("home-view-projects"),
         settings: document.getElementById("home-view-settings")
     };
@@ -9621,6 +9629,9 @@ function getSelectedFinishCategories() {
             if (selectedHomeProject && projectDetails?.classList.contains("show")) {
                 renderProjectSearchTerms(selectedHomeProject);
             }
+            if (document.getElementById("home-view-icon-library")?.style.display !== "none") {
+                renderIconLibrary();
+            }
         })
         .catch(() => {});
 
@@ -9671,6 +9682,308 @@ function getSelectedFinishCategories() {
         // Lucide metadata. Popular, widely searched icons may use up to 30 terms.
         return unique.slice(0, target);
     }
+
+
+    // ========================================================================
+    // ICON LIBRARY: browse every icon in the enriched Lucide metadata file.
+    // This view is read-only for now; later bulk editing can build on this
+    // isolated list/detail workspace without changing Gallery behavior.
+    // ========================================================================
+    let selectedIconLibraryName = "";
+
+    function normalizeLibraryIconName(value) {
+        return String(value || "")
+            .trim()
+            .toLowerCase()
+            .replace(/\\.[a-z0-9]+$/i, "")
+            .replace(/[\\s_]+/g, "-");
+    }
+
+    function getIconLibraryProjectMap() {
+        const map = new Map();
+        const projects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
+        projects.forEach(project => {
+            const key = normalizeLibraryIconName(project.name);
+            if (!key) return;
+            const existing = map.get(key);
+            // Prefer a finished project when multiple saved projects share a name.
+            if (!existing || (project.status === "finished" && existing.status !== "finished")) {
+                map.set(key, project);
+            }
+        });
+        return map;
+    }
+
+    function getIconLibraryCategories(iconName, record, projectMap) {
+        const project = projectMap.get(iconName);
+        if (project) {
+            const categories = getProjectCategories(project);
+            return categories.length ? categories : ["Uncategorized"];
+        }
+
+        const official = Array.isArray(record?.lucide?.categories)
+            ? record.lucide.categories.map(value => String(value).trim()).filter(Boolean)
+            : [];
+        const allowed = new Set(getAllIconCategories());
+        const recognized = [...new Set(official.filter(category => allowed.has(category)))];
+        return recognized.length ? recognized : ["Uncategorized"];
+    }
+
+    function createIconLibraryChipGroup(parent, label, values, emptyText) {
+        const section = document.createElement("section");
+        section.className = "icon-library-meta-section";
+        const heading = document.createElement("h4");
+        heading.textContent = label;
+        section.appendChild(heading);
+
+        const list = document.createElement("div");
+        list.className = "icon-library-meta-chips";
+        const items = [...new Set((values || []).map(value => String(value).trim()).filter(Boolean))];
+        if (!items.length) {
+            const empty = document.createElement("span");
+            empty.className = "icon-library-meta-empty";
+            empty.textContent = emptyText || "No information available";
+            list.appendChild(empty);
+        } else {
+            items.forEach(value => {
+                const chip = document.createElement("span");
+                chip.className = "icon-library-meta-chip";
+                chip.textContent = value;
+                list.appendChild(chip);
+            });
+        }
+        section.appendChild(list);
+        parent.appendChild(section);
+    }
+
+    function renderIconLibraryDetails(iconName, record, projectMap) {
+        if (!iconLibraryDetails) return;
+        iconLibraryDetails.replaceChildren();
+
+        const project = projectMap.get(iconName);
+        const categories = getIconLibraryCategories(iconName, record, projectMap);
+        const lucide = record?.lucide || {};
+        const ai = record?.ai || {};
+
+        const top = document.createElement("div");
+        top.className = "icon-library-detail-top";
+        const preview = document.createElement("div");
+        preview.className = "icon-library-detail-preview";
+        if (project?.thumbnail) {
+            preview.innerHTML = project.thumbnail;
+            const svg = preview.querySelector("svg");
+            if (svg) {
+                svg.removeAttribute("width");
+                svg.removeAttribute("height");
+                svg.setAttribute("viewBox", svg.getAttribute("viewBox") || "0 0 24 24");
+                svg.style.width = "58px";
+                svg.style.height = "58px";
+                svg.style.maxWidth = "100%";
+                svg.style.maxHeight = "100%";
+            }
+        } else {
+            const symbol = document.createElement("span");
+            symbol.textContent = "✦";
+            preview.appendChild(symbol);
+        }
+
+        const titleGroup = document.createElement("div");
+        titleGroup.className = "icon-library-detail-title";
+        const title = document.createElement("h3");
+        title.textContent = iconName;
+        const subtitle = document.createElement("p");
+        subtitle.textContent = project ? "Saved in your projects" : "Lucide library icon";
+        titleGroup.append(title, subtitle);
+        top.append(preview, titleGroup);
+        iconLibraryDetails.appendChild(top);
+
+        createIconLibraryChipGroup(iconLibraryDetails, "Current categories", categories,
+            "Uncategorised — no category assigned yet");
+        createIconLibraryChipGroup(iconLibraryDetails, "Official Lucide categories", lucide.categories,
+            "No official category supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Description", ai.description ? [ai.description] : [],
+            "No description available");
+        createIconLibraryChipGroup(iconLibraryDetails, "Lucide tags", lucide.tags,
+            "No official tags supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Aliases", lucide.aliases,
+            "No aliases supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Search terms", ai.searchTerms,
+            "No enriched search terms supplied");
+    }
+
+    function renderIconLibrary() {
+        if (!iconLibraryResultsList) return;
+
+        const entries = Object.entries(iconSearchMetadata || {})
+            .filter(([name, record]) => name && record && typeof record === "object" &&
+                (record.lucide || record.ai))
+            .sort((a, b) => a[0].localeCompare(b[0]));
+
+        const projectMap = getIconLibraryProjectMap();
+        const allCategories = getAllIconCategories()
+            .filter(category => category !== "Uncategorized")
+            .sort((a, b) => a.localeCompare(b));
+
+        if (iconLibraryCategoryFilter) {
+            const previous = iconLibraryCategoryFilter.value || "all";
+            iconLibraryCategoryFilter.replaceChildren();
+            const allOption = document.createElement("option");
+            allOption.value = "all";
+            allOption.textContent = "All categories";
+            iconLibraryCategoryFilter.appendChild(allOption);
+
+            const uncategorizedOption = document.createElement("option");
+            uncategorizedOption.value = "__uncategorized__";
+            uncategorizedOption.textContent = "Uncategorised";
+            iconLibraryCategoryFilter.appendChild(uncategorizedOption);
+
+            allCategories.forEach(category => {
+                const option = document.createElement("option");
+                option.value = category;
+                option.textContent = category;
+                iconLibraryCategoryFilter.appendChild(option);
+            });
+
+            if ([...iconLibraryCategoryFilter.options].some(option => option.value === previous)) {
+                iconLibraryCategoryFilter.value = previous;
+            }
+        }
+
+        const query = String(iconLibrarySearchInput?.value || "").trim().toLowerCase();
+        const categoryFilter = iconLibraryCategoryFilter?.value || "all";
+        const words = query.split(/\\s+/).filter(Boolean);
+
+        const filtered = entries.filter(([name, record]) => {
+            const categories = getIconLibraryCategories(name, record, projectMap);
+            if (categoryFilter === "__uncategorized__" && !categories.includes("Uncategorized")) return false;
+            if (categoryFilter !== "all" && categoryFilter !== "__uncategorized__" &&
+                !categories.includes(categoryFilter)) return false;
+
+            if (!words.length) return true;
+            const lucide = record.lucide || {};
+            const ai = record.ai || {};
+            const searchable = [
+                name, ai.description,
+                ...(Array.isArray(lucide.tags) ? lucide.tags : []),
+                ...(Array.isArray(lucide.aliases) ? lucide.aliases : []),
+                ...(Array.isArray(lucide.categories) ? lucide.categories : []),
+                ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : []),
+                ...categories
+            ].join(" ").toLowerCase();
+            return words.every(word => searchable.includes(word));
+        });
+
+        if (iconLibraryCount) iconLibraryCount.textContent = String(entries.length);
+        if (iconLibraryResultsCount) {
+            iconLibraryResultsCount.textContent = `${filtered.length.toLocaleString()} results`;
+        }
+
+        iconLibraryResultsList.replaceChildren();
+        if (!filtered.length) {
+            const empty = document.createElement("p");
+            empty.className = "icon-library-empty";
+            empty.textContent = entries.length
+                ? "No icons match this search or category."
+                : "Loading icon metadata...";
+            iconLibraryResultsList.appendChild(empty);
+            selectedIconLibraryName = "";
+            if (iconLibraryDetails) {
+                iconLibraryDetails.innerHTML = '<div class="icon-library-detail-empty"><span class="icon-library-detail-empty-symbol">⌕</span><strong>No icon selected</strong><p>Try another search or category.</p></div>';
+            }
+            if (iconLibraryCopyNamesButton) iconLibraryCopyNamesButton.disabled = true;
+            return;
+        }
+
+        if (!filtered.some(([name]) => name === selectedIconLibraryName)) {
+            selectedIconLibraryName = filtered[0][0];
+        }
+
+        filtered.forEach(([name, record]) => {
+            const categories = getIconLibraryCategories(name, record, projectMap);
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "icon-library-result" +
+                (name === selectedIconLibraryName ? " active" : "");
+            item.setAttribute("aria-pressed", String(name === selectedIconLibraryName));
+
+            const nameLabel = document.createElement("span");
+            nameLabel.className = "icon-library-result-name";
+            nameLabel.textContent = name;
+
+            const categoryLabel = document.createElement("span");
+            categoryLabel.className = "icon-library-result-category";
+            categoryLabel.textContent = categories.includes("Uncategorized")
+                ? "Uncategorised"
+                : categories.join(" · ");
+
+            item.append(nameLabel, categoryLabel);
+            item.addEventListener("click", () => {
+                selectedIconLibraryName = name;
+                renderIconLibrary();
+            });
+            iconLibraryResultsList.appendChild(item);
+        });
+
+        const selectedRecord = filtered.find(([name]) => name === selectedIconLibraryName)?.[1];
+        if (selectedRecord) {
+            renderIconLibraryDetails(selectedIconLibraryName, selectedRecord, projectMap);
+        }
+
+        if (iconLibraryCopyNamesButton) iconLibraryCopyNamesButton.disabled = false;
+    }
+
+    iconLibrarySearchInput?.addEventListener("input", renderIconLibrary);
+    iconLibraryCategoryFilter?.addEventListener("change", renderIconLibrary);
+    iconLibraryCopyNamesButton?.addEventListener("click", async () => {
+        const entries = Object.entries(iconSearchMetadata || {})
+            .filter(([name, record]) => name && record && typeof record === "object" &&
+                (record.lucide || record.ai))
+            .sort((a, b) => a[0].localeCompare(b[0]));
+        const projectMap = getIconLibraryProjectMap();
+        const query = String(iconLibrarySearchInput?.value || "").trim().toLowerCase();
+        const categoryFilter = iconLibraryCategoryFilter?.value || "all";
+        const words = query.split(/\\s+/).filter(Boolean);
+        const names = entries.filter(([name, record]) => {
+            const categories = getIconLibraryCategories(name, record, projectMap);
+            if (categoryFilter === "__uncategorized__" && !categories.includes("Uncategorized")) return false;
+            if (categoryFilter !== "all" && categoryFilter !== "__uncategorized__" &&
+                !categories.includes(categoryFilter)) return false;
+            if (!words.length) return true;
+            const lucide = record.lucide || {};
+            const ai = record.ai || {};
+            const searchable = [
+                name, ai.description,
+                ...(Array.isArray(lucide.tags) ? lucide.tags : []),
+                ...(Array.isArray(lucide.aliases) ? lucide.aliases : []),
+                ...(Array.isArray(lucide.categories) ? lucide.categories : []),
+                ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : []),
+                ...categories
+            ].join(" ").toLowerCase();
+            return words.every(word => searchable.includes(word));
+        }).map(([name]) => name);
+
+        if (!names.length) {
+            showToast("There are no icon names to copy.", "info");
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(names.join("\\n"));
+            showToast(`Copied ${names.length.toLocaleString()} icon names.`, "success");
+        } catch (error) {
+            const textarea = document.createElement("textarea");
+            textarea.value = names.join("\\n");
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+            const copied = document.execCommand("copy");
+            textarea.remove();
+            showToast(copied
+                ? `Copied ${names.length.toLocaleString()} icon names.`
+                : "Clipboard access was blocked by the browser.", copied ? "success" : "error");
+        }
+    });
 
     function renderHomeProjects() {
         if (!homeProjectGrid) return;
@@ -10516,6 +10829,8 @@ function getSelectedFinishCategories() {
             renderManagementTable();
         } else if (viewName === "gallery") {
             renderHomeProjects();
+        } else if (viewName === "iconLibrary") {
+            renderIconLibrary();
         }
     }
 
