@@ -8,6 +8,32 @@
 (function () {
     "use strict";
 
+    // App-styled replacement for browser alert/confirm/prompt dialogs.
+    function showAppDialog({ title = "Icon Maker Pro", message = "", input = false, confirmText = "Continue", cancelText = "Cancel", danger = false } = {}) {
+        return new Promise(resolve => {
+            const overlay = document.createElement("div");
+            overlay.className = "app-dialog-overlay";
+            const panel = document.createElement("section");
+            panel.className = "app-dialog";
+            panel.setAttribute("role", "dialog"); panel.setAttribute("aria-modal", "true");
+            const heading = document.createElement("h3"); heading.textContent = title;
+            const body = document.createElement("p"); body.textContent = message;
+            panel.append(heading, body);
+            let field = null;
+            if (input) { field = document.createElement("input"); field.className = "app-dialog-input"; field.type = "text"; field.placeholder = "Enter a name"; panel.append(field); }
+            const actions = document.createElement("div"); actions.className = "app-dialog-actions";
+            const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn btn-secondary"; cancel.textContent = cancelText;
+            const accept = document.createElement("button"); accept.type = "button"; accept.className = danger ? "btn btn-danger" : "btn btn-primary"; accept.textContent = confirmText;
+            actions.append(cancel, accept); panel.append(actions); overlay.append(panel); document.body.append(overlay);
+            const finish = confirmed => { const result = { confirmed, value: field ? field.value : undefined }; overlay.remove(); resolve(result); };
+            cancel.addEventListener("click", () => finish(false)); accept.addEventListener("click", () => finish(true));
+            overlay.addEventListener("click", event => { if (event.target === overlay) finish(false); });
+            const onKey = event => { if (event.key === "Escape") { document.removeEventListener("keydown", onKey); finish(false); } if (event.key === "Enter" && field && document.activeElement === field) { document.removeEventListener("keydown", onKey); finish(true); } };
+            document.addEventListener("keydown", onKey); (field || accept).focus();
+        });
+    }
+
+
     // =====================================
     // CUSTOM STYLED SELECT DROPDOWNS
     // =====================================
@@ -9028,7 +9054,7 @@ function getSelectedFinishCategories() {
         try {
             parsed = readSVGSource();
         } catch (e) {
-            alert(`SVG Parse Error:\n${e.message}`);
+            showToast(`SVG Parse Error: ${e.message}`, "error");
             return;
         }
 
@@ -9902,7 +9928,7 @@ function getSelectedFinishCategories() {
             overlay.querySelector(".icon-library-metadata-close").addEventListener("click", close);
             overlay.querySelector(".icon-library-metadata-cancel").addEventListener("click", close);
             overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
-            overlay.querySelector(".icon-library-metadata-save").addEventListener("click", () => {
+            overlay.querySelector(".icon-library-metadata-save").addEventListener("click", async () => {
                 const feedback = overlay.querySelector(".icon-library-metadata-feedback");
                 const parsed = parseIconLibraryUserMetadata(overlay.querySelector(".icon-library-metadata-input").value);
                 if (!parsed.entries.length) {
@@ -9912,12 +9938,8 @@ function getSelectedFinishCategories() {
                 }
 
                 // OK = Replace; Cancel = Merge. Unlisted icons remain unchanged.
-                const replace = window.confirm(
-                    "Choose how to apply this metadata:\n\n" +
-                    "OK — Replace: replace existing provided metadata for each listed icon.\n" +
-                    "Cancel — Merge: update supplied fields and keep omitted fields.\n\n" +
-                    "Icons not included in this JSON will remain unchanged."
-                );
+                const choice = await showAppDialog({ title: "Apply metadata", message: "Replace overwrites supplied metadata for listed icons. Merge updates supplied fields and keeps omitted fields. Unlisted icons remain unchanged.", confirmText: "Replace", cancelText: "Merge" });
+                const replace = choice.confirmed;
                 const saved = getIconLibraryUserMetadata();
                 parsed.entries.forEach(entry => {
                     const key = normalizeLibraryIconName(entry.name);
@@ -10552,9 +10574,7 @@ function getSelectedFinishCategories() {
             const copiedForCurrentSelection = uniqueCurrentNames.filter(name => progress.copiedNames.has(name)).length;
             const isComplete = copiedForCurrentSelection >= totalForCurrentSelection;
             if (iconLibraryCopyCategoryMetadataButton) {
-                iconLibraryCopyCategoryMetadataButton.textContent = isComplete
-                    ? "Copy JSON"
-                    : copiedForCurrentSelection + "/" + totalForCurrentSelection + " done";
+                iconLibraryCopyCategoryMetadataButton.textContent = (copiedForCurrentSelection === 0 || isComplete) ? "Copy MD" : copiedForCurrentSelection + "/" + totalForCurrentSelection + " done";
                 iconLibraryCopyCategoryMetadataButton.title = isComplete
                     ? "All icons copied"
                     : remainingCount + " remaining";
@@ -11376,11 +11396,12 @@ function getSelectedFinishCategories() {
         showToast(`Remixed as "${remixName}"`, "success");
     });
 
-    projectDeleteButton?.addEventListener("click", () => {
+    projectDeleteButton?.addEventListener("click", async () => {
         if (!selectedHomeProject) return;
         const name = selectedHomeProject.name || "Untitled icon";
 
-        if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+        const decision = await showAppDialog({ title: "Delete icon?", message: `Are you sure you want to delete "${name}"?`, confirmText: "Delete", danger: true });
+        if (!decision.confirmed) return;
 
         projectManager.projects = projectManager.projects.filter(p => p.id !== selectedHomeProject.id);
         saveProjectManager();
@@ -11559,7 +11580,7 @@ function getSelectedFinishCategories() {
             delBtn.type = "button";
             delBtn.className = "btn btn-sm btn-danger";
             delBtn.textContent = "Delete";
-            delBtn.addEventListener("click", () => {
+            delBtn.addEventListener("click", async () => {
                 if (isFinished) {
                     if (deleteConfirmModal && deleteTargetProjectName && deleteConfirmBtn && deleteCancelBtn) {
                         deleteTargetProjectName.textContent = project.name || "this icon";
@@ -11582,7 +11603,8 @@ function getSelectedFinishCategories() {
                             deleteConfirmModal.classList.remove("show");
                         };
                     } else {
-                        if (confirm(`Permanently delete finished icon "${project.name}"?`)) {
+                        const decision = await showAppDialog({ title: "Delete finished icon?", message: `Permanently delete finished icon "${project.name}"?`, confirmText: "Delete", danger: true });
+                        if (decision.confirmed) {
                             projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
                             saveProjectManager();
                             renderManagementTable();
@@ -11637,8 +11659,9 @@ function getSelectedFinishCategories() {
 
     // Preferences Actions
     settingsBackupBtn?.addEventListener("click", downloadProjectFile);
-    settingsClearAllBtn?.addEventListener("click", () => {
-        if (!confirm("Warning: This will clear all saved icons and preferences from this browser. Continue?")) return;
+    settingsClearAllBtn?.addEventListener("click", async () => {
+        const decision = await showAppDialog({ title: "Clear all data?", message: "This will clear all saved icons and preferences from this browser. This cannot be undone.", confirmText: "Clear all", danger: true });
+        if (!decision.confirmed) return;
         localStorage.clear();
         location.reload();
     });
@@ -11691,10 +11714,10 @@ finishIconCategory?.addEventListener("change", event => {
 });
 
 // Add a custom category.
-document.getElementById("add-custom-category")?.addEventListener("click", () => {
-    const categoryName = prompt("Enter your new category name:");
-
-    if (categoryName === null) return;
+document.getElementById("add-custom-category")?.addEventListener("click", async () => {
+    const response = await showAppDialog({ title: "Add category", message: "Enter a name for the new category.", input: true, confirmText: "Add" });
+    if (!response.confirmed) return;
+    const categoryName = response.value;
 
     if (!saveCustomCategory(categoryName)) {
         showToast("Category is empty or already exists.", "error");
@@ -11855,7 +11878,7 @@ if (finishCategoryManuallyChanged) {
                     "success"
                 );
             } catch (err) {
-                alert(`Could not import file: ${err.message}`);
+                showToast(`Could not import file: ${err.message}`, "error");
             }
         };
         reader.readAsText(file);
