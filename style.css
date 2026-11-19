@@ -1629,8 +1629,18 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .project-details-close {
-    font-size: 24px;
-    line-height: 1;
+    font-size: 0;
+    line-height: 0;
+}
+.project-details-close svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 /* ICON INFORMATION */
@@ -4754,7 +4764,8 @@ body.light-theme #save-project-button:hover {
 .icon-library-metadata-modal > header,.icon-library-metadata-modal > footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .icon-library-metadata-modal h3 { margin:0 0 5px; font-size:18px; }
 .icon-library-metadata-modal p,.icon-library-metadata-format span { margin:0; color:var(--text-secondary); font-size:12px; line-height:1.5; }
-.icon-library-metadata-close { width:34px; height:34px; border:0; border-radius:8px; background:var(--bg-surface-raised); color:var(--text-primary); font-size:23px; cursor:pointer; }
+.icon-library-metadata-close { display:inline-flex; align-items:center; justify-content:center; flex:0 0 34px; width:34px; height:34px; padding:0; border:0; border-radius:8px; background:var(--bg-surface-raised); color:var(--text-primary); font-size:0; line-height:0; cursor:pointer; }
+.icon-library-metadata-close svg { display:block; width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .icon-library-metadata-format { display:flex; flex-direction:column; gap:6px; padding:12px; border:1px solid var(--border-subtle); border-radius:9px; background:var(--bg-surface-raised); }
 .icon-library-metadata-format code { color:var(--accent); font-size:12px; white-space:normal; }
 .icon-library-metadata-input { box-sizing:border-box; width:100%; min-height:250px; resize:vertical; padding:13px; border:1px solid var(--border-default); border-radius:9px; outline:none; background:var(--bg-base); color:var(--text-primary); font:12px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace; }
