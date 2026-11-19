@@ -4398,6 +4398,36 @@ body.light-theme #save-project-button:hover {
     padding: 0 10px;
 }
 
+.icon-library-saved-toggle {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    min-width: 104px;
+    height: 40px;
+    padding: 0 13px;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    background: var(--bg-surface-raised);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color .16s ease, background .16s ease, border-color .16s ease;
+}
+
+.icon-library-saved-toggle:hover,
+.icon-library-saved-toggle[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.icon-library-saved-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 #icon-library-copy-names {
     height: 40px;
     white-space: nowrap;
@@ -4693,6 +4723,9 @@ body.light-theme #save-project-button:hover {
     #icon-library-category-filter {
         flex: 1 1 150px;
         width: auto;
+    }
+    .icon-library-saved-toggle {
+        flex: 0 0 auto;
     }
     .icon-library-workspace {
         display: flex;
