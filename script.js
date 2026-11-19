@@ -1506,6 +1506,9 @@ function getSelectedFinishCategories() {
             localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projectManager));
             setSaveStatus(true);
             updateProjectCounters();
+            if (homeViewSections?.["icon-library"]?.style.display === "flex") {
+                renderIconLibrary();
+            }
         } catch (error) {
             console.error("Could not save projects:", error);
             showToast("Failed to save to local storage", "error");
@@ -9757,12 +9760,13 @@ function getSelectedFinishCategories() {
         };
 
         projects.forEach(project => {
+            if (project?.status !== "finished") return;
+
             const key = normalizeLibraryIconName(project?.name);
             if (!key) return;
 
             const categoryScore = getCategorySourceScore(project);
-            const finishedScore = project?.status === "finished" ? 1 : 0;
-            const score = categoryScore * 10 + finishedScore;
+            const score = categoryScore;
             const existingScore = scores.get(key) ?? -1;
 
             if (!map.has(key) || score > existingScore) {
@@ -9772,6 +9776,30 @@ function getSelectedFinishCategories() {
         });
 
         return map;
+    }
+
+    // Combine every valid metadata entry with every finished Gallery project.
+    // Saved projects do not need an external metadata record to appear here.
+    function getIconLibraryEntries() {
+        const entriesByKey = new Map();
+
+        Object.entries(iconSearchMetadata || {}).forEach(([name, record]) => {
+            if (!name || !record || typeof record !== "object" || Array.isArray(record)) return;
+            const key = normalizeLibraryIconName(name);
+            if (!key || entriesByKey.has(key)) return;
+            entriesByKey.set(key, [name, record]);
+        });
+
+        const projects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
+        projects.forEach(project => {
+            if (project?.status !== "finished") return;
+            const name = String(project?.name || "").trim();
+            const key = normalizeLibraryIconName(name);
+            if (!key || entriesByKey.has(key)) return;
+            entriesByKey.set(key, [name, {}]);
+        });
+
+        return [...entriesByKey.values()].sort((a, b) => a[0].localeCompare(b[0]));
     }
 
     function getIconLibrarySavedNames() {
@@ -9787,8 +9815,8 @@ function getSelectedFinishCategories() {
         iconLibrarySavedToggleButton.textContent = iconLibrarySavedOnly ? "Saved only" : "All icons";
         iconLibrarySavedToggleButton.setAttribute("aria-pressed", String(iconLibrarySavedOnly));
         iconLibrarySavedToggleButton.title = iconLibrarySavedOnly
-            ? "Currently showing saved Gallery icons only. Switch to all Lucide icons."
-            : "Currently showing all Lucide icons. Switch to saved icons only.";
+            ? "Currently showing saved Gallery icons only. Switch to all library icons."
+            : "Currently showing all library icons. Switch to saved icons only.";
     }
 
     function getIconLibraryCategories(iconName, record, projectMap) {
@@ -9862,9 +9890,9 @@ function getSelectedFinishCategories() {
         if (!iconLibraryDetails) return;
         iconLibraryDetails.replaceChildren();
 
-        const project = projectMap.get(iconName);
+        const project = projectMap.get(normalizeLibraryIconName(iconName));
         const categories = getIconLibraryCategories(iconName, record, projectMap);
-        const lucide = record?.lucide || {};
+        const sourceMeta = record?.lucide || {};
         const ai = record?.ai || {};
 
         const top = document.createElement("div");
@@ -9894,20 +9922,21 @@ function getSelectedFinishCategories() {
         const title = document.createElement("h3");
         title.textContent = iconName;
         const subtitle = document.createElement("p");
-        subtitle.textContent = project ? "Saved in your projects" : "Lucide library icon";
+        subtitle.textContent = project ? "Saved in your projects" : "Library icon";
         titleGroup.append(title, subtitle);
         top.append(preview, titleGroup);
         iconLibraryDetails.appendChild(top);
 
         createIconLibraryChipGroup(iconLibraryDetails, "Current categories", categories,
             "Uncategorised — no category assigned yet");
-        createIconLibraryChipGroup(iconLibraryDetails, "Official Lucide categories", lucide.categories,
-            "No official category supplied");
-        createIconLibraryChipGroup(iconLibraryDetails, "Description", ai.description ? [ai.description] : [],
+        createIconLibraryChipGroup(iconLibraryDetails, "Source categories", sourceMeta.categories,
+            "No source categories supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Description",
+            ai.description || project?.description ? [ai.description || project.description] : [],
             "No description available");
-        createIconLibraryChipGroup(iconLibraryDetails, "Lucide tags", lucide.tags,
-            "No official tags supplied");
-        createIconLibraryChipGroup(iconLibraryDetails, "Aliases", lucide.aliases,
+        createIconLibraryChipGroup(iconLibraryDetails, "Tags", sourceMeta.tags,
+            "No tags supplied");
+        createIconLibraryChipGroup(iconLibraryDetails, "Aliases", sourceMeta.aliases,
             "No aliases supplied");
         createIconLibraryChipGroup(iconLibraryDetails, "Search terms", ai.searchTerms,
             "No enriched search terms supplied");
@@ -9916,10 +9945,7 @@ function getSelectedFinishCategories() {
     function renderIconLibrary() {
         if (!iconLibraryResultsList) return;
 
-        const entries = Object.entries(iconSearchMetadata || {})
-            .filter(([name, record]) => name && record && typeof record === "object" &&
-                (record.lucide || record.ai))
-            .sort((a, b) => a[0].localeCompare(b[0]));
+        const entries = getIconLibraryEntries();
 
         const projectMap = getIconLibraryProjectMap();
         const savedNames = getIconLibrarySavedNames();
@@ -9964,16 +9990,19 @@ function getSelectedFinishCategories() {
                 !categories.includes(categoryFilter)) return false;
 
             if (!words.length) return true;
-            const lucide = record.lucide || {};
-            const ai = record.ai || {};
+            const sourceMeta = record?.lucide || {};
+            const ai = record?.ai || {};
+            const project = projectMap.get(normalizeLibraryIconName(name));
+            const projectData = project?.data && typeof project.data === "object" ? project.data : {};
             const searchable = [
-                name, ai.description,
-                ...(Array.isArray(lucide.tags) ? lucide.tags : []),
-                ...(Array.isArray(lucide.aliases) ? lucide.aliases : []),
-                ...(Array.isArray(lucide.categories) ? lucide.categories : []),
+                name, ai.description, project?.description, project?.keywords,
+                project?.searchTerms, projectData.description, projectData.keywords,
+                ...(Array.isArray(sourceMeta.tags) ? sourceMeta.tags : []),
+                ...(Array.isArray(sourceMeta.aliases) ? sourceMeta.aliases : []),
+                ...(Array.isArray(sourceMeta.categories) ? sourceMeta.categories : []),
                 ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : []),
                 ...categories
-            ].join(" ").toLowerCase();
+            ].flat().filter(Boolean).join(" ").toLowerCase();
             return words.every(word => searchable.includes(word));
         });
 
@@ -9988,7 +10017,7 @@ function getSelectedFinishCategories() {
             empty.className = "icon-library-empty";
             empty.textContent = entries.length
                 ? "No icons match this search or category."
-                : "Loading icon metadata...";
+                : "Your icon library is empty.";
             iconLibraryResultsList.appendChild(empty);
             selectedIconLibraryName = "";
             if (iconLibraryDetails) {
@@ -10045,10 +10074,7 @@ function getSelectedFinishCategories() {
     iconLibrarySearchInput?.addEventListener("input", renderIconLibrary);
     iconLibraryCategoryFilter?.addEventListener("change", renderIconLibrary);
     iconLibraryCopyNamesButton?.addEventListener("click", async () => {
-        const entries = Object.entries(iconSearchMetadata || {})
-            .filter(([name, record]) => name && record && typeof record === "object" &&
-                (record.lucide || record.ai))
-            .sort((a, b) => a[0].localeCompare(b[0]));
+        const entries = getIconLibraryEntries();
         const projectMap = getIconLibraryProjectMap();
         const savedNames = getIconLibrarySavedNames();
         const query = String(iconLibrarySearchInput?.value || "").trim().toLowerCase();
@@ -10061,16 +10087,19 @@ function getSelectedFinishCategories() {
             if (categoryFilter !== "all" && categoryFilter !== "__uncategorized__" &&
                 !categories.includes(categoryFilter)) return false;
             if (!words.length) return true;
-            const lucide = record.lucide || {};
-            const ai = record.ai || {};
+            const sourceMeta = record?.lucide || {};
+            const ai = record?.ai || {};
+            const project = projectMap.get(normalizeLibraryIconName(name));
+            const projectData = project?.data && typeof project.data === "object" ? project.data : {};
             const searchable = [
-                name, ai.description,
-                ...(Array.isArray(lucide.tags) ? lucide.tags : []),
-                ...(Array.isArray(lucide.aliases) ? lucide.aliases : []),
-                ...(Array.isArray(lucide.categories) ? lucide.categories : []),
+                name, ai.description, project?.description, project?.keywords,
+                project?.searchTerms, projectData.description, projectData.keywords,
+                ...(Array.isArray(sourceMeta.tags) ? sourceMeta.tags : []),
+                ...(Array.isArray(sourceMeta.aliases) ? sourceMeta.aliases : []),
+                ...(Array.isArray(sourceMeta.categories) ? sourceMeta.categories : []),
                 ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : []),
                 ...categories
-            ].join(" ").toLowerCase();
+            ].flat().filter(Boolean).join(" ").toLowerCase();
             return words.every(word => searchable.includes(word));
         }).map(([name]) => name);
 
