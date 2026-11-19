@@ -9756,9 +9756,10 @@ function getSelectedFinishCategories() {
         iconLibraryMetadataModal.querySelector(".icon-library-metadata-input").focus();
     }
 
-    function getIconLibraryCategorySource(iconName, projectMap) {
+    function getIconLibraryCategorySource(iconName, projectMap, providedMetadata = null) {
         const key = normalizeLibraryIconName(iconName);
-        const provided = getIconLibraryUserMetadata()[key];
+        const metadata = providedMetadata || getIconLibraryUserMetadata();
+        const provided = metadata[key];
         if (Array.isArray(provided?.categories) && provided.categories.length) return "provided";
         const project = projectMap.get(key);
         if (project && (
@@ -9770,8 +9771,9 @@ function getSelectedFinishCategories() {
         return "automatic";
     }
 
-    function getIconLibraryCategories(iconName, record, projectMap) {
-        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(iconName)];
+    function getIconLibraryCategories(iconName, record, projectMap, providedMetadata = null) {
+        const metadata = providedMetadata || getIconLibraryUserMetadata();
+        const provided = metadata[normalizeLibraryIconName(iconName)];
         if (provided?.categories?.length) return migrateCategoryList(provided.categories);
 
         const project = projectMap.get(normalizeLibraryIconName(iconName));
@@ -9837,15 +9839,16 @@ function getSelectedFinishCategories() {
         parent.appendChild(section);
     }
 
-    function renderIconLibraryDetails(iconName, record, projectMap) {
+    function renderIconLibraryDetails(iconName, record, projectMap, providedMetadata = null) {
         if (!iconLibraryDetails) return;
         iconLibraryDetails.replaceChildren();
 
         const project = projectMap.get(normalizeLibraryIconName(iconName));
-        const categories = getIconLibraryCategories(iconName, record, projectMap);
+        const metadata = providedMetadata || getIconLibraryUserMetadata();
+        const categories = getIconLibraryCategories(iconName, record, projectMap, metadata);
         const sourceMeta = record?.lucide || {};
         const ai = record?.ai || {};
-        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(iconName)] || {};
+        const provided = metadata[normalizeLibraryIconName(iconName)] || {};
 
         const top = document.createElement("div");
         top.className = "icon-library-detail-top";
@@ -9904,11 +9907,24 @@ function getSelectedFinishCategories() {
             "No enriched search terms supplied");
     }
 
+    let iconLibraryRenderVersion = 0;
+    let iconLibraryRenderFrame = 0;
+    let iconLibraryCurrentFiltered = [];
+    let iconLibraryCurrentProjectMap = null;
+    let iconLibraryCurrentProvidedMetadata = null;
+
     function renderIconLibrary() {
         if (!iconLibraryResultsList) return;
 
-        const entries = getIconLibraryEntries();
+        const renderVersion = ++iconLibraryRenderVersion;
+        if (iconLibraryRenderFrame) {
+            window.cancelAnimationFrame(iconLibraryRenderFrame);
+            iconLibraryRenderFrame = 0;
+        }
 
+        // Read localStorage once, then reuse the parsed metadata for every icon.
+        const providedMetadata = getIconLibraryUserMetadata();
+        const entries = getIconLibraryEntries();
         const projectMap = getIconLibraryProjectMap();
         const savedNames = getIconLibrarySavedNames();
         const allCategories = getAllIconCategories()
@@ -9950,45 +9966,57 @@ function getSelectedFinishCategories() {
                     option.textContent = label;
                     iconLibrarySourceFilter.appendChild(option);
                 });
-            if ([...iconLibrarySourceFilter.options].some(option => option.value === previousSource))
+            if ([...iconLibrarySourceFilter.options].some(option => option.value === previousSource)) {
                 iconLibrarySourceFilter.value = previousSource;
+            }
         }
 
         const query = String(iconLibrarySearchInput?.value || "").trim().toLowerCase();
+        const words = query.split(/\s+/).filter(Boolean);
         const categoryFilter = iconLibraryCategoryFilter?.value || "all";
         const sourceFilter = iconLibrarySourceFilter?.value || "all";
-        const words = query.split(/\s+/).filter(Boolean);
 
-        const filtered = entries.filter(([name, record]) => {
-            if (iconLibrarySavedOnly && !savedNames.has(normalizeLibraryIconName(name))) return false;
-            const categories = getIconLibraryCategories(name, record, projectMap);
-            if (sourceFilter !== "all" && getIconLibraryCategorySource(name, projectMap) !== sourceFilter) return false;
-            if (categoryFilter === "__uncategorized__" && !categories.includes("Uncategorized")) return false;
+        // Build each icon's category/source/search data once instead of rebuilding
+        // it repeatedly inside several filter and render passes.
+        const filtered = [];
+        for (const [name, record] of entries) {
+            const key = normalizeLibraryIconName(name);
+            if (iconLibrarySavedOnly && !savedNames.has(key)) continue;
+
+            const project = projectMap.get(key);
+            const categories = getIconLibraryCategories(name, record, projectMap, providedMetadata);
+            const source = getIconLibraryCategorySource(name, projectMap, providedMetadata);
+
+            if (sourceFilter !== "all" && source !== sourceFilter) continue;
+            if (categoryFilter === "__uncategorized__" && !categories.includes("Uncategorized")) continue;
             if (categoryFilter !== "all" && categoryFilter !== "__uncategorized__" &&
-                !categories.includes(categoryFilter)) return false;
+                !categories.includes(categoryFilter)) continue;
 
-            if (!words.length) return true;
-            const sourceMeta = record?.lucide || {};
-            const ai = record?.ai || {};
-            const project = projectMap.get(normalizeLibraryIconName(name));
-            const projectData = project?.data && typeof project.data === "object" ? project.data : {};
-            const searchable = [
-                name, ai.description, project?.description, project?.keywords,
-                project?.searchTerms, projectData.description, projectData.keywords,
-                ...(Array.isArray(sourceMeta.tags) ? sourceMeta.tags : []),
-                ...(Array.isArray(sourceMeta.aliases) ? sourceMeta.aliases : []),
-                ...(Array.isArray(sourceMeta.categories) ? sourceMeta.categories : []),
-                ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : []),
-                ...(Array.isArray(getIconLibraryUserMetadata()[normalizeLibraryIconName(name)]?.searchTerms) ? getIconLibraryUserMetadata()[normalizeLibraryIconName(name)].searchTerms : []),
-                ...categories
-            ].flat().filter(Boolean).join(" ").toLowerCase();
-            return words.every(word => searchable.includes(word));
-        });
+            if (words.length) {
+                const sourceMeta = record?.lucide || {};
+                const ai = record?.ai || {};
+                const projectData = project?.data && typeof project.data === "object" ? project.data : {};
+                const userTerms = providedMetadata[key]?.searchTerms;
+                const searchable = [
+                    name, ai.description, project?.description, project?.keywords,
+                    project?.searchTerms, projectData.description, projectData.keywords,
+                    sourceMeta.tags, sourceMeta.aliases, sourceMeta.categories,
+                    ai.searchTerms, userTerms, categories
+                ].flat(Infinity).filter(Boolean).join(" ").toLowerCase();
+                if (!words.every(word => searchable.includes(word))) continue;
+            }
+
+            filtered.push({ name, record, project, categories, source });
+        }
 
         if (iconLibraryCount) iconLibraryCount.textContent = String(entries.length);
         if (iconLibraryResultsCount) {
             iconLibraryResultsCount.textContent = `${filtered.length.toLocaleString()} results`;
         }
+
+        iconLibraryCurrentFiltered = filtered;
+        iconLibraryCurrentProjectMap = projectMap;
+        iconLibraryCurrentProvidedMetadata = providedMetadata;
 
         iconLibraryResultsList.replaceChildren();
         if (!filtered.length) {
@@ -10006,47 +10034,85 @@ function getSelectedFinishCategories() {
             return;
         }
 
-        if (!filtered.some(([name]) => name === selectedIconLibraryName)) {
-            selectedIconLibraryName = filtered[0][0];
+        if (!filtered.some(item => item.name === selectedIconLibraryName)) {
+            selectedIconLibraryName = filtered[0].name;
         }
 
-        filtered.forEach(([name, record]) => {
-            const categories = getIconLibraryCategories(name, record, projectMap);
-            const item = document.createElement("button");
-            item.type = "button";
-            item.className = "icon-library-result" +
-                (name === selectedIconLibraryName ? " active" : "");
-            item.setAttribute("aria-pressed", String(name === selectedIconLibraryName));
-
-            const nameLabel = document.createElement("span");
-            nameLabel.className = "icon-library-result-name";
-            nameLabel.textContent = name;
-
-            const categoryLabel = document.createElement("span");
-            categoryLabel.className = "icon-library-result-category";
-            categoryLabel.textContent = categories.includes("Uncategorized")
-                ? "Uncategorised"
-                : categories.join(" · ");
-
-            const source = getIconLibraryCategorySource(name, projectMap);
-            const sourceBadge = document.createElement("span");
-            sourceBadge.className = `icon-library-source-badge is-${source}`;
-            sourceBadge.textContent = source === "provided" ? "Provided" : source === "manual" ? "Manual" : "Automatic";
-            item.append(nameLabel, categoryLabel, sourceBadge);
-            item.addEventListener("click", () => {
-                selectedIconLibraryName = name;
-                renderIconLibrary();
-            });
-            iconLibraryResultsList.appendChild(item);
-        });
-
-        const selectedRecord = filtered.find(([name]) => name === selectedIconLibraryName)?.[1];
-        if (selectedRecord) {
-            renderIconLibraryDetails(selectedIconLibraryName, selectedRecord, projectMap);
-        }
-
+        const selectedItem = filtered.find(item => item.name === selectedIconLibraryName) || filtered[0];
+        renderIconLibraryDetails(selectedItem.name, selectedItem.record, projectMap, providedMetadata);
         if (iconLibraryCopyNamesButton) iconLibraryCopyNamesButton.disabled = false;
+
+        // Append in small animation-frame batches. This keeps the interface responsive
+        // while still rendering the complete result set (there is no result cap).
+        let nextIndex = 0;
+        const batchSize = 120;
+        const appendNextBatch = () => {
+            if (renderVersion !== iconLibraryRenderVersion) return;
+            const fragment = document.createDocumentFragment();
+            const batchEnd = Math.min(nextIndex + batchSize, filtered.length);
+
+            for (; nextIndex < batchEnd; nextIndex++) {
+                const itemData = filtered[nextIndex];
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "icon-library-result" +
+                    (itemData.name === selectedIconLibraryName ? " active" : "");
+                item.dataset.iconName = itemData.name;
+                item.setAttribute("aria-pressed", String(itemData.name === selectedIconLibraryName));
+
+                const nameLabel = document.createElement("span");
+                nameLabel.className = "icon-library-result-name";
+                nameLabel.textContent = itemData.name;
+
+                const categoryLabel = document.createElement("span");
+                categoryLabel.className = "icon-library-result-category";
+                categoryLabel.textContent = itemData.categories.includes("Uncategorized")
+                    ? "Uncategorised"
+                    : itemData.categories.join(" · ");
+
+                const sourceBadge = document.createElement("span");
+                sourceBadge.className = `icon-library-source-badge is-${itemData.source}`;
+                sourceBadge.textContent = itemData.source === "provided"
+                    ? "Provided" : itemData.source === "manual" ? "Manual" : "Automatic";
+
+                item.append(nameLabel, categoryLabel, sourceBadge);
+                fragment.appendChild(item);
+            }
+
+            iconLibraryResultsList.appendChild(fragment);
+            if (nextIndex < filtered.length) {
+                iconLibraryRenderFrame = window.requestAnimationFrame(appendNextBatch);
+            } else {
+                iconLibraryRenderFrame = 0;
+            }
+        };
+
+        appendNextBatch();
     }
+
+    // One delegated click handler replaces thousands of per-row listeners.
+    iconLibraryResultsList?.addEventListener("click", event => {
+        const item = event.target.closest(".icon-library-result");
+        if (!item || !iconLibraryResultsList.contains(item)) return;
+
+        const name = item.dataset.iconName;
+        if (!name || name === selectedIconLibraryName) return;
+
+        selectedIconLibraryName = name;
+        iconLibraryResultsList.querySelector(".icon-library-result.active")?.classList.remove("active");
+        item.classList.add("active");
+        item.setAttribute("aria-pressed", "true");
+
+        const selected = iconLibraryCurrentFiltered.find(entry => entry.name === name);
+        if (selected && iconLibraryCurrentProjectMap) {
+            renderIconLibraryDetails(
+                selected.name,
+                selected.record,
+                iconLibraryCurrentProjectMap,
+                iconLibraryCurrentProvidedMetadata
+            );
+        }
+    });
 
     updateIconLibrarySavedToggle();
     iconLibraryProvideMetadataButton?.addEventListener("click", openIconLibraryMetadataEditor);
@@ -10062,14 +10128,15 @@ function getSelectedFinishCategories() {
         const entries = getIconLibraryEntries();
         const projectMap = getIconLibraryProjectMap();
         const savedNames = getIconLibrarySavedNames();
+        const providedMetadata = getIconLibraryUserMetadata();
         const query = String(iconLibrarySearchInput?.value || "").trim().toLowerCase();
         const categoryFilter = iconLibraryCategoryFilter?.value || "all";
         const sourceFilter = iconLibrarySourceFilter?.value || "all";
         const words = query.split(/\s+/).filter(Boolean);
         const names = entries.filter(([name, record]) => {
             if (iconLibrarySavedOnly && !savedNames.has(normalizeLibraryIconName(name))) return false;
-            if (sourceFilter !== "all" && getIconLibraryCategorySource(name, projectMap) !== sourceFilter) return false;
-            const categories = getIconLibraryCategories(name, record, projectMap);
+            if (sourceFilter !== "all" && getIconLibraryCategorySource(name, projectMap, providedMetadata) !== sourceFilter) return false;
+            const categories = getIconLibraryCategories(name, record, projectMap, providedMetadata);
             if (categoryFilter === "__uncategorized__" && !categories.includes("Uncategorized")) return false;
             if (categoryFilter !== "all" && categoryFilter !== "__uncategorized__" &&
                 !categories.includes(categoryFilter)) return false;
@@ -10085,7 +10152,7 @@ function getSelectedFinishCategories() {
                 ...(Array.isArray(sourceMeta.aliases) ? sourceMeta.aliases : []),
                 ...(Array.isArray(sourceMeta.categories) ? sourceMeta.categories : []),
                 ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : []),
-                ...(Array.isArray(getIconLibraryUserMetadata()[normalizeLibraryIconName(name)]?.searchTerms) ? getIconLibraryUserMetadata()[normalizeLibraryIconName(name)].searchTerms : []),
+                ...(Array.isArray(providedMetadata[normalizeLibraryIconName(name)]?.searchTerms) ? providedMetadata[normalizeLibraryIconName(name)].searchTerms : []),
                 ...categories
             ].flat().filter(Boolean).join(" ").toLowerCase();
             return words.every(word => searchable.includes(word));
