@@ -9798,7 +9798,7 @@ function getSelectedFinishCategories() {
         const key = normalizeLibraryIconName(iconName);
         const metadata = providedMetadata || getIconLibraryUserMetadata();
         const provided = metadata[key];
-        if (Array.isArray(provided?.categories) && provided.categories.length) return "provided";
+        if (provided && Object.keys(provided).some(field => field !== "name")) return "provided";
         const project = projectMap.get(key);
         if (project && (
             (Array.isArray(project.manualCategories) && project.manualCategories.length) ||
@@ -10067,7 +10067,7 @@ function getSelectedFinishCategories() {
             iconLibraryCopyCategoryMetadataButton.hidden = categoryFilter === "all" || categoryFilter === "__uncategorized__";
             iconLibraryCopyCategoryMetadataButton.disabled = categoryFilter === "all" || categoryFilter === "__uncategorized__";
             iconLibraryCopyCategoryMetadataButton.title = categoryFilter === "all" || categoryFilter === "__uncategorized__"
-                ? "Select a specific category to copy its metadata."
+                ? "Select a specific category to copy its metadata as JSON."
                 : "Copy all icon metadata assigned to " + categoryFilter + ".";
         }
 
