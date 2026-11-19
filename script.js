@@ -10234,6 +10234,41 @@ function getSelectedFinishCategories() {
     });
     iconLibraryCategoryFilter?.addEventListener("change", renderIconLibrary);
     iconLibrarySourceFilter?.addEventListener("change", renderIconLibrary);
+    // Minify SVG markup without changing its geometry or visual attributes.
+    function compactSVGForMetadata(svg) {
+        return String(svg || "")
+            .replace(/>\s+</g, "><")
+            .replace(/\bd="([^"]*)"/g, (_, pathData) =>
+                'd="' + pathData.trim().replace(/\s+/g, " ") + '"'
+            )
+            .replace(/<[^>]*>/g, tag => {
+                let result = "";
+                let quote = null;
+                let pendingSpace = false;
+
+                for (const character of tag.trim()) {
+                    if (quote) {
+                        result += character;
+                        if (character === quote) quote = null;
+                    } else if (character === '"' || character === "'") {
+                        if (pendingSpace && result && !/[<\s=]$/.test(result)) result += " ";
+                        pendingSpace = false;
+                        quote = character;
+                        result += character;
+                    } else if (/\s/.test(character)) {
+                        pendingSpace = true;
+                    } else {
+                        if (pendingSpace && result && !/[<\s=]$/.test(result)) result += " ";
+                        pendingSpace = false;
+                        result += character;
+                    }
+                }
+
+                return result;
+            })
+            .trim();
+    }
+
     iconLibraryCopyCategoryMetadataButton?.addEventListener("click", async () => {
         const items = Array.isArray(iconLibraryCurrentFiltered) ? iconLibraryCurrentFiltered : [];
         const output = items.map(item => {
@@ -10255,9 +10290,9 @@ function getSelectedFinishCategories() {
 
             // Include a compact, lossless SVG reference for saved Gallery drawings only.
             if (Array.isArray(item.project?.data?.shapes) && item.project.data.shapes.length) {
-                const svgReference = generateSVGFromShapes(item.project.data.shapes, "original")
-                    .replace(/>\s+</g, "><")
-                    .trim();
+                const svgReference = compactSVGForMetadata(
+                    generateSVGFromShapes(item.project.data.shapes, "original")
+                );
                 if (svgReference) metadata.svg = svgReference;
             }
             return [item.name, metadata];
