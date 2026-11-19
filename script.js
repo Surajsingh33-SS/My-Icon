@@ -10234,39 +10234,63 @@ function getSelectedFinishCategories() {
     });
     iconLibraryCategoryFilter?.addEventListener("change", renderIconLibrary);
     iconLibrarySourceFilter?.addEventListener("change", renderIconLibrary);
-    // Minify SVG markup without changing its geometry or visual attributes.
+    // Compact generated SVG by moving shared inherited styles to one group.
+    // Geometry, path data, dimensions and individual shape attributes are preserved.
     function compactSVGForMetadata(svg) {
-        return String(svg || "")
-            .replace(/>\s+</g, "><")
-            .replace(/\bd="([^"]*)"/g, (_, pathData) =>
-                'd="' + pathData.trim().replace(/\s+/g, " ") + '"'
-            )
-            .replace(/<[^>]*>/g, tag => {
-                let result = "";
-                let quote = null;
-                let pendingSpace = false;
+        const source = String(svg || "").trim();
+        if (!source || typeof DOMParser === "undefined" || typeof XMLSerializer === "undefined") {
+            return source.replace(/>\s+</g, "><").trim();
+        }
 
-                for (const character of tag.trim()) {
-                    if (quote) {
-                        result += character;
-                        if (character === quote) quote = null;
-                    } else if (character === '"' || character === "'") {
-                        if (pendingSpace && result && !/[<\s=]$/.test(result)) result += " ";
-                        pendingSpace = false;
-                        quote = character;
-                        result += character;
-                    } else if (/\s/.test(character)) {
-                        pendingSpace = true;
-                    } else {
-                        if (pendingSpace && result && !/[<\s=]$/.test(result)) result += " ";
-                        pendingSpace = false;
-                        result += character;
+        try {
+            const documentNode = new DOMParser().parseFromString(source, "image/svg+xml");
+            const root = documentNode.documentElement;
+            if (!root || root.localName !== "svg" || documentNode.querySelector("parsererror")) {
+                return source.replace(/>\s+</g, "><").trim();
+            }
+
+            const elements = Array.from(root.children);
+            const inheritedAttributes = [
+                "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin",
+                "fill", "fill-rule"
+            ];
+
+            // Only hoist an attribute when every direct artwork element has
+            // exactly the same value. SVG inheritance keeps the appearance identical.
+            const shared = {};
+            if (elements.length > 1) {
+                inheritedAttributes.forEach(attribute => {
+                    const values = elements.map(element => element.getAttribute(attribute));
+                    if (values[0] !== null && values.every(value => value === values[0])) {
+                        shared[attribute] = values[0];
                     }
-                }
+                });
+            }
 
-                return result;
-            })
-            .trim();
+            if (Object.keys(shared).length) {
+                const group = documentNode.createElementNS(root.namespaceURI, "g");
+                Object.entries(shared).forEach(([attribute, value]) => {
+                    group.setAttribute(attribute, value);
+                });
+
+                elements.forEach(element => {
+                    Object.keys(shared).forEach(attribute => element.removeAttribute(attribute));
+                    group.appendChild(element);
+                });
+                root.appendChild(group);
+            }
+
+            const serialized = new XMLSerializer().serializeToString(root);
+            return serialized
+                .replace(/>\s+</g, "><")
+                .replace(/\bd="([^"]*)"/g, (_, pathData) =>
+                    'd="' + pathData.trim().replace(/\s+/g, " ") + '"'
+                )
+                .trim();
+        } catch (error) {
+            // Metadata export must still work if a browser cannot parse an SVG.
+            return source.replace(/>\s+</g, "><").trim();
+        }
     }
 
     iconLibraryCopyCategoryMetadataButton?.addEventListener("click", async () => {
