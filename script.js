@@ -896,236 +896,148 @@
     // ========================================================================
 
     const STANDARD_ICON_CATEGORIES = [
-        "Accessibility",
-        "Accounts & access",
-        "Animals",
-        "Arrows",
-        "Buildings",
-        "Charts",
-        "Communication",
-        "Connectivity",
-        "Cursors",
-        "Design",
-        "Coding & development",
-        "Devices",
-        "Emoji",
-        "File icons",
-        "Finance",
-        "Food & beverage",
-        "Gaming",
-        "Home",
-        "Layout",
-        "Letters & digits",
-        "Mail",
-        "Mathematics",
-        "Medical",
-        "Multimedia",
-        "Nature",
-        "Navigation & places",
-        "Notifications",
-        "People",
-        "Photography",
-        "Science",
-        "Seasons",
-        "Security",
-        "Shapes",
-        "Shopping",
-        "Social",
-        "Sports",
-        "Sustainability",
-        "Text formatting",
-        "Time & calendar",
-        "Tools",
-        "Transportation",
-        "Travel",
-        "Weather"
+        "Buildings", "Geometry", "Animals", "Emotions", "Nature",
+        "Transport", "Cuisine", "People", "Technology", "Apparel",
+        "Household", "Tools", "Medical", "Sports", "Music",
+        "Commerce", "Documents", "Interface", "Symbols", "Time",
+        "Travel", "Education", "Security", "Entertainment", "Emoji"
     ];
 
     const CUSTOM_CATEGORIES_STORAGE_KEY = "iconMakerCustomCategories";
     const CATEGORY_MIGRATION_KEY = "iconMakerCategoryMigrationV1";
 
-    // Keywords used to recognize icon names.
+    // Icon Maker Pro's own category vocabulary. These rules are independent
+    // of any third-party icon library taxonomy.
     const ICON_CATEGORY_KEYWORDS = {
-        "Accessibility": [
-            "accessibility", "wheelchair", "hearing", "blind",
-            "screen reader", "assistive"
+        "Buildings": [
+            "building", "house", "home", "hospital", "clinic", "fire-station",
+            "hotel", "shop", "store", "school", "university", "office",
+            "factory", "church", "mosque", "temple", "castle", "warehouse",
+            "bank", "restaurant", "cafe", "museum", "library", "police-station",
+            "post-office", "airport", "stadium", "barn", "shelter"
         ],
-        "Accounts & access": [
-            "user", "account", "profile", "login", "logout",
-            "log-in", "log-out", "password", "key", "contact",
-            "badge", "id-card", "fingerprint"
+        "Geometry": [
+            "circle", "square", "triangle", "rectangle", "hexagon", "polygon",
+            "pentagon", "octagon", "diamond", "star", "oval", "ellipse",
+            "line", "curve", "arc", "spiral", "shape", "shapes", "dot"
         ],
         "Animals": [
-            "cat", "dog", "bird", "fish", "paw", "rabbit",
-            "bug", "butterfly", "turtle", "horse", "fox", "wolf"
+            "cat", "dog", "bird", "fish", "paw", "rabbit", "bug", "butterfly",
+            "turtle", "horse", "fox", "wolf", "lion", "bear", "elephant",
+            "snake", "frog", "whale", "dolphin", "bee", "spider"
         ],
-        "Arrows": [
-            "arrow", "chevron", "move", "undo", "redo",
-            "corner", "rotate", "refresh", "repeat", "reply"
-        ],
-        "Buildings": [
-            "building", "hospital", "school", "office",
-            "factory", "church", "castle", "warehouse"
-        ],
-        "Charts": [
-            "chart", "graph", "bar-chart", "pie-chart",
-            "trending", "analytics", "activity"
-        ],
-        "Communication": [
-            "message", "chat", "comment", "conversation",
-            "phone", "call", "speech", "mic", "microphone"
-        ],
-        "Connectivity": [
-            "wifi", "bluetooth", "signal", "network",
-            "router", "antenna", "connection", "radio-tower"
-        ],
-        "Cursors": [
-            "cursor", "pointer", "mouse-pointer", "click",
-            "hand", "select"
-        ],
-        "Design": [
-            "palette", "paint", "brush", "pen-tool",
-            "ruler", "pencil", "draft", "vector", "swatch"
-        ],
-        "Coding & development": [
-            "code", "terminal", "bug", "git", "braces",
-            "brackets", "variable", "function", "database",
-            "server", "binary", "command"
-        ],
-        "Devices": [
-            "computer", "monitor", "laptop", "desktop",
-            "tablet", "smartphone", "mobile", "keyboard",
-            "mouse", "printer", "watch"
-        ],
-        "Emoji": [
-            "smile", "smiley", "frown", "laugh", "angry",
-            "heart-eyes", "meh", "emoji"
-        ],
-        "File icons": [
-            "file", "folder", "document", "clipboard",
-            "archive", "attachment", "paperclip"
-        ],
-        "Finance": [
-            "wallet", "money", "cash", "coin", "bank",
-            "credit-card", "dollar", "currency", "receipt",
-            "bitcoin", "piggy-bank"
-        ],
-        "Food & beverage": [
-            "food", "coffee", "cup", "pizza", "burger",
-            "cake", "apple", "carrot", "beer", "wine",
-            "utensils", "restaurant"
-        ],
-        "Gaming": [
-            "gamepad", "game", "joystick", "dice",
-            "chess", "controller", "puzzle"
-        ],
-        "Home": [
-            "home", "house", "sofa", "bed", "lamp",
-            "door", "window", "refrigerator", "couch"
-        ],
-        "Layout": [
-            "layout", "columns", "rows", "grid", "panel",
-            "sidebar", "align", "gallery", "table"
-        ],
-        "Letters & digits": [
-            "letter", "alphabet", "number", "digit",
-            "type", "uppercase", "lowercase"
-        ],
-        "Mail": [
-            "mail", "email", "inbox", "envelope",
-            "send", "forward", "reply-all"
-        ],
-        "Mathematics": [
-            "plus", "minus", "divide", "multiply",
-            "equals", "percent", "infinity", "calculator",
-            "sigma", "pi", "sqrt"
-        ],
-        "Medical": [
-            "medical", "health", "hospital", "pill",
-            "medicine", "stethoscope", "syringe",
-            "thermometer", "bandage", "heart-pulse"
-        ],
-        "Multimedia": [
-            "play", "pause", "stop", "video", "music",
-            "audio", "volume", "speaker", "headphones",
-            "film", "clapperboard"
+        "Emotions": [
+            "smile", "smiley", "frown", "laugh", "angry", "heart-eyes",
+            "meh", "sad", "happy", "cry", "confused", "surprised",
+            "worried", "grin", "expression", "face"
         ],
         "Nature": [
-            "tree", "flower", "leaf", "plant", "forest",
-            "mountain", "earth", "globe", "seedling"
+            "tree", "flower", "leaf", "plant", "forest", "mountain", "earth",
+            "globe", "seedling", "ocean", "wave", "beach", "rock", "cactus",
+            "mushroom", "nature", "environment", "recycle", "solar", "wind"
         ],
-        "Navigation & places": [
-            "map", "map-pin", "location", "compass",
-            "navigation", "pin", "landmark", "signpost"
+        "Transport": [
+            "car", "bus", "train", "truck", "bicycle", "bike", "plane",
+            "airplane", "ship", "boat", "taxi", "motorcycle", "scooter",
+            "subway", "tram", "helicopter", "rocket", "ambulance", "fire-engine"
         ],
-        "Notifications": [
-            "bell", "notification", "alert", "alarm",
-            "warning", "badge"
+        "Cuisine": [
+            "food", "coffee", "cup", "pizza", "burger", "cake", "apple",
+            "carrot", "bread", "cheese", "egg", "fish", "fork", "knife",
+            "spoon", "utensils", "restaurant", "drink", "bottle", "beer",
+            "wine", "tea", "milk", "ice-cream", "cookie", "cooking"
         ],
         "People": [
-            "users", "people", "person", "man", "woman",
-            "child", "baby", "group", "team", "smile"
+            "user", "users", "people", "person", "man", "woman", "child",
+            "baby", "group", "team", "avatar", "profile", "family", "worker",
+            "doctor", "teacher", "police", "firefighter", "chef", "athlete"
         ],
-        "Photography": [
-            "camera", "image", "photo", "picture",
-            "aperture", "focus", "scan"
+        "Technology": [
+            "computer", "monitor", "laptop", "desktop", "tablet", "smartphone",
+            "mobile", "keyboard", "mouse", "printer", "server", "database",
+            "terminal", "code", "git", "binary", "chip", "cpu", "hardware",
+            "wifi", "bluetooth", "network", "router", "antenna", "usb"
         ],
-        "Science": [
-            "flask", "atom", "microscope", "telescope",
-            "dna", "molecule", "beaker", "test-tube"
+        "Apparel": [
+            "shirt", "clothing", "shoe", "sneaker", "hat", "cap", "bag",
+            "backpack", "coat", "jacket", "dress", "pants", "sock", "glove",
+            "scarf", "tie", "watch", "glasses", "ring", "jewelry"
         ],
-        "Seasons": [
-            "spring", "summer", "autumn", "fall", "winter"
-        ],
-        "Security": [
-            "shield", "lock", "unlock", "security",
-            "safe", "fingerprint", "scan-face"
-        ],
-        "Shapes": [
-            "circle", "square", "triangle", "rectangle",
-            "hexagon", "polygon", "shape", "pentagon",
-            "octagon", "diamond"
-        ],
-        "Shopping": [
-            "cart", "shopping", "bag", "basket",
-            "store", "tag", "barcode", "package"
-        ],
-        "Social": [
-            "share", "social", "heart", "thumbs-up",
-            "thumbs-down", "like", "follow", "hashtag"
-        ],
-        "Sports": [
-            "football", "basketball", "soccer", "tennis",
-            "trophy", "medal", "volleyball", "baseball"
-        ],
-        "Sustainability": [
-            "recycle", "recycling", "eco", "sustainability",
-            "solar", "wind", "renewable"
-        ],
-        "Text formatting": [
-            "bold", "italic", "underline", "strikethrough",
-            "align-left", "align-center", "align-right",
-            "list", "heading", "type"
-        ],
-        "Time & calendar": [
-            "clock", "calendar", "timer", "hourglass",
-            "watch", "history", "stopwatch", "date"
+        "Household": [
+            "sofa", "couch", "bed", "lamp", "door", "window", "refrigerator",
+            "fridge", "chair", "table", "desk", "cabinet", "shelf", "mirror",
+            "bath", "shower", "toilet", "washing-machine", "home-appliance"
         ],
         "Tools": [
-            "tool", "wrench", "hammer", "screwdriver",
-            "settings", "sliders", "cog", "gear"
+            "tool", "wrench", "hammer", "screwdriver", "scissors", "settings",
+            "sliders", "cog", "gear", "ruler", "tape-measure", "drill",
+            "saw", "pliers", "paintbrush", "brush", "pencil", "pen-tool"
         ],
-        "Transportation": [
-            "car", "bus", "train", "truck", "bicycle",
-            "bike", "plane", "ship", "taxi", "motorcycle"
+        "Medical": [
+            "medical", "health", "hospital", "pill", "medicine", "stethoscope",
+            "syringe", "thermometer", "bandage", "heart-pulse", "tooth",
+            "dental", "first-aid", "wheelchair", "crutch", "ambulance"
+        ],
+        "Sports": [
+            "football", "basketball", "soccer", "tennis", "trophy", "medal",
+            "volleyball", "baseball", "golf", "racket", "gym", "fitness",
+            "swim", "skateboard", "cycling", "sport"
+        ],
+        "Music": [
+            "music", "audio", "volume", "speaker", "headphones", "guitar",
+            "piano", "drum", "microphone", "mic", "musical-note", "radio",
+            "violin", "trumpet", "saxophone", "disc"
+        ],
+        "Commerce": [
+            "wallet", "money", "cash", "coin", "bank", "credit-card",
+            "dollar", "currency", "receipt", "bitcoin", "piggy-bank",
+            "cart", "shopping", "basket", "barcode", "package", "tag",
+            "payment", "invoice", "sale", "store"
+        ],
+        "Documents": [
+            "file", "folder", "document", "clipboard", "archive",
+            "attachment", "paperclip", "notebook", "book", "paper",
+            "certificate", "report", "contract", "copy", "paste"
+        ],
+        "Interface": [
+            "arrow", "chevron", "move", "undo", "redo", "corner", "rotate",
+            "refresh", "repeat", "reply", "cursor", "pointer", "click",
+            "hand", "select", "layout", "columns", "rows", "grid", "panel",
+            "sidebar", "align", "gallery", "table", "menu", "search",
+            "filter", "sort", "plus", "minus", "close", "check", "x"
+        ],
+        "Symbols": [
+            "symbol", "plus", "minus", "divide", "multiply", "equals",
+            "percent", "infinity", "sigma", "pi", "sqrt", "hash",
+            "hashtag", "at-sign", "copyright", "trademark", "warning",
+            "prohibit", "info", "question", "check", "cross"
+        ],
+        "Time": [
+            "clock", "calendar", "timer", "hourglass", "watch", "history",
+            "stopwatch", "date", "alarm", "schedule", "sunrise", "sunset"
         ],
         "Travel": [
-            "suitcase", "luggage", "passport", "ticket",
-            "hotel", "tent", "backpack", "旅"
+            "suitcase", "luggage", "passport", "ticket", "hotel", "tent",
+            "backpack", "map", "map-pin", "location", "compass",
+            "navigation", "landmark", "signpost", "destination"
         ],
-        "Weather": [
-            "sun", "moon", "cloud", "rain", "snow",
-            "wind", "storm", "cloudy", "sunrise", "sunset"
+        "Education": [
+            "school", "university", "graduation", "book", "library",
+            "pencil", "notebook", "teacher", "student", "chalkboard",
+            "flask", "atom", "microscope", "telescope", "dna", "molecule"
+        ],
+        "Security": [
+            "shield", "lock", "unlock", "security", "safe", "fingerprint",
+            "scan-face", "key", "password", "privacy", "verified"
+        ],
+        "Entertainment": [
+            "gamepad", "game", "joystick", "dice", "chess", "controller",
+            "puzzle", "film", "video", "clapperboard", "ticket", "party",
+            "confetti", "theater", "movie"
+        ],
+        "Emoji": [
+            "emoji", "smile", "smiley", "frown", "laugh", "angry",
+            "heart-eyes", "meh", "poop", "ghost", "skull", "face"
         ]
     };
 
@@ -1147,6 +1059,46 @@
 
         const assigned = unique.filter(category => category.toLowerCase() !== "uncategorized");
         return assigned.length ? assigned : (unique.length ? ["Uncategorized"] : []);
+    }
+
+    const LEGACY_CATEGORY_MAP = {
+        "Accessibility": ["People"], "Accounts & access": ["People", "Security"],
+        "Arrows": ["Interface"], "Charts": ["Commerce"], "Communication": ["Interface"],
+        "Connectivity": ["Technology"], "Coding & development": ["Technology"],
+        "Devices": ["Technology"], "Design": ["Geometry"], "File icons": ["Documents"],
+        "Finance": ["Commerce"], "Food & beverage": ["Cuisine"], "Gaming": ["Entertainment"],
+        "Home": ["Household", "Buildings"], "Layout": ["Interface"],
+        "Letters & digits": ["Symbols"], "Mail": ["Interface", "Documents"],
+        "Mathematics": ["Geometry", "Symbols"], "Multimedia": ["Music", "Entertainment"],
+        "Navigation & places": ["Travel"], "Notifications": ["Interface", "Symbols"],
+        "Photography": ["Technology"], "Science": ["Education"], "Seasons": ["Nature"],
+        "Shapes": ["Geometry"], "Shopping": ["Commerce"], "Social": ["People", "Emotions"],
+        "Sustainability": ["Nature"], "Text formatting": ["Interface"],
+        "Time & calendar": ["Time"], "Transportation": ["Transport"],
+        "Weather": ["Nature"], "Food & drink": ["Cuisine"],
+        "Audio & music": ["Music"], "Business": ["Commerce"],
+        "Files": ["Documents"], "Health": ["Medical"], "Maps & travel": ["Travel"],
+        "Media": ["Entertainment"]
+    };
+
+    function migrateCategoryList(values) {
+        const input = Array.isArray(values) ? values : (values == null ? [] : [values]);
+        const output = [];
+        input.forEach(value => {
+            const name = String(value ?? "").trim();
+            if (!name || name.toLowerCase() === "uncategorized") return;
+            const mapped = LEGACY_CATEGORY_MAP[name] || (
+                STANDARD_ICON_CATEGORIES.includes(name) ? [name] : [name]
+            );
+            mapped.forEach(category => {
+                if ((STANDARD_ICON_CATEGORIES.includes(category) || getCustomCategories().some(
+                    custom => custom.toLowerCase() === category.toLowerCase()
+                )) && !output.some(item => item.toLowerCase() === category.toLowerCase())) {
+                    output.push(category);
+                }
+            });
+        });
+        return output.length ? output : ["Uncategorized"];
     }
 
    // Automatically detect all matching categories from an icon's name.
@@ -1203,31 +1155,31 @@ function detectIconCategories(iconName) {
     // AI categories are translated into the existing Gallery taxonomy.
     // Keep the app's established category names; do not create duplicate AI labels.
     const AI_CATEGORY_MAP = {
-        "Accessibility": ["Accessibility"],
+        "Accessibility": ["People"],
         "Animals": ["Animals"],
-        "Arrows": ["Arrows"],
-        "Audio & music": ["Multimedia"],
+        "Arrows": ["Interface"],
+        "Audio & music": ["Music"],
         "Buildings": ["Buildings"],
-        "Business": ["Finance"],
-        "Communication": ["Communication"],
-        "Connectivity": ["Connectivity"],
-        "Devices": ["Devices"],
-        "Files": ["File icons"],
-        "Food & drink": ["Food & beverage"],
-        "Gaming": ["Gaming"],
+        "Business": ["Commerce"],
+        "Communication": ["Interface"],
+        "Connectivity": ["Technology"],
+        "Devices": ["Technology"],
+        "Files": ["Documents"],
+        "Food & drink": ["Cuisine"],
+        "Gaming": ["Entertainment"],
         "Health": ["Medical"],
-        "Home": ["Home"],
-        "Maps & travel": ["Navigation & places"],
-        "Media": ["Photography"],
+        "Home": ["Household", "Buildings"],
+        "Maps & travel": ["Travel"],
+        "Media": ["Entertainment"],
         "Nature": ["Nature"],
         "People": ["People"],
         "Security": ["Security"],
-        "Shopping": ["Shopping"],
+        "Shopping": ["Commerce"],
         "Sports": ["Sports"],
-        "Time": ["Time & calendar"],
+        "Time": ["Time"],
         "Tools": ["Tools"],
-        "Transportation": ["Transportation"],
-        "Weather": ["Weather"]
+        "Transportation": ["Transport"],
+        "Weather": ["Nature"]
     };
 
     function mapAICategories(record) {
@@ -1253,7 +1205,9 @@ function detectIconCategories(iconName) {
         if (!hasSavedAI) {
             project.autoCategories = detectIconCategories(project.name || "");
         }
-        project.autoCategories = normalizeCategoryList(project.autoCategories);
+        project.autoCategories = hasSavedAI
+            ? migrateCategoryList(project.autoCategories)
+            : normalizeCategoryList(project.autoCategories);
         if (Array.isArray(project.manualCategories) && project.manualCategories.length) {
             project.manualCategories = normalizeCategoryList(project.manualCategories);
             project.categories = [...project.manualCategories];
@@ -1454,6 +1408,15 @@ function getSelectedFinishCategories() {
             // Normalize every stored category field. Uncategorized is exclusive and
             // must never coexist with an assigned manual, automatic or legacy category.
             projectManager.projects.forEach(project => {
+                if (Array.isArray(project.manualCategories) && project.manualCategories.length)
+                    project.manualCategories = migrateCategoryList(project.manualCategories);
+                if (Array.isArray(project.autoCategories) && project.autoCategories.length)
+                    project.autoCategories = migrateCategoryList(project.autoCategories);
+                if (Array.isArray(project.categories) && project.categories.length)
+                    project.categories = migrateCategoryList(project.categories);
+                if (project.category && project.category !== "General")
+                    project.category = migrateCategoryList([project.category])[0] || "Uncategorized";
+
                 if (Array.isArray(project.manualCategories) && project.manualCategories.length) {
                     project.manualCategories = normalizeCategoryList(project.manualCategories);
                 }
@@ -9920,7 +9883,7 @@ function getSelectedFinishCategories() {
 
     function getIconLibraryCategories(iconName, record, projectMap) {
         const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(iconName)];
-        if (provided?.categories?.length) return normalizeCategoryList(provided.categories);
+        if (provided?.categories?.length) return migrateCategoryList(provided.categories);
 
         const project = projectMap.get(normalizeLibraryIconName(iconName));
         if (project) {
@@ -9953,12 +9916,9 @@ function getSelectedFinishCategories() {
             return detected.length ? detected : ["Uncategorized"];
         }
 
-        const official = Array.isArray(record?.lucide?.categories)
-            ? record.lucide.categories.map(value => String(value).trim()).filter(Boolean)
-            : [];
-        const allowed = new Set(getAllIconCategories());
-        const recognized = normalizeCategoryList(official.filter(category => allowed.has(category)));
-        return recognized.length ? recognized : ["Uncategorized"];
+        // Library-supplied categories are intentionally ignored. New icons use
+        // Icon Maker Pro's own name-based classifier until manually categorized.
+        return normalizeCategoryList(detectIconCategories(iconName));
     }
 
     function createIconLibraryChipGroup(parent, label, values, emptyText) {
