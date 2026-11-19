@@ -9674,7 +9674,7 @@ function getSelectedFinishCategories() {
         const entries = [], errors = [];
         const listFields = ["categories", "tags", "aliases", "searchTerms", "useCases", "relatedConcepts"];
         const textFields = ["description", "meaning"];
-        const allowedFields = new Set([...listFields, ...textFields]);
+        const allowedFields = new Set([...listFields, ...textFields, "svg"]);
 
         if (source.startsWith("{")) {
             try {
@@ -9702,6 +9702,9 @@ function getSelectedFinishCategories() {
                                 if (canonicalCategories.length !== cleaned.length) return;
                                 entry[field] = canonicalCategories;
                             } else entry[field] = cleaned;
+                        } else if (field === "svg") {
+                            // SVG is a visual reference only; never persist it or apply it to artwork.
+                            if (typeof value !== "string") errors.push('"svg" for "' + canonicalName + '" must be a string.');
                         } else if (typeof value === "string") entry[field] = value.trim();
                         else errors.push('"' + field + '" for "' + canonicalName + '" must be a string.');
                     });
@@ -9750,7 +9753,7 @@ function getSelectedFinishCategories() {
             overlay.className = "icon-library-metadata-overlay";
             overlay.innerHTML = '<section class="icon-library-metadata-modal" role="dialog" aria-modal="true" aria-labelledby="icon-library-metadata-title">' +
                 '<header><div><h3 id="icon-library-metadata-title">Provide metadata</h3><p>Supply detailed icon information in bulk. You can provide any fields you have.</p></div><button type="button" class="icon-library-metadata-close" aria-label="Close">×</button></header>' +
-                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [] } }</code><span>Only include fields you want to update. Omitted fields are preserved. List fields must be arrays of strings. The older brace format is still supported.</span></div>' +
+                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [], "svg": "..." } }</code><span>SVG is visual reference only and never changes the saved drawing. Choose Merge or Replace when applying. List fields must be arrays of strings. The older brace format is still supported.</span></div>' +
                 '<textarea class="icon-library-metadata-input" spellcheck="false" aria-label="Bulk icon metadata" placeholder="{&#10;  &quot;settings&quot;: {&#10;    &quot;categories&quot;: [&quot;Tools&quot;, &quot;Productivity&quot;],&#10;    &quot;description&quot;: &quot;A gear icon for app settings.&quot;,&#10;    &quot;meaning&quot;: &quot;Configuration and preferences.&quot;,&#10;    &quot;tags&quot;: [&quot;gear&quot;, &quot;cog&quot;],&#10;    &quot;aliases&quot;: [&quot;cog&quot;, &quot;gear&quot;],&#10;    &quot;searchTerms&quot;: [&quot;preferences&quot;, &quot;configuration&quot;],&#10;    &quot;useCases&quot;: [&quot;Application settings&quot;],&#10;    &quot;relatedConcepts&quot;: [&quot;sliders&quot;, &quot;wrench&quot;]&#10;  }&#10;}"></textarea>' +
                 '<div class="icon-library-metadata-feedback" aria-live="polite"></div><footer><button type="button" class="btn btn-secondary icon-library-metadata-cancel">Cancel</button><button type="button" class="btn btn-primary icon-library-metadata-save">Apply metadata</button></footer></section>';
             document.body.appendChild(overlay);
@@ -9761,26 +9764,40 @@ function getSelectedFinishCategories() {
             overlay.querySelector(".icon-library-metadata-save").addEventListener("click", () => {
                 const feedback = overlay.querySelector(".icon-library-metadata-feedback");
                 const parsed = parseIconLibraryUserMetadata(overlay.querySelector(".icon-library-metadata-input").value);
+                if (!parsed.entries.length) {
+                    feedback.className = "icon-library-metadata-feedback error";
+                    feedback.textContent = "No valid entries were applied. " + parsed.errors.join(" ");
+                    return;
+                }
+
+                // OK = Replace; Cancel = Merge. Unlisted icons remain unchanged.
+                const replace = window.confirm(
+                    "Choose how to apply this metadata:\n\n" +
+                    "OK — Replace: replace existing provided metadata for each listed icon.\n" +
+                    "Cancel — Merge: update supplied fields and keep omitted fields.\n\n" +
+                    "Icons not included in this JSON will remain unchanged."
+                );
                 const saved = getIconLibraryUserMetadata();
                 parsed.entries.forEach(entry => {
                     const key = normalizeLibraryIconName(entry.name);
-                    saved[key] = { ...(saved[key] || {}), ...entry, name: entry.name };
+                    const cleanEntry = { ...entry, name: entry.name };
+                    saved[key] = replace ? cleanEntry : { ...(saved[key] || {}), ...cleanEntry };
                 });
+
                 try {
-                    if (parsed.entries.length) {
-                        localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(saved));
-                        invalidateIconLibraryIndex();
-                        renderIconLibrary();
-                        renderHomeProjects();
-                    }
+                    localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(saved));
+                    invalidateIconLibraryIndex();
+                    renderIconLibrary();
+                    renderHomeProjects();
                     if (parsed.errors.length) {
                         feedback.className = "icon-library-metadata-feedback error";
-                        feedback.textContent = (parsed.entries.length
-                            ? "Applied " + parsed.entries.length + " valid entr" + (parsed.entries.length === 1 ? "y. " : "ies. ")
-                            : "No valid entries were applied. ") + "Skipped invalid entries: " + parsed.errors.join(" ");
+                        feedback.textContent = "Applied " + parsed.entries.length + " valid entr" +
+                            (parsed.entries.length === 1 ? "y. " : "ies. ") +
+                            "using " + (replace ? "Replace" : "Merge") + ". Skipped invalid entries: " + parsed.errors.join(" ");
                     } else {
                         feedback.className = "icon-library-metadata-feedback success";
-                        feedback.textContent = "Applied metadata to " + parsed.entries.length + " icon(s).";
+                        feedback.textContent = "Applied metadata to " + parsed.entries.length +
+                            " icon(s) using " + (replace ? "Replace." : "Merge.");
                         window.setTimeout(close, 900);
                     }
                 } catch (error) {
@@ -10235,10 +10252,19 @@ function getSelectedFinishCategories() {
             if (searchTerms.length) metadata.searchTerms = searchTerms;
             if (provided.useCases?.length) metadata.useCases = provided.useCases;
             if (provided.relatedConcepts?.length) metadata.relatedConcepts = provided.relatedConcepts;
+
+            // Include a compact, lossless SVG reference for saved Gallery drawings only.
+            if (Array.isArray(item.project?.data?.shapes) && item.project.data.shapes.length) {
+                const svgReference = generateSVGFromShapes(item.project.data.shapes, "original")
+                    .replace(/>\s+</g, "><")
+                    .trim();
+                if (svgReference) metadata.svg = svgReference;
+            }
             return [item.name, metadata];
         });
         if (!output.length) { showToast("There are no icons matching the current Library filters to copy.", "info"); return; }
-        const text = JSON.stringify(Object.fromEntries(output), null, 2);
+        // Compact JSON keeps the clipboard payload easy to pass around.
+        const text = JSON.stringify(Object.fromEntries(output));
         try {
             await navigator.clipboard.writeText(text);
             showToast("Copied JSON metadata for " + output.length.toLocaleString() + " icon(s).", "success");
