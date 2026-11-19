@@ -16,19 +16,34 @@
             const panel = document.createElement("section");
             panel.className = "app-dialog";
             panel.setAttribute("role", "dialog"); panel.setAttribute("aria-modal", "true");
+            const header = document.createElement("div"); header.className = "app-dialog-header";
             const heading = document.createElement("h3"); heading.textContent = title;
+            const close = document.createElement("button"); close.type = "button"; close.className = "app-dialog-close";
+            close.textContent = "×"; close.setAttribute("aria-label", "Close dialog"); close.title = "Close";
+            header.append(heading, close);
             const body = document.createElement("p"); body.textContent = message;
-            panel.append(heading, body);
+            panel.append(header, body);
             let field = null;
             if (input) { field = document.createElement("input"); field.className = "app-dialog-input"; field.type = "text"; field.placeholder = "Enter a name"; panel.append(field); }
             const actions = document.createElement("div"); actions.className = "app-dialog-actions";
             const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn btn-secondary"; cancel.textContent = cancelText;
             const accept = document.createElement("button"); accept.type = "button"; accept.className = danger ? "btn btn-danger" : "btn btn-primary"; accept.textContent = confirmText;
             actions.append(cancel, accept); panel.append(actions); overlay.append(panel); document.body.append(overlay);
-            const finish = confirmed => { const result = { confirmed, value: field ? field.value : undefined }; overlay.remove(); resolve(result); };
+            let finished = false;
+            const onKey = event => {
+                if (event.key === "Escape") finish(false);
+                if (event.key === "Enter" && field && document.activeElement === field) finish(true);
+            };
+            const finish = confirmed => {
+                if (finished) return;
+                finished = true;
+                document.removeEventListener("keydown", onKey);
+                const result = { confirmed, value: field ? field.value : undefined };
+                overlay.remove(); resolve(result);
+            };
+            close.addEventListener("click", () => finish(false));
             cancel.addEventListener("click", () => finish(false)); accept.addEventListener("click", () => finish(true));
             overlay.addEventListener("click", event => { if (event.target === overlay) finish(false); });
-            const onKey = event => { if (event.key === "Escape") { document.removeEventListener("keydown", onKey); finish(false); } if (event.key === "Enter" && field && document.activeElement === field) { document.removeEventListener("keydown", onKey); finish(true); } };
             document.addEventListener("keydown", onKey); (field || accept).focus();
         });
     }
