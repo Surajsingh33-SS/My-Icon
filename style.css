@@ -4960,3 +4960,28 @@ body.light-theme #save-project-button:hover {
         min-width: 0;
     }
 }
+
+/* Compact themed dropdown for the custom mirror-axis mode. */
+.styled-select[data-select="mirror-axis-mode"] {
+    width: 70px;
+    min-width: 70px;
+}
+.styled-select[data-select="mirror-axis-mode"] .styled-select-trigger {
+    height: 26px;
+    min-height: 26px;
+    padding: 0 6px;
+    gap: 5px;
+    border-radius: 6px;
+    font-size: 10px;
+    background: var(--bg-surface);
+}
+.styled-select[data-select="mirror-axis-mode"] .styled-select-chevron {
+    width: 6px;
+    height: 6px;
+}
+.styled-select[data-select="mirror-axis-mode"] .styled-select-menu {
+    left: 0;
+    right: auto;
+    min-width: 100px;
+    max-width: 150px;
+}
