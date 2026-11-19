@@ -324,6 +324,7 @@
     // Project Manager Views
     const sidebarOptions = document.querySelectorAll(".sidebar-option");
     const iconLibrarySearchInput = document.getElementById("icon-library-search-input");
+    const iconLibrarySavedToggleButton = document.getElementById("icon-library-saved-toggle");
     const iconLibraryCategoryFilter = document.getElementById("icon-library-category-filter");
     const iconLibraryResultsList = document.getElementById("icon-library-results-list");
     const iconLibraryDetails = document.getElementById("icon-library-details");
@@ -9690,6 +9691,7 @@ function getSelectedFinishCategories() {
     // isolated list/detail workspace without changing Gallery behavior.
     // ========================================================================
     let selectedIconLibraryName = "";
+    let iconLibrarySavedOnly = false;
 
     function normalizeLibraryIconName(value) {
         return String(value || "")
@@ -9712,6 +9714,23 @@ function getSelectedFinishCategories() {
             }
         });
         return map;
+    }
+
+    function getIconLibrarySavedNames() {
+        const projects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
+        return new Set(projects
+            .filter(project => project?.status === "finished")
+            .map(project => normalizeLibraryIconName(project.name))
+            .filter(Boolean));
+    }
+
+    function updateIconLibrarySavedToggle() {
+        if (!iconLibrarySavedToggleButton) return;
+        iconLibrarySavedToggleButton.textContent = iconLibrarySavedOnly ? "Saved only" : "All icons";
+        iconLibrarySavedToggleButton.setAttribute("aria-pressed", String(iconLibrarySavedOnly));
+        iconLibrarySavedToggleButton.title = iconLibrarySavedOnly
+            ? "Currently showing saved Gallery icons only. Switch to all Lucide icons."
+            : "Currently showing all Lucide icons. Switch to saved icons only.";
     }
 
     function getIconLibraryCategories(iconName, record, projectMap) {
@@ -9848,6 +9867,7 @@ function getSelectedFinishCategories() {
             .sort((a, b) => a[0].localeCompare(b[0]));
 
         const projectMap = getIconLibraryProjectMap();
+        const savedNames = getIconLibrarySavedNames();
         const allCategories = getAllIconCategories()
             .filter(category => category !== "Uncategorized")
             .sort((a, b) => a.localeCompare(b));
@@ -9882,6 +9902,7 @@ function getSelectedFinishCategories() {
         const words = query.split(/\s+/).filter(Boolean);
 
         const filtered = entries.filter(([name, record]) => {
+            if (iconLibrarySavedOnly && !savedNames.has(normalizeLibraryIconName(name))) return false;
             const categories = getIconLibraryCategories(name, record, projectMap);
             if (categoryFilter === "__uncategorized__" && !categories.includes("Uncategorized")) return false;
             if (categoryFilter !== "all" && categoryFilter !== "__uncategorized__" &&
@@ -9960,6 +9981,12 @@ function getSelectedFinishCategories() {
         if (iconLibraryCopyNamesButton) iconLibraryCopyNamesButton.disabled = false;
     }
 
+    updateIconLibrarySavedToggle();
+    iconLibrarySavedToggleButton?.addEventListener("click", () => {
+        iconLibrarySavedOnly = !iconLibrarySavedOnly;
+        updateIconLibrarySavedToggle();
+        renderIconLibrary();
+    });
     iconLibrarySearchInput?.addEventListener("input", renderIconLibrary);
     iconLibraryCategoryFilter?.addEventListener("change", renderIconLibrary);
     iconLibraryCopyNamesButton?.addEventListener("click", async () => {
@@ -9968,10 +9995,12 @@ function getSelectedFinishCategories() {
                 (record.lucide || record.ai))
             .sort((a, b) => a[0].localeCompare(b[0]));
         const projectMap = getIconLibraryProjectMap();
+        const savedNames = getIconLibrarySavedNames();
         const query = String(iconLibrarySearchInput?.value || "").trim().toLowerCase();
         const categoryFilter = iconLibraryCategoryFilter?.value || "all";
         const words = query.split(/\s+/).filter(Boolean);
         const names = entries.filter(([name, record]) => {
+            if (iconLibrarySavedOnly && !savedNames.has(normalizeLibraryIconName(name))) return false;
             const categories = getIconLibraryCategories(name, record, projectMap);
             if (categoryFilter === "__uncategorized__" && !categories.includes("Uncategorized")) return false;
             if (categoryFilter !== "all" && categoryFilter !== "__uncategorized__" &&
