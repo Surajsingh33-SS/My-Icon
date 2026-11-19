@@ -9703,16 +9703,39 @@ function getSelectedFinishCategories() {
 
     function getIconLibraryProjectMap() {
         const map = new Map();
+        const scores = new Map();
         const projects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
+
+        const hasValues = value => Array.isArray(value)
+            ? value.some(item => String(item || "").trim())
+            : Boolean(String(value || "").trim());
+
+        const getCategorySourceScore = project => {
+            // Select the duplicate that actually carries the user's category data.
+            // Explicit manual assignments must always outrank automatic suggestions.
+            if (hasValues(project.manualCategories)) return 400;
+            if (project.categorySource === "manual"
+                && (hasValues(project.categories) || hasValues(project.category))) return 350;
+            if (hasValues(project.autoCategories)) return 250;
+            if (hasValues(project.categories) || hasValues(project.category)) return 150;
+            return 0;
+        };
+
         projects.forEach(project => {
-            const key = normalizeLibraryIconName(project.name);
+            const key = normalizeLibraryIconName(project?.name);
             if (!key) return;
-            const existing = map.get(key);
-            // Prefer a finished project when multiple saved projects share a name.
-            if (!existing || (project.status === "finished" && existing.status !== "finished")) {
+
+            const categoryScore = getCategorySourceScore(project);
+            const finishedScore = project?.status === "finished" ? 1 : 0;
+            const score = categoryScore * 10 + finishedScore;
+            const existingScore = scores.get(key) ?? -1;
+
+            if (!map.has(key) || score > existingScore) {
                 map.set(key, project);
+                scores.set(key, score);
             }
         });
+
         return map;
     }
 
@@ -9734,7 +9757,7 @@ function getSelectedFinishCategories() {
     }
 
     function getIconLibraryCategories(iconName, record, projectMap) {
-        const project = projectMap.get(iconName);
+        const project = projectMap.get(normalizeLibraryIconName(iconName));
         if (project) {
             const cleanCategories = value => {
                 const values = Array.isArray(value) ? value : (value ? [value] : []);
