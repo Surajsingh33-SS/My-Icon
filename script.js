@@ -9721,6 +9721,83 @@ function getSelectedFinishCategories() {
         } catch (error) { console.warn("Could not load provided icon metadata:", error); return {}; }
     }
 
+    function findDuplicateTopLevelMetadataNames(source) {
+        const duplicates = [];
+        const seen = new Set();
+        let index = 0;
+
+        const skipWhitespace = () => {
+            while (/\\s/.test(source[index] || "")) index++;
+        };
+
+        const readJsonString = () => {
+            const start = index++;
+            let escaped = false;
+            while (index < source.length) {
+                const char = source[index++];
+                if (escaped) {
+                    escaped = false;
+                } else if (char === "\\\\") {
+                    escaped = true;
+                } else if (char === '"') {
+                    return JSON.parse(source.slice(start, index));
+                }
+            }
+            throw new Error("Unterminated JSON string.");
+        };
+
+        skipWhitespace();
+        if (source[index] !== "{") return duplicates;
+        index++;
+
+        while (index < source.length) {
+            skipWhitespace();
+            if (source[index] === "}") break;
+            if (source[index] !== '"') return duplicates;
+
+            const name = readJsonString();
+            const normalized = normalizeLibraryIconName(name);
+            if (seen.has(normalized)) duplicates.push(name);
+            else seen.add(normalized);
+
+            skipWhitespace();
+            if (source[index] !== ":") return duplicates;
+            index++;
+
+            // Skip the complete value, respecting nested objects, arrays and strings.
+            let depth = 0;
+            let inString = false;
+            let escaped = false;
+            while (index < source.length) {
+                const char = source[index];
+                if (inString) {
+                    if (escaped) escaped = false;
+                    else if (char === "\\\\") escaped = true;
+                    else if (char === '"') inString = false;
+                } else if (char === '"') {
+                    inString = true;
+                } else if (char === "{" || char === "[") {
+                    depth++;
+                } else if (char === "}" || char === "]") {
+                    if (depth === 0) break;
+                    depth--;
+                } else if (char === "," && depth === 0) {
+                    break;
+                }
+                index++;
+            }
+
+            skipWhitespace();
+            if (source[index] === ",") {
+                index++;
+                continue;
+            }
+            break;
+        }
+
+        return duplicates;
+    }
+
     function parseIconLibraryUserMetadata(input) {
         const source = String(input || "").trim();
         const knownIcons = new Map(getIconLibraryEntries().map(([name]) => [normalizeLibraryIconName(name), name]));
@@ -9731,6 +9808,15 @@ function getSelectedFinishCategories() {
         const allowedFields = new Set([...listFields, ...textFields, "svg"]);
 
         if (source.startsWith("{")) {
+            const duplicateNames = findDuplicateTopLevelMetadataNames(source);
+            if (duplicateNames.length) {
+                const uniqueNames = [...new Set(duplicateNames)];
+                return {
+                    entries: [],
+                    errors: uniqueNames.map(name => 'Icon name "' + name + '" appears more than once in this batch.')
+                };
+            }
+
             try {
                 const parsed = JSON.parse(source);
                 if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("The JSON root must be an object.");
