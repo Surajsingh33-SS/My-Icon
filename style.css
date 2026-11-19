@@ -4906,3 +4906,57 @@ body.light-theme #save-project-button:hover {
 .app-dialog-input:focus { border-color: var(--accent, #ff0077); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #ff0077) 18%, transparent); }
 .app-dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
 @keyframes appDialogIn { from { opacity: 0; transform: translateY(7px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+
+/* Icon Library filters use the same themed custom dropdowns as the Gallery. */
+.styled-select[data-select="library-source"] {
+    min-width: 145px;
+    width: min(175px, 18%);
+}
+
+.styled-select[data-select="library-category"] {
+    min-width: 165px;
+    width: min(220px, 22%);
+}
+
+.styled-select[data-select="library-source"] .styled-select-trigger,
+.styled-select[data-select="library-category"] .styled-select-trigger {
+    height: 40px;
+    padding: 0 11px;
+    border-radius: 8px;
+    background: var(--bg-surface-raised);
+    font-size: 12px;
+}
+
+.styled-select[data-select^="library-"] .styled-select-menu {
+    left: 0;
+    right: auto;
+    width: max(100%, 190px);
+    max-width: min(280px, calc(100vw - 32px));
+    max-height: min(320px, 55vh);
+    z-index: 1100;
+}
+
+.styled-select[data-select="library-category"] .styled-select-menu {
+    min-width: 100%;
+}
+
+.styled-select[data-select^="library-"] .styled-select-option {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+.styled-select[data-select^="library-"] .styled-select-trigger:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+@media (max-width: 650px) {
+    .styled-select[data-select="library-source"],
+    .styled-select[data-select="library-category"] {
+        flex: 1 1 145px;
+        width: auto;
+        min-width: 0;
+    }
+}
