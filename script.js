@@ -1338,9 +1338,7 @@ function getSelectedFinishCategories() {
             localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projectManager));
             setSaveStatus(true);
             updateProjectCounters();
-            if (homeViewSections?.["icon-library"]?.style.display === "flex") {
-                renderIconLibrary();
-            }
+            invalidateIconLibraryIndex();
         } catch (error) {
             console.error("Could not save projects:", error);
             showToast("Failed to save to local storage", "error");
@@ -9498,6 +9496,7 @@ function getSelectedFinishCategories() {
         })
         .then(metadata => {
             iconSearchMetadata = metadata && typeof metadata === "object" ? metadata : {};
+            invalidateIconLibraryIndex();
             if (selectedHomeProject && projectDetails?.classList.contains("show")) {
                 renderProjectSearchTerms(selectedHomeProject);
             }
@@ -9740,6 +9739,7 @@ function getSelectedFinishCategories() {
                 });
                 try {
                     localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(saved));
+                    invalidateIconLibraryIndex();
                     feedback.className = "icon-library-metadata-feedback success";
                     feedback.textContent = "Applied metadata to " + parsed.entries.length + " icon(s). Entries not included were left unchanged.";
                     renderIconLibrary();
@@ -9878,7 +9878,7 @@ function getSelectedFinishCategories() {
         title.textContent = iconName;
         const subtitle = document.createElement("p");
         subtitle.textContent = project ? "Saved in your projects" : "Library icon";
-        const source = getIconLibraryCategorySource(iconName, projectMap);
+        const source = getIconLibraryCategorySource(iconName, projectMap, metadata);
         const sourceBadge = document.createElement("span");
         sourceBadge.className = `icon-library-source-badge is-${source}`;
         sourceBadge.textContent = source === "provided" ? "Provided" : source === "manual" ? "Manual" : "Automatic";
@@ -9909,9 +9909,50 @@ function getSelectedFinishCategories() {
 
     let iconLibraryRenderVersion = 0;
     let iconLibraryRenderFrame = 0;
+    let iconLibrarySearchTimer = 0;
+    let iconLibraryIndexCache = null;
     let iconLibraryCurrentFiltered = [];
     let iconLibraryCurrentProjectMap = null;
     let iconLibraryCurrentProvidedMetadata = null;
+
+    // Keep one reusable in-memory index for the current app session. This avoids
+    // rebuilding thousands of search strings when switching Saved / All or typing.
+    // It is never written to localStorage and is discarded when the page closes.
+    function invalidateIconLibraryIndex() {
+        iconLibraryIndexCache = null;
+    }
+
+    function getIconLibraryIndex() {
+        if (iconLibraryIndexCache) return iconLibraryIndexCache;
+
+        const providedMetadata = getIconLibraryUserMetadata();
+        const entries = getIconLibraryEntries();
+        const projectMap = getIconLibraryProjectMap();
+        const savedNames = getIconLibrarySavedNames();
+        const items = entries.map(([name, record]) => {
+            const key = normalizeLibraryIconName(name);
+            const project = projectMap.get(key);
+            const categories = getIconLibraryCategories(name, record, projectMap, providedMetadata);
+            const source = getIconLibraryCategorySource(name, projectMap, providedMetadata);
+            const sourceMeta = record?.lucide || {};
+            const ai = record?.ai || {};
+            const projectData = project?.data && typeof project.data === "object" ? project.data : {};
+            const userTerms = providedMetadata[key]?.searchTerms;
+            const searchable = [
+                name, ai.description, project?.description, project?.keywords,
+                project?.searchTerms, projectData.description, projectData.keywords,
+                sourceMeta.tags, sourceMeta.aliases, sourceMeta.categories,
+                ai.searchTerms, userTerms, categories
+            ].flat(Infinity).filter(Boolean).join(" ").toLowerCase();
+
+            return { name, record, project, categories, source, searchable, key };
+        });
+
+        iconLibraryIndexCache = {
+            entries, projectMap, savedNames, providedMetadata, items
+        };
+        return iconLibraryIndexCache;
+    }
 
     function renderIconLibrary() {
         if (!iconLibraryResultsList) return;
@@ -9922,11 +9963,8 @@ function getSelectedFinishCategories() {
             iconLibraryRenderFrame = 0;
         }
 
-        // Read localStorage once, then reuse the parsed metadata for every icon.
-        const providedMetadata = getIconLibraryUserMetadata();
-        const entries = getIconLibraryEntries();
-        const projectMap = getIconLibraryProjectMap();
-        const savedNames = getIconLibrarySavedNames();
+        const index = getIconLibraryIndex();
+        const { entries, projectMap, savedNames, providedMetadata } = index;
         const allCategories = getAllIconCategories()
             .filter(category => category !== "Uncategorized")
             .sort((a, b) => a.localeCompare(b));
@@ -9976,37 +10014,17 @@ function getSelectedFinishCategories() {
         const categoryFilter = iconLibraryCategoryFilter?.value || "all";
         const sourceFilter = iconLibrarySourceFilter?.value || "all";
 
-        // Build each icon's category/source/search data once instead of rebuilding
-        // it repeatedly inside several filter and render passes.
+        // Filtering now uses the cached per-icon search document. Typing only
+        // checks strings; it does not rebuild metadata, categories, or project maps.
         const filtered = [];
-        for (const [name, record] of entries) {
-            const key = normalizeLibraryIconName(name);
-            if (iconLibrarySavedOnly && !savedNames.has(key)) continue;
-
-            const project = projectMap.get(key);
-            const categories = getIconLibraryCategories(name, record, projectMap, providedMetadata);
-            const source = getIconLibraryCategorySource(name, projectMap, providedMetadata);
-
-            if (sourceFilter !== "all" && source !== sourceFilter) continue;
-            if (categoryFilter === "__uncategorized__" && !categories.includes("Uncategorized")) continue;
+        for (const item of index.items) {
+            if (iconLibrarySavedOnly && !savedNames.has(item.key)) continue;
+            if (sourceFilter !== "all" && item.source !== sourceFilter) continue;
+            if (categoryFilter === "__uncategorized__" && !item.categories.includes("Uncategorized")) continue;
             if (categoryFilter !== "all" && categoryFilter !== "__uncategorized__" &&
-                !categories.includes(categoryFilter)) continue;
-
-            if (words.length) {
-                const sourceMeta = record?.lucide || {};
-                const ai = record?.ai || {};
-                const projectData = project?.data && typeof project.data === "object" ? project.data : {};
-                const userTerms = providedMetadata[key]?.searchTerms;
-                const searchable = [
-                    name, ai.description, project?.description, project?.keywords,
-                    project?.searchTerms, projectData.description, projectData.keywords,
-                    sourceMeta.tags, sourceMeta.aliases, sourceMeta.categories,
-                    ai.searchTerms, userTerms, categories
-                ].flat(Infinity).filter(Boolean).join(" ").toLowerCase();
-                if (!words.every(word => searchable.includes(word))) continue;
-            }
-
-            filtered.push({ name, record, project, categories, source });
+                !item.categories.includes(categoryFilter)) continue;
+            if (words.length && !words.every(word => item.searchable.includes(word))) continue;
+            filtered.push(item);
         }
 
         if (iconLibraryCount) iconLibraryCount.textContent = String(entries.length);
@@ -10118,10 +10136,26 @@ function getSelectedFinishCategories() {
     iconLibraryProvideMetadataButton?.addEventListener("click", openIconLibraryMetadataEditor);
     iconLibrarySavedToggleButton?.addEventListener("click", () => {
         iconLibrarySavedOnly = !iconLibrarySavedOnly;
+        if (iconLibrarySearchTimer) {
+            window.clearTimeout(iconLibrarySearchTimer);
+            iconLibrarySearchTimer = 0;
+        }
         updateIconLibrarySavedToggle();
         renderIconLibrary();
     });
-    iconLibrarySearchInput?.addEventListener("input", renderIconLibrary);
+    iconLibrarySearchInput?.addEventListener("input", () => {
+        // Saved-only search stays immediate. All Icons waits briefly after typing
+        // stops so rapid keystrokes trigger just one filter/render pass.
+        if (iconLibrarySearchTimer) window.clearTimeout(iconLibrarySearchTimer);
+        if (iconLibrarySavedOnly) {
+            renderIconLibrary();
+            return;
+        }
+        iconLibrarySearchTimer = window.setTimeout(() => {
+            iconLibrarySearchTimer = 0;
+            renderIconLibrary();
+        }, 300);
+    });
     iconLibraryCategoryFilter?.addEventListener("change", renderIconLibrary);
     iconLibrarySourceFilter?.addEventListener("change", renderIconLibrary);
     iconLibraryCopyNamesButton?.addEventListener("click", async () => {
