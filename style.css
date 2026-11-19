@@ -4445,6 +4445,42 @@ body.light-theme #save-project-button:hover {
     font-variant-numeric: tabular-nums;
 }
 
+.icon-library-results-summary {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-width: 0;
+}
+
+.icon-library-results-summary span {
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.icon-library-results-summary .btn {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 11px;
+}
+
+@media (max-width: 560px) {
+    .icon-library-results-heading {
+        padding: 11px 12px;
+    }
+
+    .icon-library-results-summary {
+        gap: 7px;
+    }
+
+    .icon-library-results-summary .btn {
+        padding: 6px 8px;
+    }
+}
+
 .icon-library-results-list {
     display: flex;
     flex-direction: column;
