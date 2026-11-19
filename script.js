@@ -301,6 +301,7 @@
     const liveSymmetryVCheckbox = document.getElementById("live-symmetry-v");
     const customMirrorToolBtn = document.getElementById("custom-mirror-tool-btn");
     const mirrorAxisModeSelect = document.getElementById("mirror-axis-mode");
+    const mirrorAxisModeDropdown = createStyledDropdown(mirrorAxisModeSelect, "mirror-axis-mode");
     const mirrorAxisCountInput = document.getElementById("mirror-axis-count");
 
     // Properties & Measurements
