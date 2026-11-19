@@ -10293,6 +10293,8 @@ function getSelectedFinishCategories() {
         }
     }
 
+    let iconLibraryMetadataCopyBatches = null;
+
     iconLibraryCopyCategoryMetadataButton?.addEventListener("click", async () => {
         const items = Array.isArray(iconLibraryCurrentFiltered) ? iconLibraryCurrentFiltered : [];
         const output = items.map(item => {
@@ -10321,22 +10323,80 @@ function getSelectedFinishCategories() {
             }
             return [item.name, metadata];
         });
-        if (!output.length) { showToast("There are no icons matching the current Library filters to copy.", "info"); return; }
-        // Keep the JSON readable while each SVG remains compact on a single line.
-        const text = JSON.stringify(Object.fromEntries(output), null, 2);
+        if (!output.length) {
+            showToast("There are no icons matching the current Library filters to copy.", "info");
+            return;
+        }
+
+        // Copy large metadata exports in complete-icon JSON batches.
+        // The target is approximate; a single large icon is never split.
+        const batchTargetCharacters = 20000;
+        const exportSignature = JSON.stringify(output);
+        if (!iconLibraryMetadataCopyBatches || iconLibraryMetadataCopyBatches.signature !== exportSignature) {
+            const batches = [];
+            let currentBatch = [];
+
+            output.forEach(entry => {
+                const candidate = [...currentBatch, entry];
+                const candidateText = JSON.stringify(Object.fromEntries(candidate), null, 2);
+                if (currentBatch.length && candidateText.length > batchTargetCharacters) {
+                    batches.push(currentBatch);
+                    currentBatch = [entry];
+                } else {
+                    currentBatch = candidate;
+                }
+            });
+            if (currentBatch.length) batches.push(currentBatch);
+
+            iconLibraryMetadataCopyBatches = {
+                signature: exportSignature,
+                batches,
+                nextIndex: 0
+            };
+        }
+
+        const batchState = iconLibraryMetadataCopyBatches;
+        if (batchState.nextIndex >= batchState.batches.length) batchState.nextIndex = 0;
+
+        const batchIndex = batchState.nextIndex;
+        const batch = batchState.batches[batchIndex];
+        const text = JSON.stringify(Object.fromEntries(batch), null, 2);
+
         try {
-            await navigator.clipboard.writeText(text);
-            showToast("Copied JSON metadata for " + output.length.toLocaleString() + " icon(s).", "success");
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (clipboardError) {
+                const textarea = document.createElement("textarea");
+                textarea.value = text;
+                textarea.style.position = "fixed";
+                textarea.style.opacity = "0";
+                document.body.appendChild(textarea);
+                textarea.select();
+                const copied = document.execCommand("copy");
+                textarea.remove();
+                if (!copied) throw clipboardError;
+            }
+
+            batchState.nextIndex += 1;
+            const totalBatches = batchState.batches.length;
+            const progressLabel = batchState.nextIndex >= totalBatches
+                ? "Complete " + totalBatches + "/" + totalBatches + " · Copy Again"
+                : "Copy Metadata JSON (" + batchState.nextIndex + "/" + totalBatches + ")";
+            if (iconLibraryCopyCategoryMetadataButton) {
+                iconLibraryCopyCategoryMetadataButton.textContent = progressLabel;
+                iconLibraryCopyCategoryMetadataButton.title =
+                    batchState.nextIndex >= totalBatches
+                        ? "All metadata batches copied. Click to start again."
+                        : (totalBatches - batchState.nextIndex) + " batch(es) remaining";
+            }
+
+            showToast(
+                "Copied batch " + (batchIndex + 1) + "/" + totalBatches +
+                " — " + batch.length + " icon(s), " + text.length.toLocaleString() + " characters.",
+                "success"
+            );
         } catch (error) {
-            const textarea = document.createElement("textarea");
-            textarea.value = text;
-            textarea.style.position = "fixed";
-            textarea.style.opacity = "0";
-            document.body.appendChild(textarea);
-            textarea.select();
-            const copied = document.execCommand("copy");
-            textarea.remove();
-            showToast(copied ? "Copied JSON metadata for " + output.length.toLocaleString() + " icon(s)." : "Clipboard access was blocked by the browser.", copied ? "success" : "error");
+            showToast("Clipboard access was blocked by the browser. Try clicking Copy again.", "error");
         }
     });
 
