@@ -9908,8 +9908,12 @@ function getSelectedFinishCategories() {
             "No aliases supplied");
         createIconLibraryChipGroup(iconLibraryDetails, "Provided search terms", provided.searchTerms,
             "No custom search terms supplied");
-        createIconLibraryChipGroup(iconLibraryDetails, "Search terms", ai.searchTerms,
-            "No enriched search terms supplied");
+        // Keep Library details identical to the Gallery drawer: use the shared
+        // search-term builder so saved, enriched, provided, and category terms
+        // are combined and deduplicated in exactly the same way.
+        const finalSearchTerms = getProjectSearchTerms(project || { name: iconName });
+        createIconLibraryChipGroup(iconLibraryDetails, "Search terms", finalSearchTerms,
+            "No search terms available");
     }
 
     let iconLibraryRenderVersion = 0;
