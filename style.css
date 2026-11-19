@@ -5072,15 +5072,23 @@ body.light-theme #save-project-button:hover {
 @media (max-width: 760px) {
     /* Keep the top bar usable without forcing the page wider than the phone. */
     .topbar {
-        height: auto;
+        height: 48px;
         min-height: 48px;
-        padding: 6px 10px;
+        padding: 5px 10px;
         gap: 6px;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: visible;
+        scrollbar-width: none;
+    }
+
+    .topbar::-webkit-scrollbar {
+        display: none;
     }
 
     .topbar-brand {
         min-width: 0;
+        flex: 0 0 auto;
         gap: 7px;
     }
 
@@ -5090,6 +5098,7 @@ body.light-theme #save-project-button:hover {
 
     .topbar .menu,
     .topbar .actions {
+        flex: 0 0 auto;
         gap: 3px;
         flex-wrap: nowrap;
     }
@@ -5381,7 +5390,11 @@ body.light-theme #save-project-button:hover {
 
 @media (max-width: 480px) {
     .topbar {
+        height: auto;
+        min-height: 76px;
         padding: 5px 8px;
+        flex-wrap: wrap;
+        overflow: visible;
     }
 
     .topbar-brand {
