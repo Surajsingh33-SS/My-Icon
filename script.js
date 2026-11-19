@@ -9517,14 +9517,14 @@ function getSelectedFinishCategories() {
         const metadataKey = name.replace(/\.[a-z0-9]+$/i, "").replace(/[\s_]+/g, "-");
         const categories = getProjectCategories(project);
         const savedTerms = Array.isArray(project.searchTerms) ? project.searchTerms : [];
-        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(name)];
+        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(name)] || {};
         const metadataTerms = iconSearchMetadata?.[metadataKey]?.ai?.searchTerms;
         const baseTerms = [name, ...categories];
-        if (Array.isArray(provided?.searchTerms) && provided.searchTerms.length) {
-            return [...new Set([...provided.searchTerms, ...baseTerms]
-                .map(value => String(value).trim().toLowerCase().replace(/\\s+/g, " "))
-                .filter(Boolean))].slice(0, 30);
-        }
+        const providedTerms = [
+            ...(provided.searchTerms || []),
+            ...(provided.tags || []),
+            ...(provided.aliases || [])
+        ];
 
         // Do not expand search terms for restricted-content icon subjects.
         if (restrictedSearchIconPattern.test(metadataKey)) {
@@ -9545,7 +9545,7 @@ function getSelectedFinishCategories() {
         const isPopular = tokens.some(token => popularTokens.has(token));
         const target = isPopular ? 30 : (generatedTerms.length >= 20 ? 22 : 15);
 
-        const combined = [...savedTerms, ...generatedTerms, ...baseTerms];
+        const combined = [...providedTerms, ...savedTerms, ...generatedTerms, ...baseTerms];
         const unique = [];
         const seen = new Set();
 
@@ -9921,7 +9921,7 @@ function getSelectedFinishCategories() {
         sourceBadge.className = `icon-library-source-badge is-${source}`;
         sourceBadge.textContent = source === "provided" ? "Provided" : source === "manual" ? "Manual" : "Automatic";
         sourceBadge.title = source === "provided"
-            ? "Categories and search terms supplied by you"
+            ? "Metadata supplied by you"
             : source === "manual" ? "Categories assigned manually in the editor"
             : "Categories detected by the keyword classifier";
         titleGroup.append(title, subtitle, sourceBadge);
