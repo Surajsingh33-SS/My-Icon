@@ -10263,8 +10263,8 @@ function getSelectedFinishCategories() {
             return [item.name, metadata];
         });
         if (!output.length) { showToast("There are no icons matching the current Library filters to copy.", "info"); return; }
-        // Compact JSON keeps the clipboard payload easy to pass around.
-        const text = JSON.stringify(Object.fromEntries(output));
+        // Keep the JSON readable while each SVG remains compact on a single line.
+        const text = JSON.stringify(Object.fromEntries(output), null, 2);
         try {
             await navigator.clipboard.writeText(text);
             showToast("Copied JSON metadata for " + output.length.toLocaleString() + " icon(s).", "success");
