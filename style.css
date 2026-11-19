@@ -4743,3 +4743,22 @@ body.light-theme #save-project-button:hover {
         overflow: visible;
     }
 }
+
+
+/* Bulk metadata editor */
+.icon-library-metadata-overlay { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.62); }
+.icon-library-metadata-overlay.open { display:flex; }
+.icon-library-metadata-modal { display:flex; flex-direction:column; gap:16px; width:min(720px,100%); max-height:min(88vh,850px); padding:22px; overflow:auto; border:1px solid var(--border-default); border-radius:14px; background:var(--bg-surface); color:var(--text-primary); box-shadow:0 24px 80px rgba(0,0,0,.35); }
+.icon-library-metadata-modal > header,.icon-library-metadata-modal > footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.icon-library-metadata-modal h3 { margin:0 0 5px; font-size:18px; }
+.icon-library-metadata-modal p,.icon-library-metadata-format span { margin:0; color:var(--text-secondary); font-size:12px; line-height:1.5; }
+.icon-library-metadata-close { width:34px; height:34px; border:0; border-radius:8px; background:var(--bg-surface-raised); color:var(--text-primary); font-size:23px; cursor:pointer; }
+.icon-library-metadata-format { display:flex; flex-direction:column; gap:6px; padding:12px; border:1px solid var(--border-subtle); border-radius:9px; background:var(--bg-surface-raised); }
+.icon-library-metadata-format code { color:var(--accent); font-size:12px; white-space:normal; }
+.icon-library-metadata-input { box-sizing:border-box; width:100%; min-height:250px; resize:vertical; padding:13px; border:1px solid var(--border-default); border-radius:9px; outline:none; background:var(--bg-base); color:var(--text-primary); font:12px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace; }
+.icon-library-metadata-input:focus { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-light); }
+.icon-library-metadata-feedback { min-height:18px; font-size:12px; line-height:1.5; }
+.icon-library-metadata-feedback.error { color:#ef6666; }
+.icon-library-metadata-feedback.success { color:#22a06b; }
+.icon-library-metadata-modal > footer { justify-content:flex-end; }
+@media (max-width:650px) { .icon-library-metadata-overlay { padding:10px; } .icon-library-metadata-modal { padding:16px; } .icon-library-metadata-input { min-height:210px; } }
