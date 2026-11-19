@@ -386,16 +386,18 @@
                     <select id="icon-library-category-filter" aria-label="Filter icons by category">
                         <option value="all">All categories</option>
                     </select>
-                    <button type="button" id="icon-library-copy-names" class="btn btn-secondary">
-                        Copy current names
-                    </button>
                 </div>
 
                 <div class="icon-library-workspace">
                     <section class="icon-library-results" aria-label="Icon results">
                         <div class="icon-library-results-heading">
                             <strong>Icons</strong>
-                            <span id="icon-library-results-count">0 results</span>
+                            <div class="icon-library-results-summary">
+                                <span id="icon-library-results-count">0 results</span>
+                                <button type="button" id="icon-library-copy-names" class="btn btn-secondary">
+                                    Copy names
+                                </button>
+                            </div>
                         </div>
                         <div id="icon-library-results-list" class="icon-library-results-list">
                             <p class="icon-library-empty">Loading icon metadata...</p>
