@@ -4985,3 +4985,44 @@ body.light-theme #save-project-button:hover {
     min-width: 100px;
     max-width: 150px;
 }
+
+/* Themed scrollbars for the expanded project-info area and its category editor. */
+.project-info-scroll,
+.project-category-editor {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--accent-rgb), 0.55) transparent;
+}
+
+.project-info-scroll::-webkit-scrollbar,
+.project-category-editor::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+}
+
+.project-info-scroll::-webkit-scrollbar-track,
+.project-category-editor::-webkit-scrollbar-track {
+    margin: 5px 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+}
+
+.project-info-scroll::-webkit-scrollbar-thumb,
+.project-category-editor::-webkit-scrollbar-thumb {
+    min-height: 28px;
+    border: 2px solid transparent;
+    border-radius: var(--radius-full);
+    background: rgba(var(--accent-rgb), 0.48);
+    background-clip: padding-box;
+}
+
+.project-info-scroll::-webkit-scrollbar-thumb:hover,
+.project-category-editor::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+    background-clip: padding-box;
+}
+
+.project-info-scroll::-webkit-scrollbar-corner,
+.project-category-editor::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
