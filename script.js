@@ -19,7 +19,8 @@
             const header = document.createElement("div"); header.className = "app-dialog-header";
             const heading = document.createElement("h3"); heading.textContent = title;
             const close = document.createElement("button"); close.type = "button"; close.className = "app-dialog-close";
-            close.textContent = "×"; close.setAttribute("aria-label", "Close dialog"); close.title = "Close";
+            close.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12" /></svg>';
+            close.setAttribute("aria-label", "Close dialog"); close.title = "Close";
             header.append(heading, close);
             const body = document.createElement("p"); body.textContent = message;
             panel.append(header, body);
