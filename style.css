@@ -4854,8 +4854,13 @@ body.light-theme #save-project-button:hover {
     flex: 0 0 30px; width: 30px; height: 30px; padding: 0;
     border: 1px solid var(--border-subtle, rgba(255,255,255,.14));
     border-radius: 8px; background: transparent; color: var(--text-secondary, #a1a1aa);
-    font: inherit; font-size: 23px; line-height: 1; cursor: pointer;
+    cursor: pointer;
     transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.app-dialog-close svg {
+    display: block; width: 15px; height: 15px;
+    fill: none; stroke: currentColor; stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round;
 }
 .app-dialog-close:hover {
     background: var(--bg-surface-raised, rgba(255,255,255,.08));
