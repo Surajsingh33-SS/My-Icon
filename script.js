@@ -214,6 +214,10 @@
         // Close when Escape is pressed.
         document.addEventListener("keydown", event => {
             if (event.key === "Escape") {
+            if (homeScreen?.classList.contains("mobile-sidebar-open")) {
+                setMobileSidebarOpen(false);
+                return;
+            }
                 close();
             }
         });
@@ -336,6 +340,26 @@
 
     // Home Screen & Gallery
     const homeScreen = document.getElementById("home-screen");
+    const mobileSidebarToggle = document.getElementById("mobile-sidebar-toggle");
+    const mobileSidebarBackdrop = document.getElementById("mobile-sidebar-backdrop");
+
+    function setMobileSidebarOpen(isOpen) {
+        if (!homeScreen) return;
+        homeScreen.classList.toggle("mobile-sidebar-open", isOpen);
+        mobileSidebarToggle?.setAttribute("aria-expanded", String(isOpen));
+        mobileSidebarToggle?.setAttribute(
+            "aria-label",
+            isOpen ? "Close navigation menu" : "Open navigation menu"
+        );
+    }
+
+    mobileSidebarToggle?.addEventListener("click", () => {
+        setMobileSidebarOpen(!homeScreen.classList.contains("mobile-sidebar-open"));
+    });
+
+    mobileSidebarBackdrop?.addEventListener("click", () => {
+        setMobileSidebarOpen(false);
+    });
     const homeEditButton = document.getElementById("home-edit-button");
     const homeSearchInput = document.getElementById("home-search-input");
     const clearSearchBtn = document.getElementById("clear-search-btn");
@@ -11561,6 +11585,7 @@ function getSelectedFinishCategories() {
         opt.addEventListener("click", () => {
             const view = opt.dataset.homeView;
             if (view) switchHomeView(view);
+            setMobileSidebarOpen(false);
         });
     });
 
