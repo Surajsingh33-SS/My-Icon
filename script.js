@@ -10176,7 +10176,10 @@ function getSelectedFinishCategories() {
 
         const index = getIconLibraryIndex();
         const output = index.items
-            .filter(item => item.categories.includes(category))
+            .filter(item =>
+                (!iconLibrarySavedOnly || index.savedNames.has(item.key)) &&
+                item.categories.includes(category)
+            )
             .map(item => {
                 const sourceMeta = item.record?.lucide || {};
                 const ai = item.record?.ai || {};
