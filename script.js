@@ -332,6 +332,7 @@
     const iconLibraryCount = document.getElementById("icon-library-count");
     const iconLibraryResultsCount = document.getElementById("icon-library-results-count");
     const iconLibraryCopyNamesButton = document.getElementById("icon-library-copy-names");
+    const iconLibraryCopyCategoryMetadataButton = document.getElementById("icon-library-copy-category-metadata");
     const iconLibraryProvideMetadataButton = document.getElementById("icon-library-provide-metadata");
     const homeViewSections = {
         gallery: document.getElementById("home-view-gallery"),
@@ -9728,23 +9729,27 @@ function getSelectedFinishCategories() {
             overlay.querySelector(".icon-library-metadata-save").addEventListener("click", () => {
                 const feedback = overlay.querySelector(".icon-library-metadata-feedback");
                 const parsed = parseIconLibraryUserMetadata(overlay.querySelector(".icon-library-metadata-input").value);
-                if (parsed.errors.length) {
-                    feedback.className = "icon-library-metadata-feedback error";
-                    feedback.textContent = parsed.errors.join(" ");
-                    return;
-                }
                 const saved = getIconLibraryUserMetadata();
                 parsed.entries.forEach(entry => {
                     saved[normalizeLibraryIconName(entry.name)] = { name: entry.name, categories: entry.categories, searchTerms: entry.searchTerms };
                 });
                 try {
-                    localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(saved));
-                    invalidateIconLibraryIndex();
-                    feedback.className = "icon-library-metadata-feedback success";
-                    feedback.textContent = "Applied metadata to " + parsed.entries.length + " icon(s). Entries not included were left unchanged.";
-                    renderIconLibrary();
-                    renderHomeProjects();
-                    window.setTimeout(close, 900);
+                    if (parsed.entries.length) {
+                        localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(saved));
+                        invalidateIconLibraryIndex();
+                        renderIconLibrary();
+                        renderHomeProjects();
+                    }
+                    if (parsed.errors.length) {
+                        feedback.className = "icon-library-metadata-feedback error";
+                        feedback.textContent = (parsed.entries.length
+                            ? "Applied " + parsed.entries.length + " valid entr" + (parsed.entries.length === 1 ? "y. " : "ies. ")
+                            : "No valid entries were applied. ") + "Skipped invalid entries: " + parsed.errors.join(" ");
+                    } else {
+                        feedback.className = "icon-library-metadata-feedback success";
+                        feedback.textContent = "Applied metadata to " + parsed.entries.length + " icon(s).";
+                        window.setTimeout(close, 900);
+                    }
                 } catch (error) {
                     feedback.className = "icon-library-metadata-feedback error";
                     feedback.textContent = "Could not save metadata in this browser. Check available storage and try again.";
@@ -10013,6 +10018,13 @@ function getSelectedFinishCategories() {
         const words = query.split(/\s+/).filter(Boolean);
         const categoryFilter = iconLibraryCategoryFilter?.value || "all";
         const sourceFilter = iconLibrarySourceFilter?.value || "all";
+        if (iconLibraryCopyCategoryMetadataButton) {
+            iconLibraryCopyCategoryMetadataButton.hidden = categoryFilter === "all" || categoryFilter === "__uncategorized__";
+            iconLibraryCopyCategoryMetadataButton.disabled = categoryFilter === "all" || categoryFilter === "__uncategorized__";
+            iconLibraryCopyCategoryMetadataButton.title = categoryFilter === "all" || categoryFilter === "__uncategorized__"
+                ? "Select a specific category to copy its metadata."
+                : "Copy all icon metadata assigned to " + categoryFilter + ".";
+        }
 
         // Filtering now uses the cached per-icon search document. Typing only
         // checks strings; it does not rebuild metadata, categories, or project maps.
@@ -10158,6 +10170,52 @@ function getSelectedFinishCategories() {
     });
     iconLibraryCategoryFilter?.addEventListener("change", renderIconLibrary);
     iconLibrarySourceFilter?.addEventListener("change", renderIconLibrary);
+    iconLibraryCopyCategoryMetadataButton?.addEventListener("click", async () => {
+        const category = iconLibraryCategoryFilter?.value || "all";
+        if (category === "all" || category === "__uncategorized__") return;
+
+        const index = getIconLibraryIndex();
+        const output = index.items
+            .filter(item => item.categories.includes(category))
+            .map(item => {
+                const sourceMeta = item.record?.lucide || {};
+                const ai = item.record?.ai || {};
+                const provided = index.providedMetadata[item.key] || {};
+                const terms = [...new Set([
+                    item.name,
+                    ...(Array.isArray(provided.searchTerms) ? provided.searchTerms : []),
+                    ...(Array.isArray(sourceMeta.tags) ? sourceMeta.tags : []),
+                    ...(Array.isArray(sourceMeta.aliases) ? sourceMeta.aliases : []),
+                    ...(Array.isArray(ai.searchTerms) ? ai.searchTerms : [])
+                ].map(value => String(value || "").trim().replace(/\s+/g, " ")).filter(Boolean))];
+                const categories = item.categories.filter(value => value !== "Uncategorized");
+                return "{\n" + item.name + " : " + categories.join(", ") + " - " + terms.join(", ") + "\n}";
+            });
+
+        if (!output.length) {
+            showToast("There are no icons in this category to copy.", "info");
+            return;
+        }
+
+        const text = output.join("\n");
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast("Copied metadata for " + output.length.toLocaleString() + " " + category + " icon(s).", "success");
+        } catch (error) {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+            const copied = document.execCommand("copy");
+            textarea.remove();
+            showToast(copied
+                ? "Copied metadata for " + output.length.toLocaleString() + " " + category + " icon(s)."
+                : "Clipboard access was blocked by the browser.", copied ? "success" : "error");
+        }
+    });
+
     iconLibraryCopyNamesButton?.addEventListener("click", async () => {
         const entries = getIconLibraryEntries();
         const projectMap = getIconLibraryProjectMap();
