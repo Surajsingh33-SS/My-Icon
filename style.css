@@ -4372,10 +4372,25 @@ body.light-theme #save-project-button:hover {
 .icon-library-search > span {
     position: absolute;
     left: 13px;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
     color: var(--text-secondary);
-    font-size: 20px;
-    line-height: 1;
+    transform: translateY(-50%);
     pointer-events: none;
+}
+.icon-library-search > span svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .icon-library-search input,
