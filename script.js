@@ -1078,7 +1078,11 @@
         "Weather": ["Nature"], "Food & drink": ["Cuisine"],
         "Audio & music": ["Music"], "Business": ["Commerce"],
         "Files": ["Documents"], "Health": ["Medical"], "Maps & travel": ["Travel"],
-        "Media": ["Entertainment"]
+        "Media": ["Entertainment"], "Actions": ["Interface"], "Status": ["Symbols"],
+        "Feedback": ["Interface", "Emotions"], "Creativity": ["Geometry", "Entertainment"],
+        "Navigation": ["Interface", "Travel"], "Characters": ["People", "Emotions"],
+        "Animation": ["Entertainment"], "Productivity": ["Tools", "Documents"],
+        "Effects": ["Symbols"], "General": [], "Uncategorized": []
     };
 
     function migrateCategoryList(values) {
@@ -1087,15 +1091,18 @@
         input.forEach(value => {
             const name = String(value ?? "").trim();
             if (!name || name.toLowerCase() === "uncategorized") return;
-            const mapped = LEGACY_CATEGORY_MAP[name] || (
-                STANDARD_ICON_CATEGORIES.includes(name) ? [name] : [name]
+
+            const legacyEntry = Object.entries(LEGACY_CATEGORY_MAP)
+                .find(([legacyName]) => legacyName.toLowerCase() === name.toLowerCase());
+            const standardName = STANDARD_ICON_CATEGORIES.find(
+                category => category.toLowerCase() === name.toLowerCase()
             );
+            // Unknown/retired category names are intentionally discarded. They
+            // must never reappear as unofficial categories after migration.
+            const mapped = legacyEntry ? legacyEntry[1] : (standardName ? [standardName] : []);
             mapped.forEach(category => {
-                if ((STANDARD_ICON_CATEGORIES.includes(category) || getCustomCategories().some(
-                    custom => custom.toLowerCase() === category.toLowerCase()
-                )) && !output.some(item => item.toLowerCase() === category.toLowerCase())) {
-                    output.push(category);
-                }
+                if (STANDARD_ICON_CATEGORIES.includes(category) &&
+                    !output.includes(category)) output.push(category);
             });
         });
         return output.length ? output : ["Uncategorized"];
@@ -1288,50 +1295,19 @@ function detectIconCategories(iconName) {
             .replace(/[_\s]+/g, "-").replace(/-+/g, "-");
     }
 
-    // Get saved custom categories.
+    // Icon Maker Pro currently uses one fixed, shared category vocabulary.
+    // Retired custom categories are cleared during startup migration below.
     function getCustomCategories() {
-        try {
-            const saved = JSON.parse(
-                localStorage.getItem(CUSTOM_CATEGORIES_STORAGE_KEY) || "[]"
-            );
-
-            return Array.isArray(saved) ? saved : [];
-        } catch (error) {
-            console.error("Could not load custom categories:", error);
-            return [];
-        }
+        return [];
     }
 
     function getAllIconCategories() {
-        return [
-            ...STANDARD_ICON_CATEGORIES,
-            ...getCustomCategories(),
-            "Uncategorized"
-        ];
+        return [...STANDARD_ICON_CATEGORIES, "Uncategorized"];
     }
 
     function saveCustomCategory(categoryName) {
-        const name = categoryName.trim();
-
-        if (!name) return false;
-
-        const allCategories = getAllIconCategories();
-
-        if (allCategories.some(
-            category => category.toLowerCase() === name.toLowerCase()
-        )) {
-            return false;
-        }
-
-        const customCategories = getCustomCategories();
-        customCategories.push(name);
-
-        localStorage.setItem(
-            CUSTOM_CATEGORIES_STORAGE_KEY,
-            JSON.stringify(customCategories)
-        );
-
-        return true;
+        // Custom categories are disabled while the app uses its fixed 25-category taxonomy.
+        return false;
     }
 
    function populateFinishCategories(selectedCategories = ["Uncategorized"]) {
@@ -1384,6 +1360,10 @@ function getSelectedFinishCategories() {
 
     function loadProjectManager() {
         try {
+            // Remove obsolete user-defined category names so they cannot leak
+            // into category filters or metadata validation.
+            localStorage.removeItem(CUSTOM_CATEGORIES_STORAGE_KEY);
+
             const savedManager = localStorage.getItem(PROJECTS_STORAGE_KEY);
 
             if (savedManager) {
