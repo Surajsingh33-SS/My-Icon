@@ -332,6 +332,7 @@
     const iconLibraryCount = document.getElementById("icon-library-count");
     const iconLibraryResultsCount = document.getElementById("icon-library-results-count");
     const iconLibraryCopyNamesButton = document.getElementById("icon-library-copy-names");
+    const copyAvailableCategoriesButton = document.getElementById("copy-available-categories-btn");
     const iconLibraryCopyCategoryMetadataButton = document.getElementById("icon-library-copy-category-metadata");
     const iconLibraryProvideMetadataButton = document.getElementById("icon-library-provide-metadata");
     const homeViewSections = {
@@ -10537,6 +10538,32 @@ function getSelectedFinishCategories() {
             );
         } catch (error) {
             showToast("Clipboard access was blocked by the browser. Try clicking Copy again.", "error");
+        }
+    });
+
+    copyAvailableCategoriesButton?.addEventListener("click", async () => {
+        const categories = getAllIconCategories();
+        const categoryText = categories.join("\n");
+
+        try {
+            await navigator.clipboard.writeText(categoryText);
+            showToast(`Copied ${categories.length} available categories.`, "success");
+        } catch (error) {
+            const textarea = document.createElement("textarea");
+            textarea.value = categoryText;
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+            const copied = document.execCommand("copy");
+            textarea.remove();
+
+            showToast(
+                copied
+                    ? `Copied ${categories.length} available categories.`
+                    : "Clipboard access was blocked by the browser.",
+                copied ? "success" : "error"
+            );
         }
     });
 
