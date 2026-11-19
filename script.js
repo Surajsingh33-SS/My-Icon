@@ -10552,12 +10552,11 @@ function getSelectedFinishCategories() {
             const copiedForCurrentSelection = uniqueCurrentNames.filter(name => progress.copiedNames.has(name)).length;
             const isComplete = copiedForCurrentSelection >= totalForCurrentSelection;
             if (iconLibraryCopyCategoryMetadataButton) {
-                iconLibraryCopyCategoryMetadataButton.textContent = isComplete
-                    ? "Complete · Copy Again"
-                    : "Copy Metadata JSON (" + copiedForCurrentSelection + "/" + totalForCurrentSelection + " icons)";
+                iconLibraryCopyCategoryMetadataButton.textContent =
+                    "Copy JSON · " + copiedForCurrentSelection + "/" + totalForCurrentSelection + " done";
                 iconLibraryCopyCategoryMetadataButton.title = isComplete
-                    ? "All icons in this selection have been copied. Click to start a new copy cycle."
-                    : remainingCount + " icon(s) remain in this selection; next click continues by icon name.";
+                    ? "All icons copied"
+                    : remainingCount + " remaining";
             }
 
             showToast(
