@@ -332,7 +332,7 @@
     const iconLibraryCopyNamesButton = document.getElementById("icon-library-copy-names");
     const homeViewSections = {
         gallery: document.getElementById("home-view-gallery"),
-        iconLibrary: document.getElementById("home-view-icon-library"),
+        "icon-library": document.getElementById("home-view-icon-library"),
         projects: document.getElementById("home-view-projects"),
         settings: document.getElementById("home-view-settings")
     };
@@ -9695,8 +9695,8 @@ function getSelectedFinishCategories() {
         return String(value || "")
             .trim()
             .toLowerCase()
-            .replace(/\\.[a-z0-9]+$/i, "")
-            .replace(/[\\s_]+/g, "-");
+            .replace(/\.[a-z0-9]+$/i, "")
+            .replace(/[\s_]+/g, "-");
     }
 
     function getIconLibraryProjectMap() {
@@ -9851,7 +9851,7 @@ function getSelectedFinishCategories() {
 
         const query = String(iconLibrarySearchInput?.value || "").trim().toLowerCase();
         const categoryFilter = iconLibraryCategoryFilter?.value || "all";
-        const words = query.split(/\\s+/).filter(Boolean);
+        const words = query.split(/\s+/).filter(Boolean);
 
         const filtered = entries.filter(([name, record]) => {
             const categories = getIconLibraryCategories(name, record, projectMap);
@@ -9942,7 +9942,7 @@ function getSelectedFinishCategories() {
         const projectMap = getIconLibraryProjectMap();
         const query = String(iconLibrarySearchInput?.value || "").trim().toLowerCase();
         const categoryFilter = iconLibraryCategoryFilter?.value || "all";
-        const words = query.split(/\\s+/).filter(Boolean);
+        const words = query.split(/\s+/).filter(Boolean);
         const names = entries.filter(([name, record]) => {
             const categories = getIconLibraryCategories(name, record, projectMap);
             if (categoryFilter === "__uncategorized__" && !categories.includes("Uncategorized")) return false;
@@ -9968,11 +9968,11 @@ function getSelectedFinishCategories() {
         }
 
         try {
-            await navigator.clipboard.writeText(names.join("\\n"));
+            await navigator.clipboard.writeText(names.join("\n"));
             showToast(`Copied ${names.length.toLocaleString()} icon names.`, "success");
         } catch (error) {
             const textarea = document.createElement("textarea");
-            textarea.value = names.join("\\n");
+            textarea.value = names.join("\n");
             textarea.style.position = "fixed";
             textarea.style.opacity = "0";
             document.body.appendChild(textarea);
@@ -10829,7 +10829,7 @@ function getSelectedFinishCategories() {
             renderManagementTable();
         } else if (viewName === "gallery") {
             renderHomeProjects();
-        } else if (viewName === "iconLibrary") {
+        } else if (viewName === "icon-library") {
             renderIconLibrary();
         }
     }
