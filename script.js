@@ -10552,8 +10552,9 @@ function getSelectedFinishCategories() {
             const copiedForCurrentSelection = uniqueCurrentNames.filter(name => progress.copiedNames.has(name)).length;
             const isComplete = copiedForCurrentSelection >= totalForCurrentSelection;
             if (iconLibraryCopyCategoryMetadataButton) {
-                iconLibraryCopyCategoryMetadataButton.textContent =
-                    "Copy JSON · " + copiedForCurrentSelection + "/" + totalForCurrentSelection + " done";
+                iconLibraryCopyCategoryMetadataButton.textContent = isComplete
+                    ? "Copy JSON"
+                    : copiedForCurrentSelection + "/" + totalForCurrentSelection + " done";
                 iconLibraryCopyCategoryMetadataButton.title = isComplete
                     ? "All icons copied"
                     : remainingCount + " remaining";
