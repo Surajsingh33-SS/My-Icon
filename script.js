@@ -369,6 +369,14 @@
     const iconLibrarySavedToggleButton = document.getElementById("icon-library-saved-toggle");
     const iconLibraryCategoryFilter = document.getElementById("icon-library-category-filter");
     const iconLibrarySourceFilter = document.getElementById("icon-library-source-filter");
+    const iconLibrarySourceDropdown = createStyledDropdown(
+        iconLibrarySourceFilter,
+        "library-source"
+    );
+    const iconLibraryCategoryDropdown = createStyledDropdown(
+        iconLibraryCategoryFilter,
+        "library-category"
+    );
     const iconLibraryResultsList = document.getElementById("icon-library-results-list");
     const iconLibraryDetails = document.getElementById("icon-library-details");
     const iconLibraryCount = document.getElementById("icon-library-count");
@@ -10254,6 +10262,10 @@ function getSelectedFinishCategories() {
                 iconLibrarySourceFilter.value = previousSource;
             }
         }
+
+        // Keep the custom menus in sync with dynamically rebuilt filter options.
+        iconLibraryCategoryDropdown?.refresh();
+        iconLibrarySourceDropdown?.refresh();
 
         const query = String(iconLibrarySearchInput?.value || "").trim().toLowerCase();
         const words = query.split(/\s+/).filter(Boolean);
