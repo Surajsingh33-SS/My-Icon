@@ -10434,7 +10434,28 @@ function getSelectedFinishCategories() {
         }
     }
 
-    let iconLibraryMetadataCopyBatches = null;
+    const ICON_METADATA_COPY_PROGRESS_KEY = "iconMakerMetadataCopyProgressV1";
+
+    function readIconMetadataCopyProgress() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(ICON_METADATA_COPY_PROGRESS_KEY) || "{}");
+            return {
+                copiedNames: new Set(Array.isArray(saved.copiedNames) ? saved.copiedNames : []),
+                cycleNames: Array.isArray(saved.cycleNames) ? saved.cycleNames : []
+            };
+        } catch (error) {
+            return { copiedNames: new Set(), cycleNames: [] };
+        }
+    }
+
+    function saveIconMetadataCopyProgress(progress) {
+        try {
+            localStorage.setItem(ICON_METADATA_COPY_PROGRESS_KEY, JSON.stringify({
+                copiedNames: [...progress.copiedNames],
+                cycleNames: progress.cycleNames
+            }));
+        } catch (error) { }
+    }
 
     iconLibraryCopyCategoryMetadataButton?.addEventListener("click", async () => {
         const items = Array.isArray(iconLibraryCurrentFiltered) ? iconLibraryCurrentFiltered : [];
@@ -10455,7 +10476,6 @@ function getSelectedFinishCategories() {
             if (provided.useCases?.length) metadata.useCases = provided.useCases;
             if (provided.relatedConcepts?.length) metadata.relatedConcepts = provided.relatedConcepts;
 
-            // Include a compact, lossless SVG reference for saved Gallery drawings only.
             if (Array.isArray(item.project?.data?.shapes) && item.project.data.shapes.length) {
                 const svgReference = compactSVGForMetadata(
                     generateSVGFromShapes(item.project.data.shapes, "original")
@@ -10469,40 +10489,46 @@ function getSelectedFinishCategories() {
             return;
         }
 
-        // Copy large metadata exports in complete-icon JSON batches.
-        // The target is approximate; a single large icon is never split.
-        const batchTargetCharacters = 20000;
-        const exportSignature = JSON.stringify(output);
-        if (!iconLibraryMetadataCopyBatches || iconLibraryMetadataCopyBatches.signature !== exportSignature) {
-            const batches = [];
-            let currentBatch = [];
+        const progress = readIconMetadataCopyProgress();
+        const currentNames = output.map(([name]) => normalizeLibraryIconName(name));
+        const uniqueCurrentNames = [...new Set(currentNames)];
 
-            output.forEach(entry => {
-                const candidate = [...currentBatch, entry];
-                const candidateText = JSON.stringify(Object.fromEntries(candidate), null, 2);
-                if (currentBatch.length && candidateText.length > batchTargetCharacters) {
-                    batches.push(currentBatch);
-                    currentBatch = [entry];
-                } else {
-                    currentBatch = candidate;
-                }
-            });
-            if (currentBatch.length) batches.push(currentBatch);
+        // Keep progress by icon name, not by generated JSON. Metadata edits therefore
+        // cannot restart the sequence or cause already-copied icons to repeat.
+        const currentSet = new Set(uniqueCurrentNames);
+        const cycleSet = new Set(progress.cycleNames);
+        if (progress.cycleNames.length && [...cycleSet].some(name => !currentSet.has(name))) {
+            // A narrower filter is being used: retain the overall copied-name history.
+        }
+        let remaining = output.filter(([name]) =>
+            !progress.copiedNames.has(normalizeLibraryIconName(name))
+        );
 
-            iconLibraryMetadataCopyBatches = {
-                signature: exportSignature,
-                batches,
-                nextIndex: 0
-            };
+        // If every icon in the current selection was already copied, start a fresh
+        // cycle only now, rather than resetting when metadata content changes.
+        if (!remaining.length) {
+            progress.copiedNames.clear();
+            progress.cycleNames = uniqueCurrentNames;
+            remaining = output.slice();
+        } else {
+            progress.cycleNames = [...new Set([...progress.cycleNames, ...uniqueCurrentNames])];
         }
 
-        const batchState = iconLibraryMetadataCopyBatches;
-        if (batchState.nextIndex >= batchState.batches.length) batchState.nextIndex = 0;
+        const batchTargetCharacters = 20000;
+        const batches = [];
+        let currentBatch = [];
+        remaining.forEach(entry => {
+            const candidate = [...currentBatch, entry];
+            const candidateText = JSON.stringify(Object.fromEntries(candidate), null, 2);
+            if (currentBatch.length && candidateText.length > batchTargetCharacters) {
+                batches.push(currentBatch);
+                currentBatch = [entry];
+            } else currentBatch = candidate;
+        });
+        if (currentBatch.length) batches.push(currentBatch);
 
-        const batchIndex = batchState.nextIndex;
-        const batch = batchState.batches[batchIndex];
+        const batch = batches[0];
         const text = JSON.stringify(Object.fromEntries(batch), null, 2);
-
         try {
             try {
                 await navigator.clipboard.writeText(text);
@@ -10518,22 +10544,25 @@ function getSelectedFinishCategories() {
                 if (!copied) throw clipboardError;
             }
 
-            batchState.nextIndex += 1;
-            const totalBatches = batchState.batches.length;
-            const progressLabel = batchState.nextIndex >= totalBatches
-                ? "Complete " + totalBatches + "/" + totalBatches + " · Copy Again"
-                : "Copy Metadata JSON (" + batchState.nextIndex + "/" + totalBatches + ")";
+            batch.forEach(([name]) => progress.copiedNames.add(normalizeLibraryIconName(name)));
+            saveIconMetadataCopyProgress(progress);
+
+            const remainingCount = remaining.length - batch.length;
+            const totalForCurrentSelection = uniqueCurrentNames.length;
+            const copiedForCurrentSelection = uniqueCurrentNames.filter(name => progress.copiedNames.has(name)).length;
+            const isComplete = copiedForCurrentSelection >= totalForCurrentSelection;
             if (iconLibraryCopyCategoryMetadataButton) {
-                iconLibraryCopyCategoryMetadataButton.textContent = progressLabel;
-                iconLibraryCopyCategoryMetadataButton.title =
-                    batchState.nextIndex >= totalBatches
-                        ? "All metadata batches copied. Click to start again."
-                        : (totalBatches - batchState.nextIndex) + " batch(es) remaining";
+                iconLibraryCopyCategoryMetadataButton.textContent = isComplete
+                    ? "Complete · Copy Again"
+                    : "Copy Metadata JSON (" + copiedForCurrentSelection + "/" + totalForCurrentSelection + " icons)";
+                iconLibraryCopyCategoryMetadataButton.title = isComplete
+                    ? "All icons in this selection have been copied. Click to start a new copy cycle."
+                    : remainingCount + " icon(s) remain in this selection; next click continues by icon name.";
             }
 
             showToast(
-                "Copied batch " + (batchIndex + 1) + "/" + totalBatches +
-                " — " + batch.length + " icon(s), " + text.length.toLocaleString() + " characters.",
+                "Copied " + batch.length + " icon(s) — " + remainingCount +
+                " remaining in this selection, " + text.length.toLocaleString() + " characters.",
                 "success"
             );
         } catch (error) {
