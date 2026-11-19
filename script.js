@@ -1159,62 +1159,14 @@ function detectIconCategories(iconName) {
         return true;
     }
 
-    // AI categories are translated into the existing Gallery taxonomy.
-    // Keep the app's established category names; do not create duplicate AI labels.
-    const AI_CATEGORY_MAP = {
-        "Accessibility": ["People"],
-        "Animals": ["Animals"],
-        "Arrows": ["Interface"],
-        "Audio & music": ["Music"],
-        "Buildings": ["Buildings"],
-        "Business": ["Commerce"],
-        "Communication": ["Interface"],
-        "Connectivity": ["Technology"],
-        "Devices": ["Technology"],
-        "Files": ["Documents"],
-        "Food & drink": ["Cuisine"],
-        "Gaming": ["Entertainment"],
-        "Health": ["Medical"],
-        "Home": ["Household", "Buildings"],
-        "Maps & travel": ["Travel"],
-        "Media": ["Entertainment"],
-        "Nature": ["Nature"],
-        "People": ["People"],
-        "Security": ["Security"],
-        "Shopping": ["Commerce"],
-        "Sports": ["Sports"],
-        "Time": ["Time"],
-        "Tools": ["Tools"],
-        "Transportation": ["Transport"],
-        "Weather": ["Nature"]
-    };
-
-    function mapAICategories(record) {
-        const suggestions = Array.isArray(record?.aiSuggestions) ? record.aiSuggestions : [];
-        const mapped = [];
-        for (const suggestion of suggestions) {
-            const sourceName = typeof suggestion === "string" ? suggestion : suggestion?.name;
-            if (!sourceName) continue;
-            const destinations = AI_CATEGORY_MAP[sourceName] || [];
-            destinations.forEach(category => {
-                if (STANDARD_ICON_CATEGORIES.includes(category) && !mapped.includes(category)) {
-                    mapped.push(category);
-                }
-            });
-        }
-        return mapped;
-    }
-
+    // Automatic categories are generated only by the local keyword classifier.
+    // AI-generated category data is intentionally ignored.
     function refreshProjectAutomaticCategories(project) {
         if (!project) return;
-        const hasSavedAI = Number(project.aiCategoriesVersion) >= 6 &&
-            Array.isArray(project.autoCategories) && project.autoCategories.length > 0;
-        if (!hasSavedAI) {
-            project.autoCategories = detectIconCategories(project.name || "");
-        }
-        project.autoCategories = hasSavedAI
-            ? migrateCategoryList(project.autoCategories)
-            : normalizeCategoryList(project.autoCategories);
+        project.autoCategories = normalizeCategoryList(
+            detectIconCategories(project.name || "")
+        );
+        delete project.aiCategoriesVersion;
         if (Array.isArray(project.manualCategories) && project.manualCategories.length) {
             project.manualCategories = normalizeCategoryList(project.manualCategories);
             project.categories = [...project.manualCategories];
@@ -1222,77 +1174,9 @@ function detectIconCategories(iconName) {
             project.category = project.manualCategories[0] || "Uncategorized";
         } else {
             project.categories = [...project.autoCategories];
-            project.categorySource = hasSavedAI ? "ai" : "automatic";
+            project.categorySource = "automatic";
             project.category = project.autoCategories[0] || "Uncategorized";
         }
-    }
-
-    // AI Batch and Icon Maker share this IndexedDB database when served from
-    // the same origin. Reading it never changes or removes AI review records.
-    async function syncAICategoriesFromDatabase() {
-        if (!("indexedDB" in window)) return;
-        let database;
-        try {
-            database = await new Promise((resolve, reject) => {
-                const request = indexedDB.open("icon-maker-ai-categorization", 1);
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-                request.onupgradeneeded = () => {
-                    // Do not create a competing schema if AI Batch has not run yet.
-                    request.transaction.abort();
-                };
-            });
-            if (!database.objectStoreNames.contains("results")) return;
-            const records = await new Promise((resolve, reject) => {
-                const tx = database.transaction("results", "readonly");
-                const request = tx.objectStore("results").getAll();
-                request.onsuccess = () => resolve(request.result || []);
-                request.onerror = () => reject(request.error);
-                tx.onerror = () => reject(tx.error);
-            });
-
-            const byName = new Map(records
-                .filter(record => Number(record.analysisVersion) >= 6)
-                .map(record => [normalizeIconProjectName(record.name), record]));
-
-            let changed = false;
-            projectManager.projects.forEach(project => {
-                if (project.status !== "finished" ||
-                    (Array.isArray(project.manualCategories) && project.manualCategories.length)) return;
-                const record = byName.get(normalizeIconProjectName(project.name));
-                if (!record) return;
-                const categories = mapAICategories(record);
-                if (!categories.length) return;
-
-                const same = Number(project.aiCategoriesVersion) >= Number(record.analysisVersion) &&
-                    Array.isArray(project.autoCategories) &&
-                    project.autoCategories.length === categories.length &&
-                    project.autoCategories.every((category, index) => category === categories[index]);
-                if (same) return;
-
-                project.autoCategories = categories;
-                project.aiCategoriesVersion = Number(record.analysisVersion);
-                project.categories = [...categories];
-                project.categorySource = "ai";
-                project.category = categories[0];
-                changed = true;
-            });
-
-            if (changed) {
-                saveProjectManager();
-                renderHomeProjects();
-                console.info("AI categories synced to Gallery.");
-            }
-        } catch (error) {
-            console.info("AI category sync is unavailable until AI Batch has created its database:", error);
-        } finally {
-            database?.close();
-        }
-    }
-
-    function normalizeIconProjectName(value) {
-        return String(value || "").trim().toLowerCase()
-            .replace(/[_\s]+/g, "-").replace(/-+/g, "-");
     }
 
     // Icon Maker Pro currently uses one fixed, shared category vocabulary.
@@ -1409,10 +1293,8 @@ function getSelectedFinishCategories() {
                 if (project.status !== "finished") return;
 
                 if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
-                    if (project.categorySource === "ai" || Number(project.aiCategoriesVersion) >= 6) {
-                        // AI-generated categories are automatic, not user decisions.
-                        // Never promote them into manual categories during migration.
-                    } else if (Array.isArray(project.categories) && project.categories.length) {
+                    if (project.categorySource !== "ai" && Number(project.aiCategoriesVersion) < 6 &&
+                        Array.isArray(project.categories) && project.categories.length) {
                         // Before this migration, categories[] was populated by the
                         // Finish dialog, so preserve the user's multi-select choices.
                         project.manualCategories = [...new Set(project.categories.filter(Boolean))];
@@ -1423,6 +1305,8 @@ function getSelectedFinishCategories() {
                     }
                 }
 
+                delete project.aiCategoriesVersion;
+                if (project.categorySource === "ai") project.categorySource = "automatic";
                 refreshProjectAutomaticCategories(project);
                 if (project.manualCategories?.length) {
                     project.categories = [...project.manualCategories];
@@ -10719,7 +10603,7 @@ function getSelectedFinishCategories() {
 
             const automatic = document.createElement("button");
             automatic.type = "button";
-            automatic.textContent = "Use automatic";
+            automatic.textContent = "Use keyword categories";
             automatic.onclick = () => {
                 project.manualCategories = null;
                 refreshProjectAutomaticCategories(project);
@@ -10728,7 +10612,7 @@ function getSelectedFinishCategories() {
                 renderProjectCategoryBadges(project);
                 renderHomeProjects();
                 renderManagementTable();
-                showToast("Automatic categories restored.", "success");
+                showToast("Keyword categories restored.", "success");
             };
 
             const cancel = document.createElement("button");
@@ -11663,10 +11547,6 @@ if (finishCategoryManuallyChanged) {
     renderHomeProjects();
     renderUnfinishedProjects();
     updateSVGSource();
-
-    // Load existing AI Batch classifications after the Gallery's first render.
-    // Manual categories remain authoritative and are never changed by this sync.
-    void syncAICategoriesFromDatabase();
 
     // Restore view mode preference
     try {
