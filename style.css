@@ -4369,7 +4369,8 @@ body.light-theme #save-project-button:hover {
 }
 
 .icon-library-search input,
-#icon-library-category-filter {
+#icon-library-category-filter,
+#icon-library-source-filter {
     box-sizing: border-box;
     height: 40px;
     border: 1px solid var(--border-default);
@@ -4392,7 +4393,8 @@ body.light-theme #save-project-button:hover {
     box-shadow: 0 0 0 2px var(--accent-light);
 }
 
-#icon-library-category-filter {
+#icon-library-category-filter,
+#icon-library-source-filter {
     width: min(220px, 26%);
     min-width: 145px;
     padding: 0 10px;
@@ -4804,3 +4806,24 @@ body.light-theme #save-project-button:hover {
         bottom: 14px;
     }
 }
+
+
+/* Category provenance labels in the Icon Library. */
+.icon-library-source-badge {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    padding: 3px 7px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    background: var(--bg-surface-raised);
+    color: var(--text-secondary);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.icon-library-source-badge.is-provided { border-color: rgba(34, 197, 94, .35); background: rgba(34, 197, 94, .10); color: #16a34a; }
+.icon-library-source-badge.is-manual { border-color: rgba(168, 85, 247, .35); background: rgba(168, 85, 247, .10); color: #a855f7; }
+.icon-library-source-badge.is-automatic { border-color: rgba(59, 130, 246, .30); background: rgba(59, 130, 246, .08); color: #3b82f6; }
+.icon-library-detail-title .icon-library-source-badge { width: fit-content; margin-top: 5px; }
