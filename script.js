@@ -1128,6 +1128,26 @@
         ]
     };
 
+    // Keep Uncategorized exclusive: it represents the absence of every real category.
+    // This shared normalizer is used by Gallery, Icon Library, editors and migrations.
+    function normalizeCategoryList(values) {
+        const items = Array.isArray(values) ? values : (values == null ? [] : [values]);
+        const unique = [];
+        const seen = new Set();
+
+        items.forEach(value => {
+            const category = String(value ?? "").trim();
+            if (!category) return;
+            const key = category.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            unique.push(category);
+        });
+
+        const assigned = unique.filter(category => category.toLowerCase() !== "uncategorized");
+        return assigned.length ? assigned : (unique.length ? ["Uncategorized"] : []);
+    }
+
    // Automatically detect all matching categories from an icon's name.
 function detectIconCategories(iconName) {
     const name = (iconName || "").toLowerCase()
@@ -1163,14 +1183,14 @@ function detectIconCategories(iconName) {
     function getProjectCategories(project) {
         if (!project) return ["Uncategorized"];
         if (Array.isArray(project.manualCategories) && project.manualCategories.length)
-            return [...new Set(project.manualCategories.filter(Boolean))];
+            return normalizeCategoryList(project.manualCategories);
         if (Array.isArray(project.autoCategories) && project.autoCategories.length)
-            return [...new Set(project.autoCategories.filter(Boolean))];
-        return detectIconCategories(project.name || "");
+            return normalizeCategoryList(project.autoCategories);
+        return normalizeCategoryList(detectIconCategories(project.name || ""));
     }
 
     function setProjectManualCategories(project, categories) {
-        const cleaned = [...new Set((categories || []).map(c => String(c).trim()).filter(Boolean))];
+        const cleaned = normalizeCategoryList(categories);
         if (!cleaned.length) return false;
         project.manualCategories = cleaned;
         project.categories = [...cleaned];
@@ -1232,7 +1252,13 @@ function detectIconCategories(iconName) {
         if (!hasSavedAI) {
             project.autoCategories = detectIconCategories(project.name || "");
         }
-        if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
+        project.autoCategories = normalizeCategoryList(project.autoCategories);
+        if (Array.isArray(project.manualCategories) && project.manualCategories.length) {
+            project.manualCategories = normalizeCategoryList(project.manualCategories);
+            project.categories = [...project.manualCategories];
+            project.categorySource = "manual";
+            project.category = project.manualCategories[0] || "Uncategorized";
+        } else {
             project.categories = [...project.autoCategories];
             project.categorySource = hasSavedAI ? "ai" : "automatic";
             project.category = project.autoCategories[0] || "Uncategorized";
@@ -1424,8 +1450,18 @@ function getSelectedFinishCategories() {
                 projectManager.projects = [];
             }
 
-            // Normalize category data without overwriting previously saved manual choices.
+            // Normalize every stored category field. Uncategorized is exclusive and
+            // must never coexist with an assigned manual, automatic or legacy category.
             projectManager.projects.forEach(project => {
+                if (Array.isArray(project.manualCategories) && project.manualCategories.length) {
+                    project.manualCategories = normalizeCategoryList(project.manualCategories);
+                }
+                if (Array.isArray(project.autoCategories) && project.autoCategories.length) {
+                    project.autoCategories = normalizeCategoryList(project.autoCategories);
+                }
+                if (Array.isArray(project.categories) && project.categories.length) {
+                    project.categories = normalizeCategoryList(project.categories);
+                }
                 if (project.status !== "finished") return;
 
                 if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
@@ -9706,9 +9742,8 @@ function getSelectedFinishCategories() {
         const scores = new Map();
         const projects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
 
-        const hasValues = value => Array.isArray(value)
-            ? value.some(item => String(item || "").trim())
-            : Boolean(String(value || "").trim());
+        const hasValues = value => normalizeCategoryList(value)
+            .some(category => category !== "Uncategorized");
 
         const getCategorySourceScore = project => {
             // Select the duplicate that actually carries the user's category data.
@@ -9759,10 +9794,7 @@ function getSelectedFinishCategories() {
     function getIconLibraryCategories(iconName, record, projectMap) {
         const project = projectMap.get(normalizeLibraryIconName(iconName));
         if (project) {
-            const cleanCategories = value => {
-                const values = Array.isArray(value) ? value : (value ? [value] : []);
-                return [...new Set(values.map(item => String(item || "").trim()).filter(Boolean))];
-            };
+            const cleanCategories = value => normalizeCategoryList(value);
 
             // Manual assignments always win, including legacy projects whose manual
             // selections were stored in the older categories/category fields.
@@ -9795,7 +9827,7 @@ function getSelectedFinishCategories() {
             ? record.lucide.categories.map(value => String(value).trim()).filter(Boolean)
             : [];
         const allowed = new Set(getAllIconCategories());
-        const recognized = [...new Set(official.filter(category => allowed.has(category)))];
+        const recognized = normalizeCategoryList(official.filter(category => allowed.has(category)));
         return recognized.length ? recognized : ["Uncategorized"];
     }
 
