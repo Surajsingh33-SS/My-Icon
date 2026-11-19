@@ -9717,8 +9717,36 @@ function getSelectedFinishCategories() {
     function getIconLibraryCategories(iconName, record, projectMap) {
         const project = projectMap.get(iconName);
         if (project) {
-            const categories = getProjectCategories(project);
-            return categories.length ? categories : ["Uncategorized"];
+            const cleanCategories = value => {
+                const values = Array.isArray(value) ? value : (value ? [value] : []);
+                return [...new Set(values.map(item => String(item || "").trim()).filter(Boolean))];
+            };
+
+            // Manual assignments always win, including legacy projects whose manual
+            // selections were stored in the older categories/category fields.
+            const manual = cleanCategories(project.manualCategories);
+            if (manual.length) return manual;
+
+            if (project.categorySource === "manual") {
+                const legacyManual = cleanCategories(project.categories);
+                if (legacyManual.length) return legacyManual;
+                const legacyPrimary = cleanCategories(project.category);
+                if (legacyPrimary.length) return legacyPrimary;
+            }
+
+            // Prefer generated categories when there is no manual assignment.
+            const automatic = cleanCategories(project.autoCategories);
+            if (automatic.length) return automatic;
+
+            // Older Gallery projects often stored their selected categories only
+            // in categories/category. Read them before falling back to name rules.
+            const savedCategories = cleanCategories(project.categories);
+            if (savedCategories.length) return savedCategories;
+            const savedPrimary = cleanCategories(project.category);
+            if (savedPrimary.length) return savedPrimary;
+
+            const detected = getProjectCategories(project);
+            return detected.length ? detected : ["Uncategorized"];
         }
 
         const official = Array.isArray(record?.lucide?.categories)
