@@ -12722,6 +12722,44 @@ if (finishCategoryManuallyChanged) {
         btn.title = willCollapse ? "Expand" : "Collapse";
     });
 
+    // Responsive editor side panels: preserve the existing drawing/editor logic.
+    const editorLayout = document.querySelector(".editor");
+    const layersPanelToggle = document.getElementById("layers-panel-toggle");
+    const svgPanelToggle = document.getElementById("svg-panel-toggle");
+    const editorPanelClose = document.getElementById("editor-panel-close");
+
+    function closeResponsiveEditorPanels() {
+        editorLayout?.classList.remove("panels-open", "svg-open");
+        layersPanelToggle?.setAttribute("aria-expanded", "false");
+        svgPanelToggle?.setAttribute("aria-expanded", "false");
+    }
+
+    layersPanelToggle?.addEventListener("click", () => {
+        const willOpen = !editorLayout?.classList.contains("panels-open");
+        closeResponsiveEditorPanels();
+        if (willOpen) {
+            editorLayout?.classList.add("panels-open");
+            layersPanelToggle.setAttribute("aria-expanded", "true");
+        }
+    });
+
+    svgPanelToggle?.addEventListener("click", () => {
+        const willOpen = !editorLayout?.classList.contains("svg-open");
+        closeResponsiveEditorPanels();
+        if (willOpen) {
+            editorLayout?.classList.add("svg-open");
+            svgPanelToggle.setAttribute("aria-expanded", "true");
+        }
+    });
+
+    editorPanelClose?.addEventListener("click", closeResponsiveEditorPanels);
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && (editorLayout?.classList.contains("panels-open") || editorLayout?.classList.contains("svg-open"))) {
+            closeResponsiveEditorPanels();
+        }
+    });
+
     showGuidelinesCheckbox?.addEventListener("change", () => {
         if (workspaceGuidelines) {
             workspaceGuidelines.style.display = showGuidelinesCheckbox.checked ? "inline" : "none";
