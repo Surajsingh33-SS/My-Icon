@@ -7617,3 +7617,198 @@ body:has(#home-screen.show) .home-projects {
         font-size: 11px;
     }
 }
+
+
+/* Draggable, compact floating Layers and Measurements panels. */
+@media (max-width: 1190px) {
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel {
+        display: block !important;
+        position: fixed !important;
+        z-index: 1400;
+        height: auto;
+        max-height: min(52dvh, 380px);
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        width: min(300px, calc(100vw - 16px));
+        padding: 0;
+        border: 1px solid var(--border-strong);
+        border-radius: 11px;
+        background: var(--bg-panel);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+        animation: none !important;
+        transform: none !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(var(--accent-rgb), 0.55) transparent;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel::-webkit-scrollbar,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel::-webkit-scrollbar-thumb,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel::-webkit-scrollbar-thumb {
+        border-radius: 99px;
+        background: rgba(var(--accent-rgb), 0.55);
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .editor-panel-drawer-heading,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .editor-panel-drawer-heading {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 34px;
+        padding: 5px 7px 5px 10px;
+        border-bottom: 1px solid var(--border-subtle);
+        background: var(--bg-panel);
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+    }
+
+    body:not(:has(#home-screen.show)) .editor-panel-drawer-heading.is-dragging {
+        cursor: grabbing;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .editor-panel-drawer-heading h3,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .editor-panel-drawer-heading h3 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .editor-panel-drawer-heading p,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .editor-panel-drawer-heading p {
+        display: none;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .editor-panel-close,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .editor-panel-close {
+        flex: 0 0 23px;
+        width: 23px;
+        height: 23px;
+        min-height: 23px;
+        padding: 0;
+        border-radius: 6px;
+        font-size: 17px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel > .layers-panel,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel > .measurement-panel {
+        display: block !important;
+        width: 100%;
+        min-width: 0;
+        border: 0;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel > .measurement-panel,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel > .layers-panel,
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel > .svg,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel > .svg {
+        display: none !important;
+    }
+
+    /* Remove the duplicate in-panel Layers title; the draggable bar labels it. */
+    body:not(:has(#home-screen.show)) .editor.layers-open .layers-heading {
+        display: none !important;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .layers-panel .collapse-content {
+        padding: 6px 7px 7px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .layer-list {
+        display: flex;
+        gap: 3px;
+        max-height: min(42dvh, 310px);
+        overflow-y: auto;
+        padding-right: 2px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .layer-item {
+        min-height: 29px;
+        padding: 4px 6px;
+        border-radius: 7px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .layer-name {
+        max-width: 110px;
+        font-size: 10px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .layer-type {
+        font-size: 9px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .layer-controls {
+        gap: 2px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .layer-controls button {
+        width: 20px;
+        height: 20px;
+        border-radius: 5px;
+    }
+
+    /* Measurements keeps its compact two-column field layout. */
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-heading h3,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-heading .collapse-btn {
+        display: none !important;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-heading {
+        display: flex;
+        min-height: 0;
+        padding: 6px 9px 3px;
+        border: 0;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open #measurement-selection {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 10px;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-panel > .collapse-content {
+        padding: 4px 8px 8px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-field {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 3px;
+        padding: 4px 6px;
+        font-size: 10px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-field input[type="number"] {
+        width: 100%;
+        min-width: 0;
+        height: 25px;
+        padding: 2px 5px;
+        box-sizing: border-box;
+        font-size: 10px;
+    }
+}
