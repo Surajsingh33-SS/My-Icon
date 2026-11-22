@@ -4363,6 +4363,22 @@ body.light-theme #save-project-button:hover {
         gap: 9px;
     }
 
+    .project-info-footer {
+        gap: 5px;
+        padding-top: 6px;
+    }
+
+    .project-info-footer .project-utility-button {
+        padding: 4px 8px;
+        line-height: 1.2;
+    }
+
+    .project-info-footer > .project-export-button {
+        min-height: 36px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+
     .project-info-heading h3 {
         font-size: 21px;
     }
