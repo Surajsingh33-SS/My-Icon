@@ -1401,23 +1401,16 @@ html:not(.touch-hover-disabled) .home-card-fav-star.active{
     display: block;
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis;
-    text-indent: 0;
-}
-
-.home-project-grid.list-view .home-project-name.is-overflowing {
     text-overflow: clip;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
-html:not(.touch-hover-disabled) .home-project-grid.list-view .home-project-card:hover .home-project-name.is-overflowing {
-    animation: gallery-name-slide 3.2s ease-in-out infinite alternate;
-}
-
-@keyframes gallery-name-slide {
-    from { text-indent: 0; }
-    to { text-indent: calc(-1 * var(--gallery-name-overflow, 0px)); }
+.home-project-grid.list-view .home-project-name::-webkit-scrollbar {
+    display: none;
 }
 
 .home-project-grid.list-view .home-card-fav-star {
