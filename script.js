@@ -11178,6 +11178,37 @@ function getSelectedFinishCategories() {
             return;
         }
 
+        if (!document.documentElement.dataset.galleryTouchTooltips) {
+            document.documentElement.dataset.galleryTouchTooltips = "true";
+            let activeTouchCard = null;
+
+            const updateTouchTooltip = (target) => {
+                const nextCard = target?.closest?.(".home-project-card") || null;
+                if (activeTouchCard && activeTouchCard !== nextCard) {
+                    activeTouchCard.classList.remove("touch-tooltip-active");
+                }
+                activeTouchCard = nextCard;
+                if (activeTouchCard) activeTouchCard.classList.add("touch-tooltip-active");
+            };
+
+            document.addEventListener("touchstart", event => {
+                const touch = event.touches[0];
+                if (touch) updateTouchTooltip(document.elementFromPoint(touch.clientX, touch.clientY));
+            }, { passive: true });
+
+            document.addEventListener("touchmove", event => {
+                const touch = event.touches[0];
+                if (touch) updateTouchTooltip(document.elementFromPoint(touch.clientX, touch.clientY));
+            }, { passive: true });
+
+            const clearTouchTooltip = () => {
+                if (activeTouchCard) activeTouchCard.classList.remove("touch-tooltip-active");
+                activeTouchCard = null;
+            };
+            document.addEventListener("touchend", clearTouchTooltip, { passive: true });
+            document.addEventListener("touchcancel", clearTouchTooltip, { passive: true });
+        }
+
         function createHomeProjectCard(project) {
             const card = document.createElement("div");
             card.className = `home-project-card ${selectedHomeProject?.id === project.id ? "active" : ""
