@@ -5832,7 +5832,11 @@ body.light-theme #save-project-button:hover {
         user-select: none;
         -webkit-user-select: none;
         cursor: grab;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+        border-color: color-mix(in srgb, var(--accent) 68%, var(--border-default));
+        box-shadow:
+            0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent),
+            0 0 10px color-mix(in srgb, var(--accent) 42%, transparent),
+            0 4px 16px rgba(0, 0, 0, 0.22);
     }
 
     .mobile-sidebar-toggle {
