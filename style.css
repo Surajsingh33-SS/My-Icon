@@ -6633,9 +6633,18 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 
     .editor-panel-toggle.editor-delete-toggle {
+        width: 34px;
+        min-width: 34px;
+        padding: 7px;
         border-color: var(--danger-border);
         background: var(--danger-bg);
         color: var(--danger);
+    }
+
+    .editor-panel-toggle.editor-delete-toggle .panel-toggle-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .editor-panel-toggle.editor-delete-toggle:active {
