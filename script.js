@@ -11191,7 +11191,11 @@ function getSelectedFinishCategories() {
                 if (activeTouchCard) activeTouchCard.classList.add("touch-tooltip-active");
             };
 
+            // On hybrid laptops, a touch can leave the browser's emulated :hover
+            // stuck on the first card. While touch interaction is active, let the
+            // class below control the tooltip instead of the emulated hover state.
             document.addEventListener("touchstart", event => {
+                document.documentElement.classList.add("gallery-touch-mode");
                 const touch = event.touches[0];
                 if (touch) updateTouchTooltip(document.elementFromPoint(touch.clientX, touch.clientY));
             }, { passive: true });
@@ -11207,6 +11211,11 @@ function getSelectedFinishCategories() {
             };
             document.addEventListener("touchend", clearTouchTooltip, { passive: true });
             document.addEventListener("touchcancel", clearTouchTooltip, { passive: true });
+
+            // Restore normal mouse hover as soon as the user uses a mouse/trackpad.
+            document.addEventListener("mousemove", () => {
+                document.documentElement.classList.remove("gallery-touch-mode");
+            }, { passive: true });
         }
 
         function createHomeProjectCard(project) {
