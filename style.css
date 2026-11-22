@@ -998,7 +998,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     padding: 16px 28px;
     flex-shrink: 0;
     container-type: inline-size;}
-
 .home-search {
     flex: 1 1 250px;
     min-width: 250px;
@@ -1998,7 +1997,6 @@ html:not(.touch-hover-disabled) .project-details-close:hover{
 
     .project-related {        display: none;
     }
-
     .project-preview {
         flex-basis: 34%;
     }
@@ -2997,8 +2995,7 @@ html:not(.touch-hover-disabled) .res-btn:hover{
     }
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+        transform: translateY(0) scale(1);    }
 }
 
 @keyframes toastOut {
@@ -3997,7 +3994,6 @@ body.light-theme #save-project-button:hover{
     display: flex;    align-items: center;
     justify-content: center;
 }
-
 .styled-select[data-select="grid-mode"] .styled-select-label svg {
     width: 19px;
     height: 19px;
@@ -4997,8 +4993,7 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
     border-radius: 999px;
     background: var(--bg-surface-raised);
     color: var(--text-secondary);
-    font-size: 9px;
-    font-weight: 700;
+    font-size: 9px;    font-weight: 700;
     line-height: 1.2;
     white-space: nowrap;
 }
@@ -5698,7 +5693,7 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
     }
 
     .home-project-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 7px;
     }
 
@@ -5997,8 +5992,7 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 
 /* Keep the future home-page action placeholders desktop-only.
    Match the home-page selector specificity so this overrides its display rule. */
-@media (max-width: 760px) {
-    body:has(#home-screen.show) .topbar .actions > .home-action-placeholder {
+@media (max-width: 760px) {    body:has(#home-screen.show) .topbar .actions > .home-action-placeholder {
         display: none !important;
     }
 }
