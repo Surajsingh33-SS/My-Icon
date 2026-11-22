@@ -5355,7 +5355,7 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
         min-width: 0;
         min-height: 0;
         flex: 1 1 auto;
-        overflow: hidden;
+        overflow: visible;
     }
 
     /* Keep the navbar fixed while the gallery owns its vertical scrolling. */
