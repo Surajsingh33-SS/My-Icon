@@ -5724,7 +5724,7 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         gap: 7px;
     }
 
-    /* Keep the save-state indicator beside the logo, but omit the project name. */
+    /* Show the existing project name and its existing Saved status beside the logo. */
     .topbar-brand > .topbar-divider {
         display: block;
     }
@@ -5732,10 +5732,14 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     .topbar-brand > .topbar-project-info {
         display: flex;
         min-width: 0;
+        gap: 6px;
     }
 
     .topbar-project-info .active-project-name {
-        display: none !important;
+        display: inline-block !important;
+        max-width: 92px;
+        font-size: 11px;
+        white-space: nowrap;
     }
 
     .topbar-project-info .save-pill {
@@ -5786,18 +5790,6 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         display: none !important;
     }
 
-    .tablet-category-label:not([hidden]) {
-        display: block;
-        flex: 0 1 auto;
-        margin-left: auto;
-        max-width: 150px;
-        overflow: hidden;
-        color: var(--text-secondary);
-        font-size: 12px;
-        font-weight: 600;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
 }
 
 /* Hide the vertical brand divider on mobile only (600px and below). */
@@ -5826,5 +5818,32 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 @media (min-width: 761px) {
     .mobile-new-icon-button {
         display: none !important;
+    }
+}
+
+/* Keep File popovers floating outside the navigation on every mobile width. */
+@media (max-width: 760px) {
+    .topbar,
+    .topbar .menu {
+        overflow: visible !important;
+    }
+
+    .topbar .menu {
+        position: relative;
+    }
+
+    .topbar .file-menu-wrapper {
+        position: relative;
+        z-index: 1201;
+    }
+
+    .topbar .file-menu-wrapper > .file-dropdown {
+        position: absolute !important;
+        top: calc(100% + 8px);
+        left: 0;
+        z-index: 1202;
+        width: min(260px, calc(100vw - 16px));
+        max-height: min(70vh, 520px);
+        overflow-y: auto;
     }
 }
