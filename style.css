@@ -922,9 +922,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* Home Navbar */
 .home-navbar {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     padding: 14px 28px;
     border-bottom: 1px solid var(--border-subtle);
     background: var(--bg-surface);
@@ -933,9 +934,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .home-nav-options {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.home-navbar-actions {
+    margin-left: auto;
 }
 
 .home-nav-option {
@@ -5820,7 +5829,10 @@ body.light-theme #save-project-button:hover {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        position: static;
+        position: absolute;
+        left: -46px;
+        top: 50%;
+        transform: translateY(-50%);
         flex: 0 0 38px;
         width: 38px;
         height: 38px;
@@ -5835,14 +5847,18 @@ body.light-theme #save-project-button:hover {
     }
 
     .home-navbar {
-        justify-content: flex-start;
+        justify-content: flex-end;
         gap: 8px;
         padding: 8px 10px;
+        min-height: 54px;
     }
 
     .home-nav-options {
-        min-width: 0;
-        flex: 1 1 auto;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        min-width: max-content;
+        flex: 0 0 auto;
         gap: 4px;
     }
 
