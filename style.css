@@ -7396,3 +7396,9 @@ body:has(#home-screen.show) .home-projects {
         display: none !important;
     }
 }
+
+
+/* The SVG Source control uses a close icon, not a rotating collapse indicator. */
+.svg-source-close-btn[aria-expanded="false"] img {
+    transform: none;
+}
