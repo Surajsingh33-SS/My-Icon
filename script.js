@@ -10732,6 +10732,42 @@ function getSelectedFinishCategories() {
         }
     });
 
+    // At tablet widths, place the existing File/Gallery/New Icon navigation
+    // beside the Uncategorized gallery heading without replacing its event handlers.
+    function syncTabletGalleryMenuPlacement() {
+        const topbar = document.querySelector(".topbar");
+        const menu = topbar?.querySelector(":scope > .menu") ||
+            document.querySelector(".tablet-gallery-menu-slot > .menu");
+        const homeEditButton = document.getElementById("home-edit-button");
+        const homeNavbarActions = document.querySelector(".home-navbar-actions");
+        const tabletRange = window.innerWidth >= 601 && window.innerWidth <= 760;
+        const uncategorizedHeader = homeProjectGrid?.querySelector(
+            '.gallery-category-group[data-category="Uncategorized"] .gallery-category-header'
+        );
+
+        if (tabletRange && galleryViewCategory === "categories" && uncategorizedHeader && menu && homeEditButton) {
+            let slot = uncategorizedHeader.querySelector(".tablet-gallery-menu-slot");
+            if (!slot) {
+                slot = document.createElement("div");
+                slot.className = "tablet-gallery-menu-slot";
+                uncategorizedHeader.appendChild(slot);
+            }
+            slot.append(menu, homeEditButton);
+            return;
+        }
+
+        if (menu && topbar) {
+            const actions = topbar.querySelector(":scope > .actions");
+            topbar.insertBefore(menu, actions || null);
+        }
+        if (homeEditButton && homeNavbarActions && homeEditButton.parentElement !== homeNavbarActions) {
+            homeNavbarActions.appendChild(homeEditButton);
+        }
+        homeProjectGrid?.querySelectorAll(".tablet-gallery-menu-slot").forEach(slot => slot.remove());
+    }
+
+    window.addEventListener("resize", syncTabletGalleryMenuPlacement);
+
     function renderHomeProjects() {
         if (!homeProjectGrid) return;
         homeProjectGrid.innerHTML = "";
@@ -10967,6 +11003,7 @@ function getSelectedFinishCategories() {
 
         updateGlobalCustomizationState(false);
         updateProjectCounters();
+        syncTabletGalleryMenuPlacement();
     }
 
     function updateHomeProjectSelection() {
