@@ -11266,6 +11266,11 @@ function getSelectedFinishCategories() {
 
             starBtn.addEventListener("click", e => {
                 e.stopPropagation();
+
+                // On compact screens, favorites are managed only from the
+                // selected project's preview panel, never directly on a tile.
+                if (window.matchMedia("(max-width: 760px)").matches) return;
+
                 project.favorite = !project.favorite;
                 starBtn.classList.toggle("active", project.favorite);
                 starBtn.innerHTML = project.favorite ? "★" : "☆";
