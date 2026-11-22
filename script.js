@@ -12775,6 +12775,53 @@ if (finishCategoryManuallyChanged) {
     const svgPanelToggle = document.getElementById("svg-panel-toggle");
     const editorPanelClose = document.getElementById("editor-panel-close");
     const responsiveEditorPanel = document.getElementById("code-panel");
+    const responsivePanelDragHandle = responsiveEditorPanel?.querySelector(".editor-panel-drawer-heading");
+
+    // Drag either floating panel by its compact title bar. The panel remains
+    // fixed to the viewport and never changes the canvas layout.
+    if (responsivePanelDragHandle && responsiveEditorPanel) {
+        let activePanelDrag = null;
+
+        responsivePanelDragHandle.addEventListener("pointerdown", event => {
+            if (event.target.closest("button")) return;
+            const panel = editorLayout?.classList.contains("measurements-open")
+                ? "measurements-open"
+                : editorLayout?.classList.contains("layers-open")
+                    ? "layers-open"
+                    : null;
+            if (!panel || event.button !== 0) return;
+
+            const position = responsivePanelPositions[panel];
+            if (!position) return;
+            activePanelDrag = {
+                pointerId: event.pointerId,
+                panel,
+                offsetX: event.clientX - position.left,
+                offsetY: event.clientY - position.top
+            };
+            responsivePanelDragHandle.setPointerCapture(event.pointerId);
+            responsivePanelDragHandle.classList.add("is-dragging");
+            event.preventDefault();
+        });
+
+        responsivePanelDragHandle.addEventListener("pointermove", event => {
+            if (!activePanelDrag || event.pointerId !== activePanelDrag.pointerId) return;
+            const width = responsiveEditorPanel.getBoundingClientRect().width;
+            const position = responsivePanelPositions[activePanelDrag.panel];
+            position.left = Math.max(8, Math.min(event.clientX - activePanelDrag.offsetX, window.innerWidth - width - 8));
+            position.top = Math.max(8, Math.min(event.clientY - activePanelDrag.offsetY, window.innerHeight - 70));
+            responsiveEditorPanel.style.left = `${Math.round(position.left)}px`;
+            responsiveEditorPanel.style.top = `${Math.round(position.top)}px`;
+        });
+
+        const finishPanelDrag = event => {
+            if (!activePanelDrag || event.pointerId !== activePanelDrag.pointerId) return;
+            activePanelDrag = null;
+            responsivePanelDragHandle.classList.remove("is-dragging");
+        };
+        responsivePanelDragHandle.addEventListener("pointerup", finishPanelDrag);
+        responsivePanelDragHandle.addEventListener("pointercancel", finishPanelDrag);
+    }
 
     function closeResponsiveEditorPanels() {
         editorLayout?.classList.remove("layers-open", "measurements-open", "panels-open", "svg-open");
@@ -12783,30 +12830,35 @@ if (finishCategoryManuallyChanged) {
         svgPanelToggle?.setAttribute("aria-expanded", "false");
     }
 
+    const responsivePanelPositions = {
+        "layers-open": null,
+        "measurements-open": null
+    };
+
     function positionResponsiveEditorPanel(panel) {
         if (!responsiveEditorPanel) return;
 
-        // Measurements opens as a compact vertical sidebar directly below its
-        // own button, in the gap between the controls and the canvas.
-        if (panel === "measurements-open") {
-            const buttonRect = measurementPanelToggle?.getBoundingClientRect();
-            if (!buttonRect) return;
-            const width = Math.min(280, window.innerWidth - 16);
-            const centeredLeft = buttonRect.left + (buttonRect.width / 2) - (width / 2);
-            const left = Math.max(8, Math.min(centeredLeft, window.innerWidth - width - 8));
-            responsiveEditorPanel.style.top = `${Math.round(buttonRect.bottom + 6)}px`;
-            responsiveEditorPanel.style.left = `${Math.round(left)}px`;
-            responsiveEditorPanel.style.width = `${Math.round(width)}px`;
-            return;
+        const width = Math.min(panel === "layers-open" ? 300 : 280, window.innerWidth - 16);
+        let position = responsivePanelPositions[panel];
+
+        // First opening starts near its own control. After that, keep the
+        // user's chosen position for this panel.
+        if (!position) {
+            const toggle = panel === "layers-open" ? layersPanelToggle : measurementPanelToggle;
+            const rect = toggle?.getBoundingClientRect();
+            if (!rect) return;
+            const left = rect.left + (rect.width / 2) - (width / 2);
+            position = {
+                left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
+                top: rect.bottom + 6
+            };
+            responsivePanelPositions[panel] = position;
         }
 
-        const heading = document.querySelector(".editor .workspace-heading");
-        if (!heading) return;
-        const rect = heading.getBoundingClientRect();
-        const left = Math.max(8, rect.left);
-        const width = Math.max(0, Math.min(rect.width, window.innerWidth - left - 8));
-        responsiveEditorPanel.style.top = `${Math.round(rect.bottom + 6)}px`;
-        responsiveEditorPanel.style.left = `${Math.round(left)}px`;
+        position.left = Math.max(8, Math.min(position.left, window.innerWidth - width - 8));
+        position.top = Math.max(8, Math.min(position.top, window.innerHeight - 70));
+        responsiveEditorPanel.style.top = `${Math.round(position.top)}px`;
+        responsiveEditorPanel.style.left = `${Math.round(position.left)}px`;
         responsiveEditorPanel.style.width = `${Math.round(width)}px`;
     }
 
