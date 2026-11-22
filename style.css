@@ -7512,3 +7512,108 @@ body:has(#home-screen.show) .home-projects {
         width: min(480px, 54dvh, calc(100% - 104px));
     }
 }
+
+
+/* Measurements: compact sidebar that drops down from its own toolbar button. */
+@media (max-width: 1190px) {
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel {
+        display: block !important;
+        position: fixed !important;
+        height: fit-content;
+        max-height: none;
+        min-height: 0;
+        overflow: visible;
+        width: min(280px, calc(100vw - 16px));
+        padding: 0;
+        border: 1px solid var(--border-strong);
+        border-radius: 12px;
+        background: var(--bg-panel);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+        transform-origin: top center;
+        animation: measurement-sidebar-drop 180ms ease-out both;
+    }
+
+    @keyframes measurement-sidebar-drop {
+        from {
+            opacity: 0;
+            transform: scaleY(0.72) translateY(-5px);
+        }
+        to {
+            opacity: 1;
+            transform: scaleY(1) translateY(0);
+        }
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .editor-panel-drawer-heading,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-heading h3,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-heading .collapse-btn {
+        display: none !important;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel > .measurement-panel {
+        display: block !important;
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        border-radius: inherit;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-heading {
+        display: flex;
+        min-height: 0;
+        padding: 8px 11px 5px;
+        border: 0;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open #measurement-selection {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 10px;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-panel > .collapse-content {
+        padding: 5px 9px 9px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-fields > p {
+        grid-column: 1 / -1;
+        margin: 0;
+        padding: 5px 2px;
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-field {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        padding: 5px 7px;
+        font-size: 10px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-field label {
+        line-height: 1.2;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-field input[type="number"] {
+        width: 100%;
+        min-width: 0;
+        height: 27px;
+        padding: 3px 5px;
+        box-sizing: border-box;
+        font-size: 11px;
+    }
+}
