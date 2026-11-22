@@ -7333,3 +7333,22 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         background: transparent;
     }
 }
+
+/* Editor-only scrollbar auto-hide. No scrollbar width, height, or overflow
+   settings are changed; the thumb fades out after scrolling becomes idle. */
+body:not(:has(#home-screen.show)) .editor .scrollbar-auto-hide {
+    scrollbar-color: transparent transparent !important;
+}
+
+body:not(:has(#home-screen.show)) .editor .scrollbar-auto-hide.scrollbar-active {
+    scrollbar-color: rgba(var(--accent-rgb), 0.65) transparent !important;
+}
+
+body:not(:has(#home-screen.show)) .editor .scrollbar-auto-hide::-webkit-scrollbar-thumb {
+    background-color: transparent !important;
+    transition: background-color 0.35s ease;
+}
+
+body:not(:has(#home-screen.show)) .editor .scrollbar-auto-hide.scrollbar-active::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--accent-rgb), 0.65) !important;
+}
