@@ -1138,6 +1138,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
     color: var(--accent);
 }
 
+/* The category filter uses a real SVG icon in compact mode. */
+.category-compact-icon {
+    display: none;
+}
+
 /* Switch filter labels to icons only when the search field is about to reach its minimum width. */
 @media (max-width: 1066px) {
     .home-control-select {
@@ -1160,6 +1165,24 @@ input[type="range"]::-webkit-slider-thumb:hover {
         color: var(--text-secondary);
         font-size: 18px;
         line-height: 1;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .home-category-control::before {
+        content: none;
+        display: none;
+    }
+
+    .home-category-control .category-compact-icon {
+        position: absolute;
+        display: block;
+        width: 18px;
+        height: 18px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--text-secondary);
         pointer-events: none;
         z-index: 2;
     }
