@@ -7221,3 +7221,56 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         min-width: 0;
     }
 }
+
+
+/* Mobile editor refinements: rotate the Tools label and keep Curve path
+   outside the horizontally scrolling tool strip. */
+@media (max-width: 760px) {
+    body:not(:has(#home-screen.show)) .editor .tools-panel {
+        grid-template-columns: 44px minmax(0, 1fr);
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .collapse-heading {
+        flex-direction: column;
+        justify-content: center;
+        gap: 10px;
+        width: 44px;
+        min-width: 44px;
+        padding: 10px 4px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .collapse-heading h3 {
+        flex: 0 0 auto;
+        margin: 0;
+        white-space: nowrap;
+        transform: rotate(-90deg);
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .collapse-content {
+        display: contents;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list {
+        grid-column: 2;
+        grid-row: 1;
+        padding: 8px 10px 8px 4px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .path-style-control {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        margin: 0 10px 10px;
+        padding: 8px 10px;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .path-style-control > label:first-child {
+        white-space: nowrap;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .properties-panel {
+        grid-row: 3;
+    }
+}
