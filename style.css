@@ -5114,7 +5114,9 @@ body.light-theme #save-project-button:hover {
 
     /* Gallery: navigation first, then the selected view. */
     .home-screen {
-        inset: var(--mobile-topbar-height, 58px) 0 0;
+        /* Match the 48px mobile topbar exactly; the <=600px rule below
+           overrides this with the taller two-row topbar height. */
+        inset: 48px 0 0;
         flex-direction: column;
         overflow: hidden;
     }
