@@ -6133,7 +6133,7 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 
     .topbar .file-menu-wrapper > .file-dropdown {
         position: fixed !important;
-        top: 56px;
+        top: 8px;
         left: 8px;
         right: auto;
         z-index: 2000;
@@ -6141,12 +6141,6 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         max-height: min(70vh, 520px);
         overflow-x: hidden;
         overflow-y: auto;
-    }
-}
-
-@media (max-width: 480px) {
-    .topbar .file-menu-wrapper > .file-dropdown {
-        top: 84px;
     }
 }
 
