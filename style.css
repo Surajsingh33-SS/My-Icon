@@ -5668,9 +5668,10 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     display: inline-flex !important;
 }
 
-/* Keep the future home-page action placeholders desktop-only. */
+/* Keep the future home-page action placeholders desktop-only.
+   Match the home-page selector specificity so this overrides its display rule. */
 @media (max-width: 760px) {
-    .topbar .actions > .home-action-placeholder {
+    body:has(#home-screen.show) .topbar .actions > .home-action-placeholder {
         display: none !important;
     }
 }
