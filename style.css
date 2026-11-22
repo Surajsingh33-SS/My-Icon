@@ -6605,8 +6605,11 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 @media (max-width: 1190px) {
     .editor-panel-actions {
         display: flex;
+        flex: 0 0 auto;
         align-items: center;
+        justify-content: space-between;
         gap: 7px;
+        width: max-content;
         margin-left: auto;
     }
 
