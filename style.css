@@ -7274,3 +7274,24 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         grid-row: 3;
     }
 }
+
+
+/* Mobile editor: replace the vertical Tools label with its existing
+   collapse control, keeping the control in the same left-side slot. */
+@media (max-width: 760px) {
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .collapse-heading h3 {
+        display: none;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .collapse-heading {
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        padding: 10px 4px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .collapse-heading .collapse-btn {
+        margin: 0;
+        flex: 0 0 auto;
+    }
+}
