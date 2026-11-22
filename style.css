@@ -8296,3 +8296,12 @@ body:not(:has(#home-screen.show)) .transform-toolbar {
         row-gap: 5px;
     }
 }
+
+
+@media (min-width: 1191px) {
+    .editor.transform-sidebar-open .workspace-section {
+        width: auto;
+        max-width: none;
+        margin-right: var(--transform-sidebar-width);
+    }
+}
