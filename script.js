@@ -376,8 +376,12 @@
     }
 
     function getFloatingToggleScreenKey() {
-        const viewport = getFloatingToggleViewport();
-        return `${viewport.width}x${viewport.height}`;
+        // Use the physical display dimensions, not innerHeight: mobile browser
+        // bars can change the viewport height between visits and refreshes.
+        const displayWidth = window.screen?.width || window.innerWidth;
+        const displayHeight = window.screen?.height || window.innerHeight;
+        const orientation = displayWidth <= displayHeight ? "portrait" : "landscape";
+        return `${displayWidth}x${displayHeight}:${orientation}`;
     }
 
     function readFloatingTogglePositions() {
