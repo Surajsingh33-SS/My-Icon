@@ -7063,8 +7063,8 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 }
 
 /* Compact mobile editor workspace heading.
-   Keep the workspace size controls on one line down to 311px. */
-@media (max-width: 760px) {
+   Keep the compact layout limited to widths of 440px and below. */
+@media (max-width: 440px) {
     .editor .workspace-heading {
         gap: 6px;
         padding: 7px 9px;
