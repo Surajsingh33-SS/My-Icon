@@ -5890,12 +5890,15 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 }
 
 
-/* Mobile-only accent placement: keep the picker in Preferences, not the home header. */
-@media (max-width: 760px) {
+/* Hide the home-header accent picker on compact layouts. */
+@media (max-width: 920px) {
     .home-navbar-actions > .accent-palette {
         display: none;
     }
+}
 
+/* Keep the replacement picker inside mobile Preferences. */
+@media (max-width: 760px) {
     .home-view-section#home-view-settings .mobile-preferences-accent-card {
         display: flex;
     }
