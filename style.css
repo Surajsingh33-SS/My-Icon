@@ -7156,3 +7156,68 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         row-gap: 4px;
     }
 }
+
+
+/* Mobile editor: keep the Tools heading beside a horizontally scrollable
+   tool strip. The desktop editor and home screen are intentionally untouched. */
+@media (max-width: 760px) {
+    body:not(:has(#home-screen.show)) .editor .tools-panel {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: start;
+        width: 100%;
+        max-height: none;
+        overflow: hidden;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .collapse-heading {
+        grid-column: 1;
+        grid-row: 1;
+        position: static;
+        display: flex;
+        align-items: center;
+        align-self: start;
+        gap: 6px;
+        padding: 12px 8px 12px 12px;
+        white-space: nowrap;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .collapse-content {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+        padding: 8px 10px 8px 4px;
+        overflow: hidden;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list {
+        display: flex;
+        flex-flow: row nowrap;
+        align-items: stretch;
+        width: 100%;
+        min-width: 0;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list > .tool {
+        flex: 0 0 76px;
+        width: 76px;
+        min-width: 76px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list > .trash-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .properties-panel {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        min-width: 0;
+    }
+}
