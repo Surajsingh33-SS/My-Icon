@@ -8488,3 +8488,125 @@ body:not(:has(#home-screen.show)).transform-sidebar-open .editor .workspace-cont
         padding: 2px;
     }
 }
+
+
+/* Transform options as a real right-hand flex sidebar, matching Layers. */
+.editor.transform-sidebar-open {
+    --transform-sidebar-width: clamp(185px, 20vw, 235px);
+}
+
+.editor.transform-sidebar-open .code-panel {
+    display: none !important;
+}
+
+.editor.transform-sidebar-open .workspace-section {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-right: 0 !important;
+    transition: flex-basis 0.25s ease;
+}
+
+.editor .transform-toolbar {
+    display: none;
+}
+
+.editor.transform-sidebar-open .transform-toolbar {
+    position: relative !important;
+    inset: auto !important;
+    flex: 0 0 var(--transform-sidebar-width) !important;
+    width: var(--transform-sidebar-width) !important;
+    min-width: 0 !important;
+    max-width: var(--transform-sidebar-width) !important;
+    height: auto !important;
+    max-height: none !important;
+    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-evenly;
+    gap: 4px;
+    padding: 12px 7px;
+    margin: 0;
+    border-left: 1px solid var(--border-subtle);
+    border-radius: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none !important;
+    transition: flex-basis 0.25s ease;
+    scrollbar-width: thin;
+}
+
+.editor.transform-sidebar-open .transform-toolbar .toolbar-group {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    column-gap: 3px;
+    row-gap: 3px;
+}
+
+.editor.transform-sidebar-open .transform-toolbar .toolbar-divider {
+    flex: 0 0 1px;
+    width: 100%;
+    height: 1px;
+    margin: 1px 0;
+}
+
+.editor.transform-sidebar-open .transform-toolbar .tool-action-btn {
+    width: 27px;
+    min-width: 27px;
+    height: 27px;
+    padding: 2px;
+    border-radius: 7px;
+}
+
+.editor.transform-sidebar-open .transform-toolbar .tool-action-btn:has(span) {
+    width: auto;
+    min-width: 0;
+    height: 27px;
+    padding: 2px 5px;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+.editor.transform-sidebar-open .transform-toolbar .mirror-axis-control {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 3px;
+}
+
+.editor.transform-sidebar-open .transform-toolbar .mirror-axis-control select,
+.editor.transform-sidebar-open .transform-toolbar .mirror-axis-control input {
+    max-width: 64px;
+}
+
+@media (max-width: 760px) {
+    .editor.transform-sidebar-open {
+        --transform-sidebar-width: clamp(150px, 25vw, 190px);
+    }
+
+    .editor.transform-sidebar-open .transform-toolbar {
+        padding: 8px 4px;
+        gap: 3px;
+    }
+
+    .editor.transform-sidebar-open .transform-toolbar .toolbar-group {
+        column-gap: 2px;
+        row-gap: 3px;
+    }
+
+    .editor.transform-sidebar-open .transform-toolbar .tool-action-btn {
+        width: 24px;
+        min-width: 24px;
+        height: 24px;
+    }
+}
