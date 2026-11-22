@@ -361,6 +361,14 @@
     mobileSidebarBackdrop?.addEventListener("click", () => {
         setMobileSidebarOpen(false);
     });
+
+    // On mobile, tapping the sidebar brand closes the navigation drawer.
+    document.querySelector(".home-logo")?.addEventListener("click", () => {
+        if (window.matchMedia("(max-width: 760px)").matches) {
+            setMobileSidebarOpen(false);
+        }
+    });
+
     const homeEditButton = document.getElementById("home-edit-button");
     const homeSearchInput = document.getElementById("home-search-input");
     const clearSearchBtn = document.getElementById("clear-search-btn");
