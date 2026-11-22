@@ -12770,27 +12770,57 @@ if (finishCategoryManuallyChanged) {
         }, true);
     }
     const layersPanelToggle = document.getElementById("layers-panel-toggle");
+    const measurementPanelToggle = document.getElementById("measurement-panel-toggle");
     const responsiveDeleteToggle = document.getElementById("responsive-delete-toggle");
     const svgPanelToggle = document.getElementById("svg-panel-toggle");
     const editorPanelClose = document.getElementById("editor-panel-close");
+    const responsiveEditorPanel = document.getElementById("code-panel");
 
     function closeResponsiveEditorPanels() {
-        editorLayout?.classList.remove("panels-open", "svg-open");
+        editorLayout?.classList.remove("layers-open", "measurements-open", "panels-open", "svg-open");
         layersPanelToggle?.setAttribute("aria-expanded", "false");
+        measurementPanelToggle?.setAttribute("aria-expanded", "false");
         svgPanelToggle?.setAttribute("aria-expanded", "false");
+    }
+
+    function positionResponsiveEditorPanel() {
+        const heading = document.querySelector(".editor .workspace-heading");
+        if (!heading || !responsiveEditorPanel) return;
+        const rect = heading.getBoundingClientRect();
+        const left = Math.max(8, rect.left);
+        const width = Math.max(0, Math.min(rect.width, window.innerWidth - left - 8));
+        responsiveEditorPanel.style.top = `${Math.round(rect.bottom + 6)}px`;
+        responsiveEditorPanel.style.left = `${Math.round(left)}px`;
+        responsiveEditorPanel.style.width = `${Math.round(width)}px`;
+    }
+
+    function openResponsiveEditorPanel(panel) {
+        const willOpen = !editorLayout?.classList.contains(panel);
+        closeResponsiveEditorPanels();
+        if (!willOpen) return;
+
+        editorLayout?.classList.add(panel);
+        const isLayers = panel === "layers-open";
+        const toggle = isLayers ? layersPanelToggle : measurementPanelToggle;
+        toggle?.setAttribute("aria-expanded", "true");
+
+        const heading = responsiveEditorPanel?.querySelector(".editor-panel-drawer-heading");
+        if (heading) {
+            const title = heading.querySelector("h3");
+            const description = heading.querySelector("p");
+            if (title) title.textContent = isLayers ? "Layers" : "Measurements";
+            if (description) description.textContent = isLayers
+                ? "Manage the shapes in your icon"
+                : "View and edit the selected shape's measurements";
+        }
+        positionResponsiveEditorPanel();
     }
 
     // The compact Delete control reuses the existing delete action unchanged.
     responsiveDeleteToggle?.addEventListener("click", () => deleteButton?.click());
 
-    layersPanelToggle?.addEventListener("click", () => {
-        const willOpen = !editorLayout?.classList.contains("panels-open");
-        closeResponsiveEditorPanels();
-        if (willOpen) {
-            editorLayout?.classList.add("panels-open");
-            layersPanelToggle.setAttribute("aria-expanded", "true");
-        }
-    });
+    layersPanelToggle?.addEventListener("click", () => openResponsiveEditorPanel("layers-open"));
+    measurementPanelToggle?.addEventListener("click", () => openResponsiveEditorPanel("measurements-open"));
 
     svgPanelToggle?.addEventListener("click", () => {
         const willOpen = !editorLayout?.classList.contains("svg-open");
@@ -12802,9 +12832,14 @@ if (finishCategoryManuallyChanged) {
     });
 
     editorPanelClose?.addEventListener("click", closeResponsiveEditorPanels);
+    window.addEventListener("resize", () => {
+        if (editorLayout?.classList.contains("layers-open") || editorLayout?.classList.contains("measurements-open")) {
+            positionResponsiveEditorPanel();
+        }
+    });
 
     document.addEventListener("keydown", event => {
-        if (event.key === "Escape" && (editorLayout?.classList.contains("panels-open") || editorLayout?.classList.contains("svg-open"))) {
+        if (event.key === "Escape" && (editorLayout?.classList.contains("layers-open") || editorLayout?.classList.contains("measurements-open") || editorLayout?.classList.contains("panels-open") || editorLayout?.classList.contains("svg-open"))) {
             closeResponsiveEditorPanels();
         }
     });
