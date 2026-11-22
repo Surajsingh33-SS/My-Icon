@@ -5543,6 +5543,24 @@ body.light-theme #save-project-button:hover {
 }
 
 
+/* The accent picker is duplicated in Preferences for the mobile navigation drawer. */
+.mobile-preferences-accent-card {
+    display: none;
+}
+
+.preferences-accent-palette {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+@media (max-width: 760px) {
+    .mobile-preferences-accent-card {
+        display: block;
+    }
+}
+
 /* Mobile home navigation drawer */
 .mobile-sidebar-toggle,
 .mobile-sidebar-backdrop {
