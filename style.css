@@ -4213,6 +4213,23 @@ body.light-theme #save-project-button:hover {
     color: var(--accent);
 }
 
+.project-utility-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 32px;
+    min-width: 34px;
+    padding: 0;
+}
+
+.project-utility-icon-button svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+}
+
 .project-drawer-utility-row #project-global-preview-button,
 .project-drawer-utility-row #project-edit-categories {
     flex: 0 0 auto;
