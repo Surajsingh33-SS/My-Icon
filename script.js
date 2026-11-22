@@ -579,6 +579,19 @@
     window.addEventListener("orientationchange", scheduleFloatingToggleReposition);
     window.visualViewport?.addEventListener("resize", scheduleFloatingToggleReposition);
 
+    // The app returns to Gallery on refresh, so the floating controls may not
+    // exist visibly during the first animation frame. Reapply the stored
+    // position whenever a different home section becomes active.
+    const floatingToggleSectionObserver = new MutationObserver(() => {
+        scheduleFloatingToggleReposition();
+    });
+    document.querySelectorAll(".home-view-section:not(#home-view-gallery)").forEach(section => {
+        floatingToggleSectionObserver.observe(section, {
+            attributes: true,
+            attributeFilter: ["class", "style", "hidden"]
+        });
+    });
+
     mobileSidebarBackdrop?.addEventListener("click", () => {
         setMobileSidebarOpen(false);
     });
