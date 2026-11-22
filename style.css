@@ -6119,6 +6119,18 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     .topbar .actions {
         display: none !important;
     }
+
+    /* In the selected-icon preview, place only its Export action beside
+       the project name/status instead of hiding the whole actions group. */
+    body:has(#home-screen.show #project-details.show) .topbar .actions {
+        display: flex !important;
+        order: 4;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 4px;
+        margin-left: 6px;
+    }
 }
 
 /* Hide the vertical brand divider on mobile only (600px and below). */
