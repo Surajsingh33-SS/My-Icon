@@ -4364,19 +4364,19 @@ body.light-theme #save-project-button:hover {
     }
 
     .project-info-footer {
-        gap: 5px;
-        padding-top: 6px;
+        gap: 3px;
+        padding-top: 4px;
     }
 
     .project-info-footer .project-utility-button {
-        padding: 4px 8px;
+        padding: 2px 6px;
         line-height: 1.2;
     }
 
     .project-info-footer > .project-export-button {
-        min-height: 36px;
-        padding-top: 6px;
-        padding-bottom: 6px;
+        min-height: 30px;
+        padding-top: 4px;
+        padding-bottom: 4px;
     }
 
     .project-info-heading h3 {
