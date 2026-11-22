@@ -621,25 +621,6 @@
                         <div class="project-details-toolbar">
                             <h3 id="project-name" class="project-toolbar-name">Icon name</h3>
 
-                            <button id="project-edit-button" class="drawer-icon-btn" title="Edit Icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 20h9" />
-                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                                </svg>
-                            </button>
-
-                            <button id="project-remix-button" class="drawer-icon-btn" title="Remix Icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M16 3h5v5" />
-                                    <path d="M4 20L21 3" />
-                                    <path d="M21 16v5h-5" />
-                                    <path d="M15 15l6 6" />
-                                    <path d="M4 4l5 5" />
-                                </svg>
-                            </button>
-
                             <button id="project-more-search-button" class="drawer-icon-btn"
                                 title="More icons with this name">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -686,11 +667,32 @@
                             <!-- Fixed bottom action area -->
                             <div class="project-info-footer">
                                 <div class="project-drawer-utility-row">
-                                    <button type="button" id="project-global-preview-button" class="project-utility-button">
-                                        Global Preview
+                                    <button type="button" id="project-global-preview-button" class="project-utility-button project-utility-icon-button" title="Global Preview" aria-label="Global Preview">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
                                     </button>
-                                    <button type="button" id="project-edit-categories" class="project-utility-button">
-                                        Edit categories
+                                    <button type="button" id="project-edit-categories" class="project-utility-button project-utility-icon-button" title="Edit categories" aria-label="Edit categories">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M4 6h16M4 12h10M4 18h7" />
+                                            <path d="m17 15 3 3-5 5-3-3 5-5Z" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" id="project-edit-button" class="project-utility-button project-utility-icon-button" title="Edit Icon" aria-label="Edit Icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M12 20h9" />
+                                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" id="project-remix-button" class="project-utility-button project-utility-icon-button" title="Remix Icon" aria-label="Remix Icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M16 3h5v5" />
+                                            <path d="M4 20L21 3" />
+                                            <path d="M21 16v5h-5" />
+                                            <path d="M15 15l6 6" />
+                                            <path d="M4 4l5 5" />
+                                        </svg>
                                     </button>
                                 </div>
 
