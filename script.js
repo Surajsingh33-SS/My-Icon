@@ -12783,9 +12783,25 @@ if (finishCategoryManuallyChanged) {
         svgPanelToggle?.setAttribute("aria-expanded", "false");
     }
 
-    function positionResponsiveEditorPanel() {
+    function positionResponsiveEditorPanel(panel) {
+        if (!responsiveEditorPanel) return;
+
+        // Measurements opens as a compact vertical sidebar directly below its
+        // own button, in the gap between the controls and the canvas.
+        if (panel === "measurements-open") {
+            const buttonRect = measurementPanelToggle?.getBoundingClientRect();
+            if (!buttonRect) return;
+            const width = Math.min(280, window.innerWidth - 16);
+            const centeredLeft = buttonRect.left + (buttonRect.width / 2) - (width / 2);
+            const left = Math.max(8, Math.min(centeredLeft, window.innerWidth - width - 8));
+            responsiveEditorPanel.style.top = `${Math.round(buttonRect.bottom + 6)}px`;
+            responsiveEditorPanel.style.left = `${Math.round(left)}px`;
+            responsiveEditorPanel.style.width = `${Math.round(width)}px`;
+            return;
+        }
+
         const heading = document.querySelector(".editor .workspace-heading");
-        if (!heading || !responsiveEditorPanel) return;
+        if (!heading) return;
         const rect = heading.getBoundingClientRect();
         const left = Math.max(8, rect.left);
         const width = Math.max(0, Math.min(rect.width, window.innerWidth - left - 8));
@@ -12813,7 +12829,7 @@ if (finishCategoryManuallyChanged) {
                 ? "Manage the shapes in your icon"
                 : "View and edit the selected shape's measurements";
         }
-        positionResponsiveEditorPanel();
+        positionResponsiveEditorPanel(panel);
     }
 
     // The compact Delete control reuses the existing delete action unchanged.
@@ -12834,7 +12850,11 @@ if (finishCategoryManuallyChanged) {
     editorPanelClose?.addEventListener("click", closeResponsiveEditorPanels);
     window.addEventListener("resize", () => {
         if (editorLayout?.classList.contains("layers-open") || editorLayout?.classList.contains("measurements-open")) {
-            positionResponsiveEditorPanel();
+            if (editorLayout?.classList.contains("measurements-open")) {
+                positionResponsiveEditorPanel("measurements-open");
+            } else if (editorLayout?.classList.contains("layers-open")) {
+                positionResponsiveEditorPanel("layers-open");
+            }
         }
     });
 
