@@ -5652,18 +5652,11 @@ body:has(#home-screen.show) #finish-project-button {
 /* Future home-page actions: hidden everywhere except the home screen. */
 .home-action-placeholder {
     display: none;
-    width: 34px;
-    height: 30px;
-    min-width: 34px;
-    padding: 0;
-    flex: 0 0 34px;
     cursor: default;
 }
 
 body:has(#home-screen.show) .topbar .actions > .home-action-placeholder {
     display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
 }
 
 /* Home page: show Export only while an icon's details are open. */
