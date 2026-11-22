@@ -5771,11 +5771,11 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 
     .topbar-project-info .active-project-name {
         display: inline-block !important;
-        flex: 0 1 auto;
-        max-width: clamp(52px, 10vw, 76px);
-        overflow: hidden;
+        flex: 0 0 auto;
+        max-width: none;
+        overflow: visible;
         font-size: 11px;
-        text-overflow: ellipsis;
+        text-overflow: clip;
         white-space: nowrap;
     }
 
