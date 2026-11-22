@@ -5645,9 +5645,10 @@ body.light-theme #save-project-button:hover {
 
 /* Topbar visibility — visual only; preserve all button behavior. */
     /* Home page: Save and Finish are editor-only actions. */
-    body:has(#home-screen.show) #save-project-button,
-    body:has(#home-screen.show) #finish-project-button {
+    body:has(#home-screen.show) .topbar .actions > button#save-project-button,
+    body:has(#home-screen.show) .topbar .actions > button#finish-project-button {
         display: none !important;
+        visibility: hidden !important;
     }
 
     /* Home page: show Export only while an icon's details are open. */
