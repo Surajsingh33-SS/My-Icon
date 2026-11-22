@@ -804,6 +804,7 @@
     // Context Menu & Toasts
     const canvasContextMenu = document.getElementById("canvas-context-menu");
     const toastContainer = document.getElementById("toast-container");
+    const editorLayout = document.querySelector(".editor");
     const transformToolbar = document.getElementById("transform-toolbar");
     // Keep the transform toolbar inside the editor flex row so it behaves like
     // the Layers sidebar and takes real layout space beside the canvas.
@@ -12741,7 +12742,6 @@ if (finishCategoryManuallyChanged) {
     });
 
     // Responsive editor side panels: preserve the existing drawing/editor logic.
-    const editorLayout = document.querySelector(".editor");
 
     // Auto-hide only scrollbars belonging to the editor. The existing overflow,
     // scrollbar dimensions, and scroll behaviour are left untouched.
