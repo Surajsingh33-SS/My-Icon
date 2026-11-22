@@ -5816,6 +5816,16 @@ body.light-theme #save-project-button:hover {
         visibility: visible;
     }
 
+
+    /* Keep non-gallery view toggles floating so they do not occupy header space. */
+    .home-view-section:not(#home-view-gallery) .mobile-sidebar-toggle {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        z-index: 90;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+    }
+
     .mobile-sidebar-toggle {
         display: inline-flex;
         align-items: center;
