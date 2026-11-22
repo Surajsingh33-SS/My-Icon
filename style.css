@@ -7859,6 +7859,43 @@ body:has(#home-screen.show) .home-projects {
 }
 
 
+/* Slightly compact editor panel buttons on tablet and mobile widths. */
+@media (max-width: 1190px) {
+    body:not(:has(#home-screen.show)) .editor-panel-actions {
+        gap: 5px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor-panel-toggle {
+        min-height: 30px;
+        padding: 5px 8px;
+        gap: 5px;
+        border-radius: 8px;
+        font-size: 10px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor-panel-toggle .panel-toggle-icon {
+        font-size: 13px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor-panel-toggle .panel-toggle-caret {
+        font-size: 11px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor-panel-toggle.editor-delete-toggle {
+        flex-basis: 30px;
+        width: 30px;
+        min-width: 30px;
+        height: 30px;
+        min-height: 30px;
+        padding: 0;
+    }
+
+    body:not(:has(#home-screen.show)) .editor-panel-toggle.editor-delete-toggle svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
 /* Compact transform toolbar: use a vertical floating panel below 890px. */
 @media (max-width: 890px) {
     body:not(:has(#home-screen.show)) .transform-toolbar {
@@ -7947,7 +7984,7 @@ body:has(#home-screen.show) .home-projects {
     /* Keep the toggle on the same row as the Workspace 24 × 24 heading. */
     body:not(:has(#home-screen.show)) .transform-toolbar-toggle {
         top: 60px;
-        right: 23px;
+        right: 12px;
     }
 
 }
