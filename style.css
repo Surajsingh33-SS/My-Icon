@@ -1971,6 +1971,18 @@ input[type="range"]::-webkit-slider-thumb:hover {
         max-height: 95dvh;
     }
 
+    /* Let the preview/info area fill the drawer so its action footer stays
+       at the actual bottom instead of stopping above the related-icons area. */
+    .project-details-main {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
+    }
+
+    .project-related {
+        display: none;
+    }
+
     .project-preview {
         flex-basis: 34%;
     }
