@@ -10734,7 +10734,7 @@ function getSelectedFinishCategories() {
 
     // At tablet widths, place the existing File/Gallery/New Icon navigation
     // beside the Uncategorized gallery heading without replacing its event handlers.
-    function syncTabletGalleryMenuPlacement() {
+    function syncTabletGalleryMenuPlacement(forceRestore = false) {
         const topbar = document.querySelector(".topbar");
         const menu = topbar?.querySelector(":scope > .menu") ||
             document.querySelector(".tablet-gallery-menu-slot > .menu");
@@ -10745,7 +10745,7 @@ function getSelectedFinishCategories() {
             '.gallery-category-group[data-category="Uncategorized"] .gallery-category-header'
         );
 
-        if (tabletRange && galleryViewCategory === "categories" && uncategorizedHeader && menu && homeEditButton) {
+        if (!forceRestore && tabletRange && galleryViewCategory === "categories" && uncategorizedHeader && menu && homeEditButton) {
             let slot = uncategorizedHeader.querySelector(".tablet-gallery-menu-slot");
             if (!slot) {
                 slot = document.createElement("div");
@@ -10770,6 +10770,8 @@ function getSelectedFinishCategories() {
 
     function renderHomeProjects() {
         if (!homeProjectGrid) return;
+        // Restore moved controls before clearing dynamically rendered category headers.
+        syncTabletGalleryMenuPlacement(true);
         homeProjectGrid.innerHTML = "";
         const isCategoryRows =
             galleryViewCategory === "categories" && !selectedCategoryFilter;
