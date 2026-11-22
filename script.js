@@ -11212,9 +11212,13 @@ function getSelectedFinishCategories() {
             document.addEventListener("touchend", clearTouchTooltip, { passive: true });
             document.addEventListener("touchcancel", clearTouchTooltip, { passive: true });
 
-            // Restore normal mouse hover as soon as the user uses a mouse/trackpad.
-            document.addEventListener("mousemove", () => {
-                document.documentElement.classList.remove("gallery-touch-mode");
+            // Only a real mouse/trackpad pointer should leave touch mode.
+            // Browsers can emit compatibility mousemove events after touch,
+            // which would otherwise re-enable the stale emulated :hover state.
+            document.addEventListener("pointermove", event => {
+                if (event.pointerType === "mouse") {
+                    document.documentElement.classList.remove("gallery-touch-mode");
+                }
             }, { passive: true });
         }
 
