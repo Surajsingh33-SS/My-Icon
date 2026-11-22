@@ -371,54 +371,120 @@
     let floatingToggleHoldTimer = null;
     let suppressFloatingToggleClick = false;
 
+    function getFloatingToggleViewport() {
+        return {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+    }
+
+    function getVisibleFloatingToggle() {
+        return [...floatingSidebarToggles].find(toggle =>
+            toggle.getClientRects().length && getComputedStyle(toggle).position === "fixed"
+        );
+    }
+
     function applyFloatingTogglePosition(position) {
-        let appliedPosition = { left: 0, top: 0 };
+        const viewport = getFloatingToggleViewport();
+        let applied = null;
 
         floatingSidebarToggles.forEach(toggle => {
+            if (!toggle.getClientRects().length || getComputedStyle(toggle).position !== "fixed") return;
+
             const rect = toggle.getBoundingClientRect();
-            const toggleWidth = rect.width || toggle.offsetWidth;
-            const toggleHeight = rect.height || toggle.offsetHeight;
-            const maxLeft = Math.max(0, window.innerWidth - toggleWidth);
-            const maxTop = Math.max(0, window.innerHeight - toggleHeight);
-            const left = Math.min(Math.max(0, Number(position.left) || 0), maxLeft);
-            const top = Math.min(Math.max(0, Number(position.top) || 0), maxTop);
+            const maxLeft = Math.max(0, viewport.width - rect.width);
+            const maxTop = Math.max(0, viewport.height - rect.height);
+            const left = Math.round(Math.max(0, Math.min(1, position.xRatio)) * maxLeft);
+            const top = Math.round(Math.max(0, Math.min(1, position.yRatio)) * maxTop);
 
             toggle.style.left = `${left}px`;
             toggle.style.top = `${top}px`;
             toggle.style.right = "auto";
             toggle.style.bottom = "auto";
-            appliedPosition = { left, top };
+            applied = { xRatio: maxLeft ? left / maxLeft : 0, yRatio: maxTop ? top / maxTop : 0 };
         });
 
-        return appliedPosition;
+        return applied;
+    }
+
+    function saveFloatingTogglePosition(position) {
+        try {
+            localStorage.setItem(floatingTogglePositionKey, JSON.stringify({
+                version: 2,
+                xRatio: position.xRatio,
+                yRatio: position.yRatio
+            }));
+        } catch (error) {
+            console.warn("Could not save floating menu button position:", error);
+        }
+    }
+
+    function getFloatingTogglePositionFromScreen() {
+        const toggle = getVisibleFloatingToggle();
+        if (!toggle) return null;
+
+        const rect = toggle.getBoundingClientRect();
+        const viewport = getFloatingToggleViewport();
+        const maxLeft = Math.max(0, viewport.width - rect.width);
+        const maxTop = Math.max(0, viewport.height - rect.height);
+
+        return {
+            xRatio: maxLeft ? Math.max(0, Math.min(1, rect.left / maxLeft)) : 0,
+            yRatio: maxTop ? Math.max(0, Math.min(1, rect.top / maxTop)) : 0
+        };
     }
 
     function keepFloatingToggleOnScreen() {
         if (!window.matchMedia("(max-width: 760px)").matches) return;
 
-        const activeToggle = [...floatingSidebarToggles].find(toggle =>
-            toggle.getClientRects().length && getComputedStyle(toggle).position === "fixed"
-        );
-        if (!activeToggle) return;
-
-        const rect = activeToggle.getBoundingClientRect();
-        const position = applyFloatingTogglePosition({ left: rect.left, top: rect.top });
-
+        let savedPosition = null;
         try {
-            localStorage.setItem(floatingTogglePositionKey, JSON.stringify(position));
+            savedPosition = JSON.parse(localStorage.getItem(floatingTogglePositionKey));
         } catch (error) {
-            console.warn("Could not update floating menu button position:", error);
+            console.warn("Could not read floating menu button position:", error);
         }
+
+        if (savedPosition && savedPosition.version === 2 &&
+            Number.isFinite(savedPosition.xRatio) && Number.isFinite(savedPosition.yRatio)) {
+            applyFloatingTogglePosition(savedPosition);
+            return;
+        }
+
+        // Migrate the previous pixel-based position once, keeping its relative placement.
+        if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
+            const toggle = getVisibleFloatingToggle();
+            if (toggle) {
+                const rect = toggle.getBoundingClientRect();
+                const viewport = getFloatingToggleViewport();
+                const maxLeft = Math.max(0, viewport.width - rect.width);
+                const maxTop = Math.max(0, viewport.height - rect.height);
+                savedPosition = {
+                    xRatio: maxLeft ? Math.max(0, Math.min(1, savedPosition.left / maxLeft)) : 0,
+                    yRatio: maxTop ? Math.max(0, Math.min(1, savedPosition.top / maxTop)) : 0
+                };
+                applyFloatingTogglePosition(savedPosition);
+                saveFloatingTogglePosition(savedPosition);
+                return;
+            }
+        }
+
+        // First visit: place the control near the bottom-right, with a safe margin.
+        const toggle = getVisibleFloatingToggle();
+        if (!toggle) return;
+        const rect = toggle.getBoundingClientRect();
+        const viewport = getFloatingToggleViewport();
+        const maxLeft = Math.max(0, viewport.width - rect.width);
+        const maxTop = Math.max(0, viewport.height - rect.height);
+        const defaultPosition = {
+            xRatio: maxLeft ? Math.max(0, (maxLeft - 18) / maxLeft) : 0,
+            yRatio: maxTop ? Math.max(0, (maxTop - 18) / maxTop) : 0
+        };
+        applyFloatingTogglePosition(defaultPosition);
+        saveFloatingTogglePosition(defaultPosition);
     }
 
-    try {
-        const savedPosition = JSON.parse(localStorage.getItem(floatingTogglePositionKey));
-        if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
-            applyFloatingTogglePosition(savedPosition);
-        }
-    } catch (error) {
-        console.warn("Could not restore floating menu button position:", error);
-    }
+    // Apply the saved responsive position after the mobile layout is available.
+    window.requestAnimationFrame(keepFloatingToggleOnScreen);
 
     floatingSidebarToggles.forEach(toggle => {
         toggle.addEventListener("pointerdown", event => {
@@ -460,9 +526,16 @@
             }
 
             event.preventDefault();
-            const left = event.clientX - floatingToggleDrag.offsetX;
-            const top = event.clientY - floatingToggleDrag.offsetY;
-            applyFloatingTogglePosition({ left, top });
+            const rect = toggle.getBoundingClientRect();
+            const viewport = getFloatingToggleViewport();
+            const maxLeft = Math.max(0, viewport.width - rect.width);
+            const maxTop = Math.max(0, viewport.height - rect.height);
+            const left = Math.max(0, Math.min(event.clientX - floatingToggleDrag.offsetX, maxLeft));
+            const top = Math.max(0, Math.min(event.clientY - floatingToggleDrag.offsetY, maxTop));
+            toggle.style.left = `${left}px`;
+            toggle.style.top = `${top}px`;
+            toggle.style.right = "auto";
+            toggle.style.bottom = "auto";
             floatingToggleDrag.moved = true;
         });
 
@@ -472,13 +545,8 @@
 
             window.clearTimeout(floatingToggleHoldTimer);
             if (floatingToggleDrag.active && floatingToggleDrag.moved) {
-                const rect = toggle.getBoundingClientRect();
-                const position = { left: rect.left, top: rect.top };
-                try {
-                    localStorage.setItem(floatingTogglePositionKey, JSON.stringify(position));
-                } catch (error) {
-                    console.warn("Could not save floating menu button position:", error);
-                }
+                const position = getFloatingTogglePositionFromScreen();
+                if (position) saveFloatingTogglePosition(position);
                 suppressFloatingToggleClick = true;
                 window.setTimeout(() => { suppressFloatingToggleClick = false; }, 0);
             }
@@ -497,14 +565,27 @@
         }, true);
     });
 
-    // Re-clamp after viewport changes (including mobile browser chrome/orientation changes).
-    const scheduleFloatingToggleClamp = () => {
-        window.requestAnimationFrame(keepFloatingToggleOnScreen);
+    // Keep the same relative position on every viewport size and orientation.
+    const scheduleFloatingToggleReposition = () => {
+        window.requestAnimationFrame(() => {
+            if (!window.matchMedia("(max-width: 760px)").matches) return;
+            try {
+                const saved = JSON.parse(localStorage.getItem(floatingTogglePositionKey));
+                if (saved?.version === 2 &&
+                    Number.isFinite(saved.xRatio) && Number.isFinite(saved.yRatio)) {
+                    applyFloatingTogglePosition(saved);
+                } else {
+                    keepFloatingToggleOnScreen();
+                }
+            } catch (error) {
+                keepFloatingToggleOnScreen();
+            }
+        });
     };
 
-    window.addEventListener("resize", scheduleFloatingToggleClamp);
-    window.addEventListener("orientationchange", scheduleFloatingToggleClamp);
-    window.visualViewport?.addEventListener("resize", scheduleFloatingToggleClamp);
+    window.addEventListener("resize", scheduleFloatingToggleReposition);
+    window.addEventListener("orientationchange", scheduleFloatingToggleReposition);
+    window.visualViewport?.addEventListener("resize", scheduleFloatingToggleReposition);
 
     mobileSidebarBackdrop?.addEventListener("click", () => {
         setMobileSidebarOpen(false);
