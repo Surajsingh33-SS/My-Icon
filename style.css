@@ -875,12 +875,18 @@ input[type="range"]::-webkit-slider-thumb:hover {
     text-align: center;
 }
 
-/* Main Home Body */
+/* Main Home Body
+   Reserve the sidebar's width so the main content never claims the full
+   viewport alongside it. The mobile drawer is absolutely positioned, so
+   the responsive rule below lets the main content use the full viewport. */
 .home-main {
-    flex: 1;
+    flex: 1 1 0;
+    width: calc(100% - 250px);
+    max-width: calc(100% - 250px);
+    min-width: 0;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    min-width: 0;
     overflow-y: auto;
     position: relative;
 }
