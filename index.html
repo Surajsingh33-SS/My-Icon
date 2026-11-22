@@ -868,9 +868,19 @@
                         <span>Grid point</span>
                     </label>
                 </div>
+                <div class="editor-panel-actions" aria-label="Editor side panels">
+                    <button type="button" class="editor-panel-toggle" id="layers-panel-toggle" aria-expanded="false" aria-controls="code-panel">
+                        <span class="panel-toggle-icon">☷</span>
+                        <span>Layers &amp; Measurements</span>
+                    </button>
+                    <button type="button" class="editor-panel-toggle editor-svg-toggle" id="svg-panel-toggle" aria-expanded="false" aria-controls="code-panel">
+                        <span class="panel-toggle-icon">‹›</span>
+                        <span>SVG</span>
+                        <span class="panel-toggle-caret">⌄</span>
+                    </button>
+                </div>
             </div>
-
-            <!-- TRANSFORM TOOLBAR TOGGLE -->
+<!-- TRANSFORM TOOLBAR TOGGLE -->
             <button type="button" class="transform-toolbar-toggle" id="transform-toolbar-toggle"
                 title="Transform & Alignment" aria-label="Open Transform & Alignment toolbar" aria-expanded="false">
                 <img src="assets/icons/cross-reverse.svg" alt="">
@@ -1166,7 +1176,14 @@
 
 
         <!-- RIGHT PANEL -->
-        <aside class="code-panel">
+        <aside class="code-panel" id="code-panel" aria-label="Editor side panels">
+            <div class="editor-panel-drawer-heading">
+                <div>
+                    <h3>Layers &amp; Measurements</h3>
+                    <p>Manage the selected icon</p>
+                </div>
+                <button type="button" class="editor-panel-close" id="editor-panel-close" aria-label="Close side panel">×</button>
+            </div>
 
             <!-- LAYERS PANEL -->
             <div class="layers-panel">
