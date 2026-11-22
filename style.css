@@ -1028,6 +1028,20 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .home-search {
+    flex: 1 1 280px;
+    min-width: 240px;
+}
+
+.home-control-select {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.home-control-select .home-sort-select {
+    max-width: 100%;
+}
+
+.home-search {
     flex: 1;
     position: relative;
     display: flex;
@@ -5075,6 +5089,70 @@ body.light-theme #save-project-button:hover {
 }
 
 @media (max-width: 760px) {
+    .home-controls {
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .home-search {
+        flex: 1 1 220px;
+        min-width: 220px;
+    }
+
+    .home-control-select {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+    }
+
+    .home-control-select::before {
+        content: attr(data-compact-icon);
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: var(--text-secondary);
+        font-size: 18px;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .home-control-select .home-sort-select {
+        width: 100%;
+        height: 40px;
+        padding: 0;
+        color: transparent;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: none;
+        cursor: pointer;
+    }
+
+    .home-control-select .home-sort-select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-light);
+    }
+
+    .home-control-select .home-sort-select option {
+        color: var(--text-primary);
+    }
+
+    /* Keep the search field usable on narrow phones; filters sit below it. */
+    @media (max-width: 480px) {
+        .home-controls {
+            flex-wrap: wrap;
+        }
+
+        .home-search {
+            flex: 1 1 100%;
+            min-width: 0;
+        }
+
+        .home-view-toggle {
+            margin-left: auto;
+        }
+    }
+
     /* Keep the top bar usable without forcing the page wider than the phone. */
     .topbar {
         height: 48px;
