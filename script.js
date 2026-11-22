@@ -12718,6 +12718,17 @@ if (finishCategoryManuallyChanged) {
         const section = btn.closest(".tools-panel, .properties-panel, .layers-panel, .svg, .measurement-panel");
         if (!section) return;
 
+        // In compact layouts, the SVG Source X closes the entire anchored dropdown.
+        // Desktop continues through the normal collapse/expand behavior below.
+        if (
+            btn.classList.contains("svg-source-close-btn") &&
+            window.matchMedia("(max-width: 1190px)").matches
+        ) {
+            editorLayout?.classList.remove("svg-open");
+            document.getElementById("svg-panel-toggle")?.setAttribute("aria-expanded", "false");
+            return;
+        }
+
         const content = section.querySelector(".collapse-content");
         if (!content) return;
 
