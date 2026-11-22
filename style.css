@@ -1330,7 +1330,7 @@ html:not(.touch-hover-disabled) .home-project-card.active:hover{
 }
 
 .home-card-tooltip-text.is-overflowing {
-    animation: homeTooltipNameScroll var(--tooltip-scroll-duration, 3s) ease-in-out infinite alternate;
+    animation: homeTooltipNameScroll var(--tooltip-scroll-duration, 3s) ease-in-out infinite alternate-reverse;
     animation-play-state: paused;
 }
 
@@ -1344,12 +1344,7 @@ html:not(.touch-hover-disabled) .home-project-card.active:hover{
     to { transform: translateX(var(--tooltip-scroll-distance, -40px)); }
 }
 
-/* On desktop, start the tooltip-name animation by sliding the text to the right. */
-@media (min-width: 701px) {
-    .home-card-tooltip-text.is-overflowing {
-        animation-direction: alternate-reverse;
-    }
-}html:not(.touch-hover-disabled) .home-project-card:hover .home-card-tooltip{
+html:not(.touch-hover-disabled) .home-project-card:hover .home-card-tooltip{
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
