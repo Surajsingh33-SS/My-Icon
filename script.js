@@ -362,6 +362,124 @@
         });
     });
 
+    // Allow the floating non-gallery menu button to be repositioned with a press-and-hold.
+    const floatingSidebarToggles = document.querySelectorAll(
+        ".home-view-section:not(#home-view-gallery) .mobile-sidebar-toggle"
+    );
+    const floatingTogglePositionKey = "iconMakerFloatingSidebarTogglePosition";
+    let floatingToggleDrag = null;
+    let floatingToggleHoldTimer = null;
+    let suppressFloatingToggleClick = false;
+
+    function applyFloatingTogglePosition(position) {
+        floatingSidebarToggles.forEach(toggle => {
+            const maxLeft = Math.max(0, window.innerWidth - toggle.offsetWidth);
+            const maxTop = Math.max(0, window.innerHeight - toggle.offsetHeight);
+            const left = Math.min(Math.max(0, position.left), maxLeft);
+            const top = Math.min(Math.max(0, position.top), maxTop);
+            toggle.style.left = `${left}px`;
+            toggle.style.top = `${top}px`;
+            toggle.style.right = "auto";
+            toggle.style.bottom = "auto";
+        });
+    }
+
+    try {
+        const savedPosition = JSON.parse(localStorage.getItem(floatingTogglePositionKey));
+        if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
+            applyFloatingTogglePosition(savedPosition);
+        }
+    } catch (error) {
+        console.warn("Could not restore floating menu button position:", error);
+    }
+
+    floatingSidebarToggles.forEach(toggle => {
+        toggle.addEventListener("pointerdown", event => {
+            if (!window.matchMedia("(max-width: 760px)").matches || event.button !== 0) return;
+
+            floatingToggleDrag = {
+                toggle,
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                moved: false,
+                active: false
+            };
+
+            floatingToggleHoldTimer = window.setTimeout(() => {
+                if (!floatingToggleDrag || floatingToggleDrag.toggle !== toggle) return;
+                floatingToggleDrag.active = true;
+                const rect = toggle.getBoundingClientRect();
+                floatingToggleDrag.offsetX = floatingToggleDrag.startX - rect.left;
+                floatingToggleDrag.offsetY = floatingToggleDrag.startY - rect.top;
+                toggle.classList.add("is-repositioning");
+                toggle.setPointerCapture?.(floatingToggleDrag.pointerId);
+            }, 250);
+        });
+
+        toggle.addEventListener("pointermove", event => {
+            if (!floatingToggleDrag || floatingToggleDrag.toggle !== toggle ||
+                floatingToggleDrag.pointerId !== event.pointerId) return;
+
+            if (!floatingToggleDrag.active) {
+                if (Math.hypot(
+                    event.clientX - floatingToggleDrag.startX,
+                    event.clientY - floatingToggleDrag.startY
+                ) > 8) {
+                    window.clearTimeout(floatingToggleHoldTimer);
+                    floatingToggleDrag = null;
+                }
+                return;
+            }
+
+            event.preventDefault();
+            const left = event.clientX - floatingToggleDrag.offsetX;
+            const top = event.clientY - floatingToggleDrag.offsetY;
+            applyFloatingTogglePosition({ left, top });
+            floatingToggleDrag.moved = true;
+        });
+
+        const finishFloatingToggleDrag = event => {
+            if (!floatingToggleDrag || floatingToggleDrag.toggle !== toggle ||
+                floatingToggleDrag.pointerId !== event.pointerId) return;
+
+            window.clearTimeout(floatingToggleHoldTimer);
+            if (floatingToggleDrag.active && floatingToggleDrag.moved) {
+                const rect = toggle.getBoundingClientRect();
+                const position = { left: rect.left, top: rect.top };
+                try {
+                    localStorage.setItem(floatingTogglePositionKey, JSON.stringify(position));
+                } catch (error) {
+                    console.warn("Could not save floating menu button position:", error);
+                }
+                suppressFloatingToggleClick = true;
+                window.setTimeout(() => { suppressFloatingToggleClick = false; }, 0);
+            }
+            toggle.classList.remove("is-repositioning");
+            floatingToggleDrag = null;
+        };
+
+        toggle.addEventListener("pointerup", finishFloatingToggleDrag);
+        toggle.addEventListener("pointercancel", finishFloatingToggleDrag);
+        toggle.addEventListener("click", event => {
+            if (suppressFloatingToggleClick) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                suppressFloatingToggleClick = false;
+            }
+        }, true);
+    });
+
+    window.addEventListener("resize", () => {
+        if (!window.matchMedia("(max-width: 760px)").matches) return;
+        const activeToggle = [...floatingSidebarToggles].find(toggle =>
+            toggle.getClientRects().length && getComputedStyle(toggle).position === "fixed"
+        );
+        if (!activeToggle) return;
+        const rect = activeToggle.getBoundingClientRect();
+        applyFloatingTogglePosition({ left: rect.left, top: rect.top });
+    });
+
     mobileSidebarBackdrop?.addEventListener("click", () => {
         setMobileSidebarOpen(false);
     });
