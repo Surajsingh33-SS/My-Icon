@@ -6509,3 +6509,294 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 }
 
+/* TABLET & MOBILE EDITOR PANEL LAYOUT
+   Existing drawing tools stay in place; only the responsive panel presentation changes. */
+@media (max-width: 1190px) {
+    .editor-panel-actions {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-left: auto;
+    }
+
+    .editor-panel-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 34px;
+        padding: 7px 11px;
+        border: 1px solid var(--border-default);
+        border-radius: 9px;
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 650;
+        white-space: nowrap;
+    }
+
+    .editor-panel-toggle[aria-expanded="true"] {
+        border-color: var(--accent-border);
+        background: var(--accent-light);
+        color: var(--accent);
+    }
+
+    .panel-toggle-icon {
+        font-size: 15px;
+        line-height: 1;
+        font-weight: 700;
+    }
+
+    .panel-toggle-caret {
+        margin-left: 1px;
+        font-size: 13px;
+    }
+
+    .code-panel {
+        display: none;
+    }
+
+    .editor.panels-open {
+        --editor-panel-width: min(420px, 42vw, calc(100vw - 160px));
+    }
+
+    .editor.panels-open .workspace-section,
+    .editor.panels-open .tools-panel {
+        width: calc(100% - var(--editor-panel-width));
+        max-width: calc(100% - var(--editor-panel-width));
+        align-self: flex-start;
+    }
+
+    .editor.panels-open .workspace-section {
+        flex: 0 0 auto;
+    }
+
+    .editor.panels-open .workspace-container {
+        width: min(480px, 58dvh, calc(100% - 76px));
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 1;
+    }
+
+    .editor.panels-open .workspace-stage {
+        padding-left: 38px;
+        padding-right: 38px;
+    }
+
+    .editor .code-panel {
+        display: none;
+    }
+
+    .editor.panels-open .code-panel {
+        display: flex;
+        position: fixed;
+        inset: 0 0 0 auto;
+        z-index: 1300;
+        width: var(--editor-panel-width);
+        height: 100dvh;
+        max-height: 100dvh;
+        min-width: 0;
+        flex: none;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 0;
+        border: 0;
+        border-left: 1px solid var(--border-strong);
+        border-radius: 0;
+        background: var(--bg-panel);
+        box-shadow: -18px 0 48px rgba(0, 0, 0, 0.3);
+    }
+
+    .editor-panel-drawer-heading {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 15px 14px;
+        border-bottom: 1px solid var(--border-subtle);
+        background: var(--bg-panel);
+    }
+
+    .editor-panel-drawer-heading h3 {
+        color: var(--text-primary);
+        font-size: 13px;
+        font-weight: 750;
+    }
+
+    .editor-panel-drawer-heading p {
+        margin-top: 2px;
+        color: var(--text-muted);
+        font-size: 10px;
+    }
+
+    .editor-panel-close {
+        flex: 0 0 32px;
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--border-default);
+        border-radius: 9px;
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        font-size: 22px;
+        line-height: 1;
+    }
+
+    .editor.panels-open .code-panel > .layers-panel,
+    .editor.panels-open .code-panel > .measurement-panel {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .editor.panels-open .code-panel > .svg {
+        display: none;
+    }
+
+    .editor.panels-open .layers-panel .collapse-content,
+    .editor.panels-open .measurement-panel .collapse-content {
+        padding: 12px;
+    }
+
+    .editor.panels-open .layer-list {
+        max-height: min(34dvh, 300px);
+        overflow-y: auto;
+    }
+
+    /* SVG is a compact anchored dropdown, not part of the full-height drawer. */
+    .editor.svg-open .code-panel {
+        display: block;
+        position: fixed;
+        inset: auto 12px auto auto;
+        top: 104px;
+        z-index: 1301;
+        width: min(420px, calc(100vw - 24px));
+        height: auto;
+        max-height: min(72dvh, 620px);
+        overflow-y: auto;
+        border: 1px solid var(--border-default);
+        border-radius: 13px;
+        box-shadow: var(--shadow-popover);
+    }
+
+    .editor.svg-open .editor-panel-drawer-heading,
+    .editor.svg-open .code-panel > .layers-panel,
+    .editor.svg-open .code-panel > .measurement-panel {
+        display: none;
+    }
+
+    .editor.svg-open .code-panel > .svg {
+        display: block;
+        width: 100%;
+        border: 0;
+    }
+
+    .editor.svg-open .svg .collapse-content {
+        padding: 12px;
+    }
+
+    .editor.svg-open #svg-code {
+        height: min(34dvh, 260px);
+        min-height: 130px;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 1190px) {
+    .editor {
+        height: calc(100dvh - 48px);
+        min-height: 0;
+        flex-direction: column;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .workspace-section {
+        order: 0;
+        flex: 0 0 auto;
+        width: 100%;
+        min-height: 0;
+        overflow: visible;
+    }
+
+    .workspace-heading {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 10px 14px;
+    }
+
+    .editor-panel-actions {
+        flex: 0 0 auto;
+    }
+
+    .workspace-stage {
+        min-height: min(58dvh, 560px);
+        padding: 12px 48px;
+    }
+
+    .workspace-container {
+        width: min(480px, 58dvh, calc(100% - 96px));
+        height: auto;
+        aspect-ratio: 1;
+    }
+
+    .tools-panel {
+        order: 1;
+        width: 100%;
+        max-height: none;
+        flex: 0 0 auto;
+        overflow: visible;
+        border-right: 0;
+        border-top: 1px solid var(--border-subtle);
+    }
+
+    .tools-panel > .collapse-heading {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--bg-panel);
+    }
+
+    .tools-panel > .collapse-content {
+        padding: 12px;
+    }
+
+    .tool-list {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .code-panel {
+        order: 2;
+    }
+
+    .editor.panels-open .workspace-stage {
+        min-height: min(58dvh, 560px);
+    }
+}
+
+@media (max-width: 760px) {
+    .editor-panel-actions {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .editor-panel-toggle:first-child {
+        flex: 1 1 auto;
+    }
+
+    .editor-panel-toggle.editor-svg-toggle {
+        flex: 0 0 auto;
+    }
+
+    .editor.panels-open .workspace-container {
+        width: min(480px, 58dvh, calc(100% - 72px));
+    }
+
+    .editor.panels-open .workspace-stage {
+        padding-left: 36px;
+        padding-right: 36px;
+    }
+}
+
