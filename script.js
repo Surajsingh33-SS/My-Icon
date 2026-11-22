@@ -11643,6 +11643,7 @@ function getSelectedFinishCategories() {
         if (!project || !projectDetails) return;
 
         selectedHomeProject = project;
+        projectDetails.classList.remove("expanded");
         projectCategoryListExpanded = false;
         projectSearchTermsExpanded = false;
         updateHomeProjectSelection();
