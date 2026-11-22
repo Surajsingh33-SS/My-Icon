@@ -6806,3 +6806,73 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 }
 
+/* Responsive workspace spacing: keep history controls left, canvas flexible,
+   and zoom/view controls at the far right. Desktop layout is unchanged. */
+@media (max-width: 1190px) {
+    .workspace-stage {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 12px 56px 12px 8px;
+    }
+
+    .workspace-side-controls.left-controls {
+        position: relative;
+        top: auto;
+        left: auto;
+        transform: none;
+        flex: 0 0 auto;
+    }
+
+    .workspace-container {
+        flex: 0 1 min(480px, 58dvh);
+        width: min(480px, 58dvh, 100%);
+        min-width: 0;
+        height: auto;
+        aspect-ratio: 1;
+    }
+
+    .view-controls-group {
+        right: 8px;
+    }
+
+    .editor.panels-open .workspace-stage {
+        padding-left: 8px;
+        padding-right: 56px;
+    }
+
+    .editor.panels-open .workspace-container {
+        width: min(480px, 58dvh, 100%);
+    }
+}
+
+@media (max-width: 760px) {
+    .workspace-stage {
+        padding: 12px 52px 12px 8px;
+        gap: 6px;
+    }
+
+    .workspace-container {
+        flex-basis: min(54dvh, 100%);
+        width: min(54dvh, 100%);
+    }
+
+    .workspace-side-controls.left-controls {
+        gap: 6px;
+    }
+
+    .view-controls-group {
+        right: 5px;
+    }
+
+    .editor.panels-open .workspace-stage {
+        padding-left: 8px;
+        padding-right: 52px;
+    }
+
+    .editor.panels-open .workspace-container {
+        width: min(54dvh, 100%);
+    }
+}
+
