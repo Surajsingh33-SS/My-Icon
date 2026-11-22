@@ -1029,8 +1029,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .home-search {
-    flex: 1 1 280px;
-    min-width: 240px;
+    flex: 1 1 250px;
+    min-width: 250px;
 }
 
 .home-control-select {
@@ -5152,8 +5152,8 @@ body.light-theme #save-project-button:hover {
     }
 
     .home-search {
-        flex: 1 1 220px;
-        min-width: 220px;
+        flex: 1 1 250px;
+        min-width: 250px;
     }
 
     /* Keep the search field usable on narrow phones; filters sit below it. */
@@ -5164,7 +5164,7 @@ body.light-theme #save-project-button:hover {
 
         .home-search {
             flex: 1 1 100%;
-            min-width: 0;
+            min-width: 250px;
         }
 
         .home-view-toggle {
