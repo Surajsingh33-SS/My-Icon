@@ -5641,21 +5641,19 @@ body.light-theme #save-project-button:hover {
 }
 
 
-/
-
 /* Topbar visibility — visual only; preserve all button behavior. */
-    /* Home page: Save and Finish are editor-only actions. */
-    body:has(#home-screen.show) .topbar .actions > button#save-project-button,
-    body:has(#home-screen.show) .topbar .actions > button#finish-project-button {
-        display: none !important;
-        visibility: hidden !important;
-    }
+/* Home page: Save and Finish are editor-only actions. */
+body:has(#home-screen.show) #save-project-button,
+body:has(#home-screen.show) #finish-project-button {
+    display: none !important;
+    visibility: hidden !important;
+}
 
-    /* Home page: show Export only while an icon's details are open. */
-    body:has(#home-screen.show) #topbar-export-btn {
-        display: none !important;
-    }
+/* Home page: show Export only while an icon's details are open. */
+body:has(#home-screen.show) #topbar-export-btn {
+    display: none !important;
+}
 
-    body:has(#home-screen.show #project-details.show) #topbar-export-btn {
-        display: inline-flex !important;
-    }
+body:has(#home-screen.show #project-details.show) #topbar-export-btn {
+    display: inline-flex !important;
+}
