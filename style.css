@@ -6418,7 +6418,7 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
    Styling only: editor interactions and desktop presentation remain unchanged. */
 /* Touch-first screens use the compact controls beside the canvas.
    Desktop keeps the original workspace heading toggles. */
-@media (hover: none), (pointer: coarse), (any-pointer: coarse) {
+@media (hover: none) and (pointer: coarse) {
     .workspace-toggles {
         display: none !important;
     }
