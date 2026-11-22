@@ -6116,8 +6116,13 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         white-space: nowrap;
     }
 
+    /* Keep the actions group available so Export can appear when an icon is selected. */
     .topbar .actions {
-        display: none !important;
+        display: flex !important;
+        align-items: center;
+        flex: 0 0 auto;
+        gap: 4px;
+        margin-left: 6px;
     }
 }
 
