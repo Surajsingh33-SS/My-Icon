@@ -8052,3 +8052,182 @@ body:has(#home-screen.show) .home-projects {
         justify-items: center;
     }
 }
+
+
+/* Compact transformation sidebar that reserves workspace room instead of covering the canvas. */
+body:not(:has(#home-screen.show)) .transform-toolbar {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(260px, 30vw);
+    max-width: min(260px, 30vw);
+    height: 100dvh;
+    max-height: 100dvh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 5px;
+    padding: 58px 9px 10px;
+    border-radius: 14px 0 0 14px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transform-origin: right center;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+    transition:
+        opacity 0.22s ease,
+        transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+        visibility 0.28s;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(0);
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    column-gap: 4px;
+    row-gap: 4px;
+    width: 100%;
+    min-width: 0;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-divider {
+    flex: 0 0 1px;
+    width: 100%;
+    height: 1px;
+    margin: 1px 0;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .tool-action-btn {
+    width: 29px;
+    min-width: 29px;
+    height: 29px;
+    padding: 2px;
+    border-radius: 7px;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .tool-action-btn:has(span) {
+    width: auto;
+    min-width: 0;
+    height: 29px;
+    padding: 3px 6px;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group[title="Alignment"] {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-items: center;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .mirror-axis-control {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 4px;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .mirror-axis-control select,
+body:not(:has(#home-screen.show)) .transform-toolbar .mirror-axis-control input {
+    max-width: 68px;
+}
+
+/* Desktop: replace the right code panel with the transform sidebar and recenter the canvas in the remaining space. */
+@media (min-width: 1191px) {
+    .editor.transform-sidebar-open .code-panel {
+        display: none !important;
+    }
+
+    .editor.transform-sidebar-open .workspace-section {
+        margin-right: 260px;
+        min-width: 0;
+        transition: margin-right 0.28s ease;
+    }
+}
+
+/* Tablet and mobile editor: reserve a right-hand column beside the canvas. */
+@media (max-width: 1190px) {
+    .editor.transform-sidebar-open {
+        --transform-sidebar-width: clamp(190px, 38vw, 235px);
+    }
+
+    .editor.transform-sidebar-open .workspace-section {
+        width: calc(100% - var(--transform-sidebar-width));
+        max-width: calc(100% - var(--transform-sidebar-width));
+        flex: 0 0 auto;
+        align-self: flex-start;
+        transition: width 0.28s ease, max-width 0.28s ease;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar {
+        width: clamp(190px, 38vw, 235px);
+        max-width: clamp(190px, 38vw, 235px);
+        padding: 58px 8px 10px;
+        gap: 4px;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group {
+        column-gap: 3px;
+        row-gap: 3px;
+    }
+
+    .editor.transform-sidebar-open .workspace-stage {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .editor.transform-sidebar-open .workspace-container {
+        width: min(480px, 58dvh, 100%);
+        max-width: 100%;
+        flex: 0 1 auto;
+    }
+}
+
+@media (max-width: 760px) {
+    .editor.transform-sidebar-open {
+        --transform-sidebar-width: min(210px, 52vw);
+    }
+
+    .editor.transform-sidebar-open .workspace-section {
+        width: calc(100% - var(--transform-sidebar-width));
+        max-width: calc(100% - var(--transform-sidebar-width));
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar {
+        width: min(210px, 52vw);
+        max-width: min(210px, 52vw);
+        padding: 54px 6px 8px;
+        gap: 3px;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group {
+        column-gap: 2px;
+        row-gap: 3px;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .tool-action-btn {
+        width: 27px;
+        min-width: 27px;
+        height: 27px;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .tool-action-btn:has(span) {
+        height: 27px;
+        padding: 2px 5px;
+    }
+
+    .editor.transform-sidebar-open .workspace-container {
+        width: min(100%, 54dvh);
+    }
+}
