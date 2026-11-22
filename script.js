@@ -10732,29 +10732,17 @@ function getSelectedFinishCategories() {
         }
     });
 
-    // Keep the original navigation as a topbar sibling so CSS can center it
-    // between the brand on the left and the active Uncategorized label on the right.
+    // Keep the existing navigation as a topbar sibling for the responsive layout.
     function syncTabletGalleryMenuPlacement() {
         const topbar = document.querySelector(".topbar");
         const menu = topbar?.querySelector(":scope > .menu") ||
             topbar?.querySelector(".topbar-brand > .menu");
-        const categoryLabel = topbar?.querySelector(".tablet-category-label");
-        const tabletRange = window.innerWidth >= 601 && window.innerWidth <= 760;
-        const homeVisible = homeScreen?.classList.contains("show");
-        const uncategorizedTitle = document.querySelector(
-            '#home-project-grid .gallery-category-group[data-category="Uncategorized"] .cat-header-title'
-        );
 
         if (!topbar || !menu) return;
 
         if (menu.parentElement !== topbar) {
             const actions = topbar.querySelector(":scope > .actions");
             topbar.insertBefore(menu, actions || null);
-        }
-
-        if (categoryLabel) {
-            categoryLabel.textContent = uncategorizedTitle?.textContent.trim() || "Uncategorized";
-            categoryLabel.hidden = !(tabletRange && homeVisible);
         }
     }
 
