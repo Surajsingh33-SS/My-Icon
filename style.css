@@ -6415,10 +6415,17 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 }
 
 
-/* Mobile editor only: reclaim the topbar height by hiding its brand and
+/* Mobile editor only: keep the logo mark while hiding its text and
    project status. The home screen and desktop topbar remain unchanged. */
 @media (max-width: 760px) {
-    body:not(:has(#home-screen.show)) .topbar-brand > .logo-btn,
+    body:not(:has(#home-screen.show)) .topbar-brand > .logo-btn {
+        display: inline-flex !important;
+        padding: 4px 6px;
+    }
+
+    body:not(:has(#home-screen.show)) .topbar-brand > .logo-btn .logo-text,
+    body:not(:has(#home-screen.show)) .topbar-brand > .logo-btn .logo-badge,
+    body:not(:has(#home-screen.show)) .topbar-brand > .topbar-divider,
     body:not(:has(#home-screen.show)) .topbar-brand > .topbar-project-info {
         display: none !important;
     }
