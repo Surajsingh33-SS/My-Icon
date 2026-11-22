@@ -1025,6 +1025,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     gap: 12px;
     padding: 16px 28px;
     flex-shrink: 0;
+    container-type: inline-size;
 }
 
 .home-search {
@@ -1135,6 +1136,47 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .home-view-toggle button.active {
     background: var(--accent-light);
     color: var(--accent);
+}
+
+/* Switch filter labels to icons only when the search field is about to reach its minimum width. */
+@container (max-width: 640px) {
+    .home-control-select {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+    }
+
+    .home-control-select::before {
+        content: attr(data-compact-icon);
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: var(--text-secondary);
+        font-size: 18px;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .home-control-select .home-sort-select {
+        width: 100%;
+        height: 40px;
+        padding: 0;
+        color: transparent;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: none;
+        cursor: pointer;
+    }
+
+    .home-control-select .home-sort-select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-light);
+    }
+
+    .home-control-select .home-sort-select option {
+        color: var(--text-primary);
+    }
 }
 
 /* Projects Grid */
@@ -5097,44 +5139,6 @@ body.light-theme #save-project-button:hover {
     .home-search {
         flex: 1 1 220px;
         min-width: 220px;
-    }
-
-    .home-control-select {
-        width: 40px;
-        height: 40px;
-        flex: 0 0 40px;
-    }
-
-    .home-control-select::before {
-        content: attr(data-compact-icon);
-        position: absolute;
-        inset: 0;
-        display: grid;
-        place-items: center;
-        color: var(--text-secondary);
-        font-size: 18px;
-        pointer-events: none;
-        z-index: 1;
-    }
-
-    .home-control-select .home-sort-select {
-        width: 100%;
-        height: 40px;
-        padding: 0;
-        color: transparent;
-        appearance: none;
-        -webkit-appearance: none;
-        background-image: none;
-        cursor: pointer;
-    }
-
-    .home-control-select .home-sort-select:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 2px var(--accent-light);
-    }
-
-    .home-control-select .home-sort-select option {
-        color: var(--text-primary);
     }
 
     /* Keep the search field usable on narrow phones; filters sit below it. */
