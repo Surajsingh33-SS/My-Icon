@@ -5744,9 +5744,9 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         align-items: center;
         justify-content: flex-start;
         flex: 0 0 auto;
-        gap: 3px;
+        gap: 0;
         flex-wrap: nowrap;
-        margin: 0 12px 0 0;
+        margin: 0 14px 0 0;
         white-space: nowrap;
         overflow: visible !important;
         z-index: 1100;
@@ -5757,7 +5757,7 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         order: 3;
         display: block;
         flex: 0 0 1px;
-        margin: 0 6px 0 0;
+        margin: 0 0 0 0;
     }
 
     .topbar-brand > .topbar-project-info {
@@ -5804,7 +5804,8 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 
     .topbar > .menu .menu-btn {
         flex: 0 0 auto;
-        padding: 6px 7px;
+        padding: 6px 6px;
+        margin: 0;
         font-size: 11px;
         white-space: nowrap;
     }
