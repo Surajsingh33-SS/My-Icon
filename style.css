@@ -1156,6 +1156,41 @@ input[type="range"]::-webkit-slider-thumb:hover {
         background: var(--bg-surface);
     }
 
+    /* The native selects are replaced by createStyledDropdown().
+       Compact the visible custom dropdown, not the hidden native select. */
+    .home-control-select > .styled-select {
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+    }
+
+    .home-control-select > .styled-select .styled-select-trigger {
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+        padding: 0;
+        justify-content: center;
+        gap: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .home-control-select > .styled-select .styled-select-label,
+    .home-control-select > .styled-select .styled-select-chevron {
+        display: none;
+    }
+
+    .home-control-select > .styled-select .styled-select-trigger:hover,
+    .home-control-select > .styled-select.open .styled-select-trigger {
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
     .home-control-select::before {
         content: attr(data-compact-icon);
         position: absolute;
