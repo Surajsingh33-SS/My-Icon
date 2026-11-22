@@ -6913,8 +6913,18 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         margin-left: 0;
     }
 
-    .editor-panel-toggle:first-child {
+    /* Keep Delete as a compact square; let Layers use the remaining row width. */
+    .editor-panel-toggle.editor-delete-toggle {
+        flex: 0 0 34px;
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        padding: 0;
+    }
+
+    #layers-panel-toggle {
         flex: 1 1 auto;
+        min-width: 0;
     }
 
     .editor-panel-toggle.editor-svg-toggle {
