@@ -4358,9 +4358,17 @@ body.light-theme #save-project-button:hover {
 }
 
 @media (max-width: 700px) {
-    /* Keep the toolbar outside the scroll area so the information panel and
-       its footer share only the remaining drawer height. */
+    /* Give every flex level a definite share of the drawer height.
+       Avoid percentage heights inside the auto-sized mobile flex row. */
+    .project-details-main {
+        flex: 1 1 0;
+        height: auto;
+        min-height: 0;
+    }
+
     .project-content {
+        flex: 1 1 0;
+        height: auto;
         min-height: 0;
         overflow: hidden;
     }
