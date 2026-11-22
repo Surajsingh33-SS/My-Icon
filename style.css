@@ -5709,6 +5709,40 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 }
 
 
+/* Tablet gallery navigation placement: only 601px–760px. */
+@media (min-width: 601px) and (max-width: 760px) {
+    .gallery-category-header {
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .tablet-gallery-menu-slot {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex: 1 1 auto;
+        gap: 10px;
+        min-width: 0;
+        margin-left: auto;
+    }
+
+    .tablet-gallery-menu-slot .menu {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+        gap: 5px;
+        flex-wrap: nowrap;
+    }
+
+    .tablet-gallery-menu-slot #home-edit-button {
+        display: inline-flex !important;
+        flex: 0 0 auto;
+        white-space: nowrap;
+        padding: 7px 10px;
+        font-size: 11px;
+    }
+}
+
 /* Mobile navigation: replace keyboard shortcuts with a direct New Icon action. */
 @media (max-width: 760px) {
     #shortcuts-trigger-btn {
