@@ -372,16 +372,43 @@
     let suppressFloatingToggleClick = false;
 
     function applyFloatingTogglePosition(position) {
+        let appliedPosition = { left: 0, top: 0 };
+
         floatingSidebarToggles.forEach(toggle => {
-            const maxLeft = Math.max(0, window.innerWidth - toggle.offsetWidth);
-            const maxTop = Math.max(0, window.innerHeight - toggle.offsetHeight);
-            const left = Math.min(Math.max(0, position.left), maxLeft);
-            const top = Math.min(Math.max(0, position.top), maxTop);
+            const rect = toggle.getBoundingClientRect();
+            const toggleWidth = rect.width || toggle.offsetWidth;
+            const toggleHeight = rect.height || toggle.offsetHeight;
+            const maxLeft = Math.max(0, window.innerWidth - toggleWidth);
+            const maxTop = Math.max(0, window.innerHeight - toggleHeight);
+            const left = Math.min(Math.max(0, Number(position.left) || 0), maxLeft);
+            const top = Math.min(Math.max(0, Number(position.top) || 0), maxTop);
+
             toggle.style.left = `${left}px`;
             toggle.style.top = `${top}px`;
             toggle.style.right = "auto";
             toggle.style.bottom = "auto";
+            appliedPosition = { left, top };
         });
+
+        return appliedPosition;
+    }
+
+    function keepFloatingToggleOnScreen() {
+        if (!window.matchMedia("(max-width: 760px)").matches) return;
+
+        const activeToggle = [...floatingSidebarToggles].find(toggle =>
+            toggle.getClientRects().length && getComputedStyle(toggle).position === "fixed"
+        );
+        if (!activeToggle) return;
+
+        const rect = activeToggle.getBoundingClientRect();
+        const position = applyFloatingTogglePosition({ left: rect.left, top: rect.top });
+
+        try {
+            localStorage.setItem(floatingTogglePositionKey, JSON.stringify(position));
+        } catch (error) {
+            console.warn("Could not update floating menu button position:", error);
+        }
     }
 
     try {
@@ -470,15 +497,14 @@
         }, true);
     });
 
-    window.addEventListener("resize", () => {
-        if (!window.matchMedia("(max-width: 760px)").matches) return;
-        const activeToggle = [...floatingSidebarToggles].find(toggle =>
-            toggle.getClientRects().length && getComputedStyle(toggle).position === "fixed"
-        );
-        if (!activeToggle) return;
-        const rect = activeToggle.getBoundingClientRect();
-        applyFloatingTogglePosition({ left: rect.left, top: rect.top });
-    });
+    // Re-clamp after viewport changes (including mobile browser chrome/orientation changes).
+    const scheduleFloatingToggleClamp = () => {
+        window.requestAnimationFrame(keepFloatingToggleOnScreen);
+    };
+
+    window.addEventListener("resize", scheduleFloatingToggleClamp);
+    window.addEventListener("orientationchange", scheduleFloatingToggleClamp);
+    window.visualViewport?.addEventListener("resize", scheduleFloatingToggleClamp);
 
     mobileSidebarBackdrop?.addEventListener("click", () => {
         setMobileSidebarOpen(false);
