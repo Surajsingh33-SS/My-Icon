@@ -5709,37 +5709,40 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 }
 
 
-/* Tablet gallery navigation placement: only 601px–760px. */
+/* Tablet top-bar navigation placement: only 601px–760px. */
 @media (min-width: 601px) and (max-width: 760px) {
-    .gallery-category-header {
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .tablet-gallery-menu-slot {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        flex: 1 1 auto;
-        gap: 10px;
-        min-width: 0;
-        margin-left: auto;
-    }
-
-    .tablet-gallery-menu-slot .menu {
-        display: flex;
-        align-items: center;
-        flex: 0 0 auto;
-        gap: 5px;
+    .topbar-brand {
+        gap: 6px;
         flex-wrap: nowrap;
     }
 
-    .tablet-gallery-menu-slot #home-edit-button {
+    .topbar-brand > .menu {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+        gap: 4px;
+        flex-wrap: nowrap;
+    }
+
+    .topbar-brand > .menu .menu-btn {
+        padding: 6px 7px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    body:has(#home-screen.show) .topbar-brand #home-edit-button {
         display: inline-flex !important;
         flex: 0 0 auto;
-        white-space: nowrap;
-        padding: 7px 10px;
+        padding: 6px 9px;
         font-size: 11px;
+        white-space: nowrap;
+    }
+}
+
+/* Hide the vertical brand divider on mobile widths only. */
+@media (max-width: 760px) {
+    .topbar-divider {
+        display: none !important;
     }
 }
 
