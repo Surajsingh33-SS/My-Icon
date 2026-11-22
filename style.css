@@ -2402,13 +2402,9 @@ body:has(#home-screen.show) .editor {
 }
 
 /* Coordinate visibility control reuses the existing checkbox and its JS listeners. */
-.workspace-toggles[hidden] {
-    display: none !important;
-}
-
 .coordinate-icon-toggle {
     position: relative;
-    display: inline-flex;
+    display: none;
     flex: 0 0 36px;
     align-items: center;
     justify-content: center;
@@ -6420,6 +6416,18 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 
 /* MOBILE EDITOR VISUAL POLISH
    Styling only: editor interactions and desktop presentation remain unchanged. */
+/* Touch-first screens use the compact controls beside the canvas.
+   Desktop keeps the original workspace heading toggles. */
+@media (hover: none), (pointer: coarse), (any-pointer: coarse) {
+    .workspace-toggles {
+        display: none !important;
+    }
+
+    .coordinate-icon-toggle {
+        display: inline-flex;
+    }
+}
+
 @media (max-width: 760px) {
     .workspace-heading {
         gap: 10px;
