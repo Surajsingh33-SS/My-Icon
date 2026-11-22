@@ -935,6 +935,7 @@
 
     transformToolbarToggle?.addEventListener("click", () => {
         const isOpen = transformToolbar.classList.toggle("open");
+        editorLayout?.classList.toggle("transform-sidebar-open", isOpen);
 
         transformToolbarToggle.setAttribute("aria-expanded", isOpen);
         transformToolbarToggle.setAttribute(
@@ -949,6 +950,7 @@
             !transformToolbarToggle?.contains(event.target)
         ) {
             transformToolbar.classList.remove("open");
+            editorLayout?.classList.remove("transform-sidebar-open");
             transformToolbarToggle?.setAttribute("aria-expanded", "false");
             transformToolbarToggle?.setAttribute(
                 "aria-label",
