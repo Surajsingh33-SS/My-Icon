@@ -8610,3 +8610,70 @@ body:not(:has(#home-screen.show)).transform-sidebar-open .editor .workspace-cont
         height: 24px;
     }
 }
+
+
+/* Restore the original floating, single-row transform toolbar layout. */
+body:not(:has(#home-screen.show)) .transform-toolbar {
+    position: fixed !important;
+    top: 62px !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 50% !important;
+    inset-inline: auto !important;
+    width: max-content !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - 20px) !important;
+    height: auto !important;
+    max-height: calc(100dvh - 74px) !important;
+    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 4px !important;
+    padding: 4px 48px 4px 8px !important;
+    margin: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    border-radius: var(--radius-full) !important;
+    transform: translateX(-50%) scale(0.85) !important;
+    transform-origin: top center !important;
+    scrollbar-width: thin;
+    z-index: 15000;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar.open {
+    transform: translateX(-50%) scale(1) !important;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: auto !important;
+    min-width: max-content !important;
+    gap: 3px !important;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-divider {
+    flex: 0 0 1px !important;
+    width: 1px !important;
+    height: 16px !important;
+    margin: 0 4px !important;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group[title="Alignment"] {
+    display: flex !important;
+    grid-template-columns: none !important;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar-toggle {
+    position: fixed !important;
+    top: 60px !important;
+    right: 12px !important;
+    left: auto !important;
+}
