@@ -6117,3 +6117,36 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         display: flex;
     }
 }
+
+/* Keep the Files menu as a viewport-level popover on compact screens.
+   The topbar scrolls horizontally, so an absolutely positioned menu gets
+   clipped into that scrolling area instead of floating over the page. */
+@media (max-width: 760px) {
+    .topbar {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .topbar .file-menu-wrapper {
+        position: static !important;
+    }
+
+    .topbar .file-menu-wrapper > .file-dropdown {
+        position: fixed !important;
+        top: 56px;
+        left: 8px;
+        right: auto;
+        z-index: 2000;
+        width: min(260px, calc(100vw - 16px));
+        max-height: min(70vh, 520px);
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .topbar .file-menu-wrapper > .file-dropdown {
+        top: 84px;
+    }
+}
+
