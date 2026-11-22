@@ -7352,3 +7352,12 @@ body:not(:has(#home-screen.show)) .editor .scrollbar-auto-hide::-webkit-scrollba
 body:not(:has(#home-screen.show)) .editor .scrollbar-auto-hide.scrollbar-active::-webkit-scrollbar-thumb {
     background-color: rgba(var(--accent-rgb), 0.65) !important;
 }
+
+/* Gallery horizontal-scroll fix: keep the gallery viewport within the screen
+   while preserving its existing vertical scrolling and card layout. */
+body:has(#home-screen.show) .home-main,
+body:has(#home-screen.show) .home-projects {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+}
