@@ -11269,10 +11269,34 @@ function getSelectedFinishCategories() {
                 const name = document.createElement("span");
                 name.className = "home-project-name";
                 name.textContent = project.name || "Untitled icon";
+                let nameScrollFrame = null;
+                const animateNameScroll = target => {
+                    if (nameScrollFrame) cancelAnimationFrame(nameScrollFrame);
+                    const start = name.scrollLeft;
+                    const distance = target - start;
+                    if (Math.abs(distance) < 2) return;
+                    const duration = Math.max(650, Math.abs(distance) * 28);
+                    const startedAt = performance.now();
+                    const step = now => {
+                        const progress = Math.min(1, (now - startedAt) / duration);
+                        const eased = progress * progress * (3 - 2 * progress);
+                        name.scrollLeft = start + distance * eased;
+                        if (progress < 1) nameScrollFrame = requestAnimationFrame(step);
+                        else nameScrollFrame = null;
+                    };
+                    nameScrollFrame = requestAnimationFrame(step);
+                };
+
                 requestAnimationFrame(() => {
-                    const overflow = Math.max(0, name.scrollWidth - name.clientWidth);
-                    name.classList.toggle("is-overflowing", overflow > 2);
-                    if (overflow > 2) name.style.setProperty("--gallery-name-overflow", overflow + "px");
+                    name.dataset.maxScroll = String(Math.max(0, name.scrollWidth - name.clientWidth));
+                });
+                name.addEventListener("pointerenter", event => {
+                    if (event.pointerType !== "mouse" || document.documentElement.classList.contains("touch-hover-disabled")) return;
+                    animateNameScroll(Number(name.dataset.maxScroll) || name.scrollWidth - name.clientWidth);
+                });
+                name.addEventListener("pointerleave", event => {
+                    if (event.pointerType !== "mouse") return;
+                    animateNameScroll(0);
                 });
 
                 const cat = document.createElement("span");
