@@ -805,10 +805,10 @@
     const canvasContextMenu = document.getElementById("canvas-context-menu");
     const toastContainer = document.getElementById("toast-container");
     const transformToolbar = document.getElementById("transform-toolbar");
-    // Portal the toolbar to <body> so ancestor stacking/overflow contexts in
-    // the editor workspace cannot place it underneath the side panels.
-    if (transformToolbar && transformToolbar.parentElement !== document.body) {
-        document.body.appendChild(transformToolbar);
+    // Keep the transform toolbar inside the editor flex row so it behaves like
+    // the Layers sidebar and takes real layout space beside the canvas.
+    if (transformToolbar && transformToolbar.parentElement !== editorLayout) {
+        editorLayout?.appendChild(transformToolbar);
     }
     const clearCustomAxisBtn = document.getElementById("clear-custom-axis-btn");
 
@@ -936,7 +936,6 @@
     transformToolbarToggle?.addEventListener("click", () => {
         const isOpen = transformToolbar.classList.toggle("open");
         editorLayout?.classList.toggle("transform-sidebar-open", isOpen);
-        document.body.classList.toggle("transform-sidebar-open", isOpen);
 
         transformToolbarToggle.setAttribute("aria-expanded", isOpen);
         transformToolbarToggle.setAttribute(
@@ -952,7 +951,6 @@
         ) {
             transformToolbar.classList.remove("open");
             editorLayout?.classList.remove("transform-sidebar-open");
-            document.body.classList.remove("transform-sidebar-open");
             transformToolbarToggle?.setAttribute("aria-expanded", "false");
             transformToolbarToggle?.setAttribute(
                 "aria-label",
