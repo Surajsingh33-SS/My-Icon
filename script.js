@@ -11188,7 +11188,20 @@ function getSelectedFinishCategories() {
                     activeTouchCard.classList.remove("touch-tooltip-active");
                 }
                 activeTouchCard = nextCard;
-                if (activeTouchCard) activeTouchCard.classList.add("touch-tooltip-active");
+                if (activeTouchCard) {
+                    activeTouchCard.classList.add("touch-tooltip-active");
+                    const tooltip = activeTouchCard.querySelector(".home-card-tooltip");
+                    if (tooltip) {
+                        const cardRect = activeTouchCard.getBoundingClientRect();
+                        const tooltipWidth = tooltip.getBoundingClientRect().width;
+                        const halfWidth = tooltipWidth / 2;
+                        const viewportCenter = Math.max(
+                            12 + halfWidth,
+                            Math.min(window.innerWidth - 12 - halfWidth, cardRect.left + cardRect.width / 2)
+                        );
+                        tooltip.style.left = `${viewportCenter - cardRect.left}px`;
+                    }
+                }
             };
 
             // On hybrid laptops, a touch can leave the browser's emulated :hover
@@ -11240,7 +11253,10 @@ function getSelectedFinishCategories() {
 
             const tooltip = document.createElement("div");
             tooltip.className = "home-card-tooltip";
-            tooltip.textContent = project.name || "Untitled icon";
+            const tooltipText = document.createElement("span");
+            tooltipText.className = "home-card-tooltip-text";
+            tooltipText.textContent = project.name || "Untitled icon";
+            tooltip.appendChild(tooltipText);
 
             const starBtn = document.createElement("button");
             starBtn.type = "button";
@@ -11284,6 +11300,36 @@ function getSelectedFinishCategories() {
             }
 
             card.appendChild(tooltip);
+
+            const positionTooltipWithinViewport = () => {
+                const cardRect = card.getBoundingClientRect();
+                const tooltipWidth = tooltip.getBoundingClientRect().width;
+                const halfWidth = tooltipWidth / 2;
+                const viewportCenter = Math.max(
+                    12 + halfWidth,
+                    Math.min(window.innerWidth - 12 - halfWidth, cardRect.left + cardRect.width / 2)
+                );
+                tooltip.style.left = `${viewportCenter - cardRect.left}px`;
+            };
+
+            const updateTooltipNameOverflow = () => {
+                const maxDistance = tooltipText.scrollWidth - tooltip.clientWidth + 2;
+                if (maxDistance > 2) {
+                    tooltipText.classList.add("is-overflowing");
+                    tooltipText.style.setProperty("--tooltip-scroll-distance", `${-maxDistance}px`);
+                    tooltipText.style.setProperty("--tooltip-scroll-duration", `${Math.max(2.2, maxDistance / 24)}s`);
+                } else {
+                    tooltipText.classList.remove("is-overflowing");
+                }
+            };
+
+            requestAnimationFrame(updateTooltipNameOverflow);
+            card.addEventListener("pointerenter", event => {
+                if (event.pointerType !== "mouse" || document.documentElement.classList.contains("touch-hover-disabled")) return;
+                positionTooltipWithinViewport();
+                updateTooltipNameOverflow();
+            });
+
             card.appendChild(starBtn);
 
             card.addEventListener("click", () => showProjectPreview(project));
