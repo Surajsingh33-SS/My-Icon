@@ -11240,7 +11240,10 @@ function getSelectedFinishCategories() {
 
             const tooltip = document.createElement("div");
             tooltip.className = "home-card-tooltip";
-            tooltip.textContent = project.name || "Untitled icon";
+            const tooltipText = document.createElement("span");
+            tooltipText.className = "home-card-tooltip-text";
+            tooltipText.textContent = project.name || "Untitled icon";
+            tooltip.appendChild(tooltipText);
 
             const starBtn = document.createElement("button");
             starBtn.type = "button";
@@ -11269,36 +11272,6 @@ function getSelectedFinishCategories() {
                 const name = document.createElement("span");
                 name.className = "home-project-name";
                 name.textContent = project.name || "Untitled icon";
-                let nameScrollFrame = null;
-                const animateNameScroll = target => {
-                    if (nameScrollFrame) cancelAnimationFrame(nameScrollFrame);
-                    const start = name.scrollLeft;
-                    const distance = target - start;
-                    if (Math.abs(distance) < 2) return;
-                    const duration = Math.max(650, Math.abs(distance) * 28);
-                    const startedAt = performance.now();
-                    const step = now => {
-                        const progress = Math.min(1, (now - startedAt) / duration);
-                        const eased = progress * progress * (3 - 2 * progress);
-                        name.scrollLeft = start + distance * eased;
-                        if (progress < 1) nameScrollFrame = requestAnimationFrame(step);
-                        else nameScrollFrame = null;
-                    };
-                    nameScrollFrame = requestAnimationFrame(step);
-                };
-
-                requestAnimationFrame(() => {
-                    name.dataset.maxScroll = String(Math.max(0, name.scrollWidth - name.clientWidth));
-                });
-                name.addEventListener("pointerenter", event => {
-                    if (event.pointerType !== "mouse" || document.documentElement.classList.contains("touch-hover-disabled")) return;
-                    animateNameScroll(Number(name.dataset.maxScroll) || name.scrollWidth - name.clientWidth);
-                });
-                name.addEventListener("pointerleave", event => {
-                    if (event.pointerType !== "mouse") return;
-                    animateNameScroll(0);
-                });
-
                 const cat = document.createElement("span");
                 cat.className = "home-project-category";
                 cat.textContent = `${getProjectCategories(project).join(", ")} • ${new Date(project.savedAt).toLocaleDateString()}`;
@@ -11314,6 +11287,14 @@ function getSelectedFinishCategories() {
             }
 
             card.appendChild(tooltip);
+            requestAnimationFrame(() => {
+                const maxDistance = tooltipText.scrollWidth - tooltip.clientWidth + 2;
+                if (maxDistance > 2) {
+                    tooltipText.classList.add("is-overflowing");
+                    tooltipText.style.setProperty("--tooltip-scroll-distance", `${-maxDistance}px`);
+                    tooltipText.style.setProperty("--tooltip-scroll-duration", `${Math.max(2.2, maxDistance / 24)}s`);
+                }
+            });
             card.appendChild(starBtn);
 
             card.addEventListener("click", () => showProjectPreview(project));
