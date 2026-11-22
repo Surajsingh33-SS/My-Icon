@@ -6208,19 +6208,19 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         margin-left: 6px;
     }
 
-    /* Editor only: keep the logo and navigation as one left group,
-       with Save / Finish / Export held together at the right. */
+    /* Editor only: distribute the logo, navigation, and action groups
+       evenly across the topbar without spreading buttons within each group. */
     body:not(:has(#home-screen.show)) .topbar {
-        justify-content: flex-start;
+        justify-content: space-between;
     }
 
     body:not(:has(#home-screen.show)) .topbar > .menu {
-        justify-content: flex-start;
-        margin-left: 8px;
+        justify-content: center;
+        margin-left: 0;
     }
 
     body:not(:has(#home-screen.show)) .topbar .actions {
-        margin-left: auto;
+        margin-left: 0;
         flex: 0 0 auto;
     }
 }
@@ -6950,7 +6950,7 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         margin-left: 0;
     }
 
-    /* Keep Delete as a compact square; let Layers use the remaining row width. */
+    /* Keep Delete compact and size Layers only to its icon and label. */
     .editor-panel-toggle.editor-delete-toggle {
         flex: 0 0 34px;
         width: 34px;
@@ -6960,7 +6960,8 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 
     #layers-panel-toggle {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
+        width: max-content;
         min-width: 0;
     }
 
@@ -6998,161 +6999,3 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 
     .workspace-container {
-        flex: 0 1 min(480px, 58dvh);
-        width: min(480px, 58dvh, 100%);
-        min-width: 0;
-        height: auto;
-        aspect-ratio: 1;
-    }
-
-    .view-controls-group {
-        right: 8px;
-    }
-
-    .editor.panels-open .workspace-stage {
-        padding-left: 8px;
-        padding-right: 56px;
-    }
-
-    .editor.panels-open .workspace-container {
-        width: min(480px, 58dvh, 100%);
-    }
-}
-
-@media (max-width: 760px) {
-    .workspace-stage {
-        padding: 12px 52px 12px 8px;
-        gap: 6px;
-    }
-
-    .workspace-container {
-        flex-basis: min(54dvh, 100%);
-        width: min(54dvh, 100%);
-    }
-
-    .workspace-side-controls.left-controls {
-        gap: 6px;
-    }
-
-    .view-controls-group {
-        right: 5px;
-    }
-
-    .editor.panels-open .workspace-stage {
-        padding-left: 8px;
-        padding-right: 52px;
-    }
-
-    .editor.panels-open .workspace-container {
-        width: min(54dvh, 100%);
-    }
-}
-
-/* Keep the canvas centered independently of the side control groups. */
-@media (max-width: 1190px) {
-    .workspace-stage {
-        position: relative;
-        display: block;
-        padding: 12px 0;
-    }
-
-    .workspace-side-controls.left-controls {
-        position: absolute;
-        top: 50%;
-        left: 8px;
-        transform: translateY(-50%);
-        z-index: 10;
-    }
-
-    .workspace-container {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: min(480px, 58dvh, calc(100% - 112px));
-        max-width: none;
-        margin: 0;
-    }
-
-    .view-controls-group {
-        position: absolute;
-        top: 50%;
-        right: 0;
-        transform: translateY(-50%);
-        z-index: 26;
-    }
-
-    .editor.panels-open .workspace-stage {
-        padding: 12px 0;
-    }
-
-    .editor.panels-open .workspace-container {
-        width: min(480px, 58dvh, calc(100% - 112px));
-    }
-}
-
-@media (max-width: 760px) {
-    .workspace-container {
-        width: min(480px, 54dvh, calc(100% - 104px));
-    }
-
-    .workspace-side-controls.left-controls {
-        left: 5px;
-    }
-
-    .view-controls-group {
-        right: 0;
-    }
-
-    .editor.panels-open .workspace-container {
-        width: min(480px, 54dvh, calc(100% - 104px));
-    }
-}
-
-/* Compact mobile editor workspace heading.
-   Keep the compact layout limited to widths of 440px and below. */
-@media (max-width: 440px) {
-    .editor .workspace-heading {
-        gap: 6px;
-        padding: 7px 9px;
-    }
-
-    .editor .workspace-title-group {
-        flex: 0 1 auto;
-        min-width: 0;
-        flex-wrap: nowrap;
-        gap: 5px;
-        white-space: nowrap;
-    }
-
-    .editor .workspace-label {
-        font-size: 11px;
-        letter-spacing: -0.2px;
-    }
-
-    .editor .workspace-dimen {
-        padding: 2px 5px;
-        font-size: 9px;
-    }
-
-    .editor .artboard-size-selector {
-        flex: 0 0 auto;
-        gap: 1px;
-        margin-left: 2px;
-        padding: 1px;
-    }
-
-    .editor .artboard-size-selector .size-btn {
-        padding: 2px 5px;
-        font-size: 9px;
-    }
-}
-
-@media (max-width: 310px) {
-    .editor .workspace-title-group {
-        flex-wrap: wrap;
-        white-space: normal;
-        row-gap: 4px;
-    }
-}
-
