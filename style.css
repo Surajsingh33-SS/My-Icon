@@ -7380,3 +7380,19 @@ body:has(#home-screen.show) .home-projects {
         visibility: visible;
     }
 }
+
+
+/* Compact editor header below 1191px: retain the logo mark only. */
+@media (max-width: 1190px) {
+    body:not(:has(#home-screen.show)) .topbar-brand > .logo-btn {
+        display: inline-flex !important;
+        padding: 4px 6px;
+    }
+
+    body:not(:has(#home-screen.show)) .topbar-brand > .logo-btn .logo-text,
+    body:not(:has(#home-screen.show)) .topbar-brand > .logo-btn .logo-badge,
+    body:not(:has(#home-screen.show)) .topbar-brand > .topbar-divider,
+    body:not(:has(#home-screen.show)) .topbar-brand > .topbar-project-info {
+        display: none !important;
+    }
+}
