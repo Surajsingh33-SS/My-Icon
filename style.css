@@ -6207,6 +6207,22 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         gap: 4px;
         margin-left: 6px;
     }
+
+    /* Editor only: keep the logo and navigation as one left group,
+       with Save / Finish / Export held together at the right. */
+    body:not(:has(#home-screen.show)) .topbar {
+        justify-content: flex-start;
+    }
+
+    body:not(:has(#home-screen.show)) .topbar > .menu {
+        justify-content: flex-start;
+        margin-left: 8px;
+    }
+
+    body:not(:has(#home-screen.show)) .topbar .actions {
+        margin-left: auto;
+        flex: 0 0 auto;
+    }
 }
 
 /* Hide the vertical brand divider on mobile only (600px and below). */
@@ -6919,6 +6935,16 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 }
 
 @media (max-width: 760px) {
+    /* Give the Layers & Measurements drawer a little more usable width. */
+    .editor {
+        --editor-panel-width: min(360px, 48vw, calc(100vw - 120px));
+    }
+
+    /* The usage hint takes up valuable vertical space on mobile editor. */
+    .editor .workspace-tip {
+        display: none !important;
+    }
+
     .editor-panel-actions {
         width: 100%;
         margin-left: 0;
