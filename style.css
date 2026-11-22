@@ -7944,4 +7944,10 @@ body:has(#home-screen.show) .home-projects {
         max-width: 76px;
     }
 
+    /* Keep the toggle on the same row as the Workspace 24 × 24 heading. */
+    body:not(:has(#home-screen.show)) .transform-toolbar-toggle {
+        top: 60px;
+        right: 23px;
+    }
+
 }
