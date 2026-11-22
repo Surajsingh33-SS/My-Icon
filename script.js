@@ -12816,8 +12816,10 @@ if (finishCategoryManuallyChanged) {
 
         const finishPanelDrag = event => {
             if (!activePanelDrag || event.pointerId !== activePanelDrag.pointerId) return;
+            const draggedPanel = activePanelDrag.panel;
             activePanelDrag = null;
             responsivePanelDragHandle.classList.remove("is-dragging");
+            saveResponsivePanelPosition(draggedPanel);
         };
         responsivePanelDragHandle.addEventListener("pointerup", finishPanelDrag);
         responsivePanelDragHandle.addEventListener("pointercancel", finishPanelDrag);
@@ -12830,10 +12832,48 @@ if (finishCategoryManuallyChanged) {
         svgPanelToggle?.setAttribute("aria-expanded", "false");
     }
 
+    const responsivePanelPositionStorageKey = "iconMakerResponsiveEditorPanelPositions";
+
+    function readResponsivePanelPositions() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(responsivePanelPositionStorageKey));
+            return saved && typeof saved === "object" ? saved : {};
+        } catch (error) {
+            console.warn("Could not read editor panel positions:", error);
+            return {};
+        }
+    }
+
+    const savedResponsivePanelPositions = readResponsivePanelPositions();
     const responsivePanelPositions = {
         "layers-open": null,
         "measurements-open": null
     };
+
+    function saveResponsivePanelPosition(panel) {
+        const position = responsivePanelPositions[panel];
+        if (!position) return;
+
+        const panelWidth = responsiveEditorPanel?.getBoundingClientRect().width || 280;
+        const minLeft = 8;
+        const maxLeft = Math.max(minLeft, window.innerWidth - panelWidth - 8);
+        const minTop = 8;
+        const maxTop = Math.max(minTop, window.innerHeight - 70);
+
+        savedResponsivePanelPositions[panel] = {
+            xRatio: maxLeft === minLeft ? 0 : (position.left - minLeft) / (maxLeft - minLeft),
+            yRatio: maxTop === minTop ? 0 : (position.top - minTop) / (maxTop - minTop)
+        };
+
+        try {
+            localStorage.setItem(
+                responsivePanelPositionStorageKey,
+                JSON.stringify(savedResponsivePanelPositions)
+            );
+        } catch (error) {
+            console.warn("Could not save editor panel position:", error);
+        }
+    }
 
     function positionResponsiveEditorPanel(panel) {
         if (!responsiveEditorPanel) return;
@@ -12844,14 +12884,24 @@ if (finishCategoryManuallyChanged) {
         // First opening starts near its own control. After that, keep the
         // user's chosen position for this panel.
         if (!position) {
-            const toggle = panel === "layers-open" ? layersPanelToggle : measurementPanelToggle;
-            const rect = toggle?.getBoundingClientRect();
-            if (!rect) return;
-            const left = rect.left + (rect.width / 2) - (width / 2);
-            position = {
-                left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
-                top: rect.bottom + 6
-            };
+            const saved = savedResponsivePanelPositions[panel];
+            if (Number.isFinite(saved?.xRatio) && Number.isFinite(saved?.yRatio)) {
+                const maxLeft = Math.max(8, window.innerWidth - width - 8);
+                const maxTop = Math.max(8, window.innerHeight - 70);
+                position = {
+                    left: 8 + Math.max(0, Math.min(1, saved.xRatio)) * (maxLeft - 8),
+                    top: 8 + Math.max(0, Math.min(1, saved.yRatio)) * (maxTop - 8)
+                };
+            } else {
+                const toggle = panel === "layers-open" ? layersPanelToggle : measurementPanelToggle;
+                const rect = toggle?.getBoundingClientRect();
+                if (!rect) return;
+                const left = rect.left + (rect.width / 2) - (width / 2);
+                position = {
+                    left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
+                    top: rect.bottom + 6
+                };
+            }
             responsivePanelPositions[panel] = position;
         }
 
