@@ -1139,9 +1139,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* Switch filter labels to icons only when the search field is about to reach its minimum width. */
-@container (max-width: 640px) {
+@container (max-width: 760px) {
     .home-control-select {
+        position: relative;
         width: 40px;
+        min-width: 40px;
         height: 40px;
         flex: 0 0 40px;
     }
@@ -1159,10 +1161,14 @@ input[type="range"]::-webkit-slider-thumb:hover {
     }
 
     .home-control-select .home-sort-select {
-        width: 100%;
+        display: block;
+        width: 40px;
+        min-width: 40px;
+        max-width: 40px;
         height: 40px;
         padding: 0;
         color: transparent;
+        text-indent: -9999px;
         appearance: none;
         -webkit-appearance: none;
         background-image: none;
