@@ -7422,9 +7422,11 @@ body:has(#home-screen.show) .home-projects {
    The panel floats over the workspace so opening it never resizes the canvas. */
 @media (max-width: 1190px) {
     body:not(:has(#home-screen.show)) .editor-panel-actions {
-        justify-content: flex-start;
+        justify-content: space-between;
         flex-wrap: wrap;
         gap: 6px;
+        width: 100%;
+        margin-left: 0;
     }
 
     body:not(:has(#home-screen.show)) #layers-panel-toggle,
