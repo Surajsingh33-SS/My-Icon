@@ -6428,6 +6428,18 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 }
 
+/* Wide desktop always uses the full workspace toggle buttons, including
+   touchscreen laptops. Compact touch controls remain for widths at 1190px and below. */
+@media (min-width: 1191px) {
+    .workspace-toggles {
+        display: flex !important;
+    }
+
+    .coordinate-icon-toggle {
+        display: none !important;
+    }
+}
+
 @media (max-width: 760px) {
     .workspace-heading {
         gap: 10px;
