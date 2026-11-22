@@ -4365,11 +4365,13 @@ body.light-theme #save-project-button:hover {
 
     .project-info-footer {
         box-sizing: border-box;
-        height: 80px;
-        min-height: 80px;
-        max-height: 80px;
-        gap: 5px;
-        padding-top: 6px;
+        flex: 0 0 76px;
+        height: 76px;
+        min-height: 76px;
+        max-height: 76px;
+        gap: 3px;
+        padding-top: 4px;
+        overflow: hidden;
     }
 
     .project-info-footer .project-utility-button {
