@@ -1372,6 +1372,24 @@ input[type="range"]::-webkit-slider-thumb:hover {
     visibility: visible;
     transform: translateX(-50%) translateY(0);
 }
+/* On mobile, show the icon name above its tile so it stays visible in the gallery. */
+@media (max-width: 760px) {
+    .home-card-tooltip {
+        top: auto;
+        bottom: calc(100% + 6px);
+        transform: translateX(-50%) translateY(4px);
+    }
+
+    .home-project-card:hover .home-card-tooltip,
+    .home-project-card.touch-tooltip-active .home-card-tooltip {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .gallery-touch-mode .home-project-card:hover:not(.touch-tooltip-active) .home-card-tooltip {
+        transform: translateX(-50%) translateY(4px);
+    }
+}
+
 
 /* Prevent hybrid-laptop touch emulation from leaving an old :hover tooltip visible. */
 .gallery-touch-mode .home-project-card:hover:not(.touch-tooltip-active) .home-card-tooltip {
