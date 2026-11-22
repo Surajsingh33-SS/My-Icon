@@ -5825,6 +5825,10 @@ body.light-theme #save-project-button:hover {
         bottom: 18px;
         z-index: 100;
         flex: none;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: grab;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
     }
 
@@ -5861,6 +5865,13 @@ body.light-theme #save-project-button:hover {
     .home-nav-option {
         padding: 7px 9px;
         white-space: nowrap;
+    }
+
+    .mobile-sidebar-toggle.is-repositioning {
+        cursor: grabbing;
+        transition: none !important;
+        transform: scale(1.04);
+        z-index: 110;
     }
 
     .mobile-sidebar-toggle:active {
