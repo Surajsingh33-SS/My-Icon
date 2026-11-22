@@ -6509,6 +6509,12 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 }
 
+/* Keep the new responsive panel controls completely absent on desktop. */
+.editor-panel-actions,
+.editor-panel-drawer-heading {
+    display: none;
+}
+
 /* TABLET & MOBILE EDITOR PANEL LAYOUT
    Existing drawing tools stay in place; only the responsive panel presentation changes. */
 @media (max-width: 1190px) {
