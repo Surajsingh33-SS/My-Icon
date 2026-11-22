@@ -11305,11 +11305,20 @@ function getSelectedFinishCategories() {
                 const cardRect = card.getBoundingClientRect();
                 const tooltipWidth = tooltip.getBoundingClientRect().width;
                 const halfWidth = tooltipWidth / 2;
-                const viewportCenter = Math.max(
-                    12 + halfWidth,
-                    Math.min(window.innerWidth - 12 - halfWidth, cardRect.left + cardRect.width / 2)
-                );
-                tooltip.style.left = `${viewportCenter - cardRect.left}px`;
+                const sidebar = document.querySelector(".home-sidebar");
+                const sidebarRect = sidebar?.getBoundingClientRect();
+                const sidebarVisible = sidebarRect && sidebarRect.width > 0 &&
+                    sidebarRect.right > 0 && sidebarRect.left < window.innerWidth &&
+                    window.innerWidth > 760;
+                const minCenter = sidebarVisible
+                    ? Math.max(12 + halfWidth, sidebarRect.right + 12 + halfWidth)
+                    : 12 + halfWidth;
+                const maxCenter = window.innerWidth - 12 - halfWidth;
+                const preferredCenter = cardRect.left + cardRect.width / 2;
+                const tooltipCenter = minCenter <= maxCenter
+                    ? Math.max(minCenter, Math.min(maxCenter, preferredCenter))
+                    : Math.max(12 + halfWidth, Math.min(maxCenter, preferredCenter));
+                tooltip.style.left = `${tooltipCenter - cardRect.left}px`;
             };
 
             const updateTooltipNameOverflow = () => {
