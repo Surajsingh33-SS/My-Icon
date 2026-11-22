@@ -6196,3 +6196,81 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         overflow-y: auto;
     }
 }
+
+
+/* Tablet-width project details drawer: use the same compact bottom-sheet layout. */
+@media (min-width: 701px) and (max-width: 760px) {
+    .project-details,
+    .project-details.expanded {
+        left: 0;
+        right: 0;
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        height: 290px;
+        max-height: 290px;
+        border-radius: 14px 14px 0 0;
+    }
+
+    .project-details-main {
+        flex: 1 1 0;
+        height: auto;
+        min-height: 0;
+    }
+
+    .project-preview {
+        flex-basis: 34%;
+    }
+
+    .project-content {
+        flex: 1 1 0;
+        height: auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .project-info {
+        flex: 1 1 0;
+        height: auto;
+        min-height: 0;
+        padding: 12px 16px;
+        gap: 9px;
+    }
+
+    .project-info-footer {
+        box-sizing: border-box;
+        flex: 0 0 76px;
+        height: 76px;
+        min-height: 76px;
+        max-height: 76px;
+        gap: 3px;
+        padding-top: 4px;
+        overflow: hidden;
+    }
+
+    .project-info-footer .project-utility-button {
+        padding: 4px 8px;
+        line-height: 1.2;
+    }
+
+    .project-info-footer > .project-export-button {
+        min-height: 44px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+
+    .project-details-toolbar {
+        padding: 10px;
+        gap: 5px;
+    }
+
+    .drawer-icon-btn,
+    .project-details-close {
+        width: 32px;
+        height: 32px;
+    }
+
+    .project-toolbar-name {
+        font-size: 16px;
+    }
+}
