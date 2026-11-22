@@ -11612,7 +11612,6 @@ function getSelectedFinishCategories() {
         opt.addEventListener("click", () => {
             const view = opt.dataset.homeView;
             if (view) switchHomeView(view);
-            setMobileSidebarOpen(false);
         });
     });
 
