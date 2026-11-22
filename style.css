@@ -1966,9 +1966,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* SMALL SCREENS */
 
 @media (max-width: 700px) {
-    .project-details {
-        height: 85dvh;
-        max-height: 95dvh;
+    .project-details,
+    .project-details.expanded {
+        top: auto;
+        bottom: 0;
+        height: 34dvh;
+        max-height: 34dvh;
     }
 
     /* Let the preview/info area fill the drawer so its action footer stays
@@ -5404,11 +5407,15 @@ body.light-theme #save-project-button:hover {
         gap: 8px;
     }
 
-    .project-details {
+    .project-details,
+    .project-details.expanded {
         left: 0;
         right: 0;
+        bottom: 0;
+        top: auto;
         width: 100%;
-        max-height: 92dvh;
+        height: 34dvh;
+        max-height: 34dvh;
         border-radius: 14px 14px 0 0;
     }
 
