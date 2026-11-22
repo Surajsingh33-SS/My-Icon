@@ -10732,32 +10732,29 @@ function getSelectedFinishCategories() {
         }
     });
 
-    // At tablet widths, place the original File/Gallery/New Icon navigation
-    // immediately after the Icon Maker logo. Moving the existing nav preserves
-    // all of its event handlers.
+    // Keep the original navigation as a topbar sibling so CSS can center it
+    // between the brand on the left and the active Uncategorized label on the right.
     function syncTabletGalleryMenuPlacement() {
         const topbar = document.querySelector(".topbar");
-        const brand = topbar?.querySelector(".topbar-brand");
-        const logo = brand?.querySelector(".logo-btn");
-        const divider = brand?.querySelector(".topbar-divider");
         const menu = topbar?.querySelector(":scope > .menu") ||
-            brand?.querySelector(":scope > .menu");
+            topbar?.querySelector(".topbar-brand > .menu");
+        const categoryLabel = topbar?.querySelector(".tablet-category-label");
         const tabletRange = window.innerWidth >= 601 && window.innerWidth <= 760;
+        const homeVisible = homeScreen?.classList.contains("show");
+        const uncategorizedTitle = document.querySelector(
+            '#home-project-grid .gallery-category-group[data-category="Uncategorized"] .cat-header-title'
+        );
 
-        if (!topbar || !brand || !menu) return;
-
-        if (tabletRange) {
-            if (logo && menu.parentElement !== brand) {
-                logo.insertAdjacentElement("afterend", menu);
-            } else if (logo && menu.previousElementSibling !== logo) {
-                logo.insertAdjacentElement("afterend", menu);
-            }
-            return;
-        }
+        if (!topbar || !menu) return;
 
         if (menu.parentElement !== topbar) {
             const actions = topbar.querySelector(":scope > .actions");
             topbar.insertBefore(menu, actions || null);
+        }
+
+        if (categoryLabel) {
+            categoryLabel.textContent = uncategorizedTitle?.textContent.trim() || "";
+            categoryLabel.hidden = !(tabletRange && homeVisible && uncategorizedTitle);
         }
     }
 
