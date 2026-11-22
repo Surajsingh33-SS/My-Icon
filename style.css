@@ -5317,8 +5317,29 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
     }
 
     .home-project-grid {
-        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+        grid-template-columns: repeat(auto-fill, minmax(min(90px, 100%), 1fr));
         gap: 8px;
+    }
+
+    /* Keep gallery content inside the viewport on narrow phone layouts. */
+    .home-screen,
+    .home-main,
+    .home-view-section,
+    .home-project-grid,
+    .home-project-grid .gallery-category-group {
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: clip;
+    }
+
+    .home-project-grid .home-project-card {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
     .project-details,
