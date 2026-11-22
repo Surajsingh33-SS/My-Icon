@@ -6876,3 +6876,64 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 }
 
+/* Keep the canvas centered independently of the side control groups. */
+@media (max-width: 1190px) {
+    .workspace-stage {
+        position: relative;
+        display: block;
+        padding: 12px 0;
+    }
+
+    .workspace-side-controls.left-controls {
+        position: absolute;
+        top: 50%;
+        left: 8px;
+        transform: translateY(-50%);
+        z-index: 10;
+    }
+
+    .workspace-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(480px, 58dvh, calc(100% - 112px));
+        max-width: none;
+        margin: 0;
+    }
+
+    .view-controls-group {
+        position: absolute;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
+        z-index: 26;
+    }
+
+    .editor.panels-open .workspace-stage {
+        padding: 12px 0;
+    }
+
+    .editor.panels-open .workspace-container {
+        width: min(480px, 58dvh, calc(100% - 112px));
+    }
+}
+
+@media (max-width: 760px) {
+    .workspace-container {
+        width: min(480px, 54dvh, calc(100% - 104px));
+    }
+
+    .workspace-side-controls.left-controls {
+        left: 5px;
+    }
+
+    .view-controls-group {
+        right: 0;
+    }
+
+    .editor.panels-open .workspace-container {
+        width: min(480px, 54dvh, calc(100% - 104px));
+    }
+}
+
