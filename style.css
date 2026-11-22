@@ -6274,3 +6274,53 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         font-size: 16px;
     }
 }
+
+
+/* Compact drawer: show related icons as a dedicated view without growing the 290px sheet. */
+@media (max-width: 700px) {
+    .project-details.mobile-related-view .project-details-main {
+        display: none;
+    }
+
+    .project-details .project-related.mobile-visible {
+        display: flex;
+        flex: 1 1 0;
+        flex-direction: column;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 14px 16px;
+        border-top: 0;
+    }
+
+    .project-details .related-heading {
+        flex: 0 0 auto;
+        gap: 8px;
+    }
+
+    .related-back-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        min-height: 28px;
+        padding: 4px 10px;
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-full);
+        background: var(--bg-surface-raised);
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .related-back-button:hover {
+        border-color: var(--accent);
+        background: var(--accent-light);
+    }
+
+    .related-project-grid {
+        flex: 0 0 auto;
+        grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+        gap: 8px;
+    }
+}
