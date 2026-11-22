@@ -12178,21 +12178,32 @@ if (finishCategoryManuallyChanged) {
     fileMenuButton?.addEventListener("click", e => {
         e.stopPropagation();
 
-        if (fileDropdown && window.matchMedia("(max-width: 760px)").matches) {
-            const buttonRect = fileMenuButton.getBoundingClientRect();
-            const menuWidth = Math.min(260, window.innerWidth - 16);
-            const left = Math.max(8, Math.min(buttonRect.left, window.innerWidth - menuWidth - 8));
+        if (fileDropdown) {
+            if (window.matchMedia("(max-width: 760px)").matches) {
+                // Move the menu out of the topbar stacking/overflow context.
+                if (fileDropdown.parentElement !== document.body) {
+                    document.body.appendChild(fileDropdown);
+                }
 
-            // Keep the menu upright and directly below the Files button.
-            fileDropdown.style.top = `${buttonRect.bottom + 8}px`;
-            fileDropdown.style.left = `${left}px`;
+                const buttonRect = fileMenuButton.getBoundingClientRect();
+                const menuWidth = Math.min(260, window.innerWidth - 16);
+                const left = Math.max(8, Math.min(buttonRect.left, window.innerWidth - menuWidth - 8));
+                fileDropdown.style.top = `${buttonRect.bottom + 8}px`;
+                fileDropdown.style.left = `${left}px`;
+            } else if (fileDropdown.parentElement !== document.querySelector(".file-menu-wrapper")) {
+                document.querySelector(".file-menu-wrapper")?.appendChild(fileDropdown);
+                fileDropdown.style.removeProperty("top");
+                fileDropdown.style.removeProperty("left");
+            }
+
+            fileDropdown.classList.toggle("show");
         }
-
-        fileDropdown?.classList.toggle("show");
     });
 
     document.addEventListener("click", e => {
-        if (fileDropdown && !e.target.closest(".file-menu-wrapper")) {
+        if (fileDropdown &&
+            !e.target.closest(".file-menu-wrapper") &&
+            !fileDropdown.contains(e.target)) {
             fileDropdown.classList.remove("show");
         }
     });
