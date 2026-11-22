@@ -1367,6 +1367,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
     transform: translateX(-50%) translateY(0);
 }
 
+.home-project-card.touch-tooltip-active .home-card-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
 .home-card-fav-star {
     position: absolute;
     top: 0px;
