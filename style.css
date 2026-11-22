@@ -7398,7 +7398,21 @@ body:has(#home-screen.show) .home-projects {
 }
 
 
-/* The SVG Source control uses a close icon, not a rotating collapse indicator. */
-.svg-source-close-btn[aria-expanded="false"] img {
-    transform: none;
+/* Desktop keeps the normal collapse icon; compact layouts use an X close icon. */
+.svg-source-mobile-icon {
+    display: none;
+}
+
+@media (max-width: 1190px) {
+    .svg-source-desktop-icon {
+        display: none;
+    }
+
+    .svg-source-mobile-icon {
+        display: inline-block;
+    }
+
+    .svg-source-close-btn[aria-expanded="false"] .svg-source-mobile-icon {
+        transform: none;
+    }
 }
