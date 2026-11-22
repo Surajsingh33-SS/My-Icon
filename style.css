@@ -5739,6 +5739,11 @@ body.light-theme #save-project-button:hover {
         flex-direction: row;
     }
 
+    .home-sidebar.is-swipe-dragging {
+        transition: none !important;
+        will-change: transform;
+    }
+
     .home-sidebar {
         position: absolute;
         inset: 0 auto 0 0;
