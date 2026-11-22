@@ -11545,6 +11545,9 @@ function getSelectedFinishCategories() {
     }
 
     function ensureProjectCategoryEditor() {
+        document.getElementById("project-edit-categories")?.remove();
+        return null;
+
         if (!projectCategoryBadge?.parentElement) return null;
 
         let button = document.getElementById("project-edit-categories");
