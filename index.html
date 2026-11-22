@@ -847,26 +847,10 @@
                     </div>
                 </div>
 
-                <div class="workspace-toggles">
-                    <label class="coordinate-toggle" title="Toggle 20×20 / 28×28 safe area boundary">
-                        <input type="checkbox" id="show-safe-area" checked>
-                        <span>Safe Area</span>
-                    </label>
-
-                    <label class="coordinate-toggle" title="Toggle center and grid guidelines">
-                        <input type="checkbox" id="show-guidelines" checked>
-                        <span>Guidelines</span>
-                    </label>
-
-                    <label class="coordinate-toggle" title="Show 0, 4, 8, 12, 16, 20, 24 axis labels">
-                        <input type="checkbox" id="show-coordinates">
-                        <span>Coordinates</span>
-                    </label>
-
-                    <label class="coordinate-toggle" title="Highlight nearest integer coordinate point on hover">
-                        <input type="checkbox" id="show-grid-highlight">
-                        <span>Grid point</span>
-                    </label>
+                <div class="workspace-toggles" hidden aria-hidden="true">
+                    <input type="checkbox" id="show-safe-area" checked>
+                    <input type="checkbox" id="show-guidelines" checked>
+                    <input type="checkbox" id="show-grid-highlight">
                 </div>
                 <div class="editor-panel-actions" aria-label="Editor side panels">
                     <button type="button" class="editor-panel-toggle" id="layers-panel-toggle" aria-expanded="false" aria-controls="code-panel">
@@ -1068,6 +1052,14 @@
                         title="Endpoint snapping ON (Alt + S)">
                         Snap
                     </button>
+                    <label class="coordinate-icon-toggle" title="Toggle coordinate labels"
+                        aria-label="Toggle coordinate labels">
+                        <input type="checkbox" id="show-coordinates">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>
+                        </svg>
+                    </label>
                 </div>
 
                 <!-- CENTER CANVAS CONTAINER -->
