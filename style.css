@@ -7857,3 +7857,97 @@ body:has(#home-screen.show) .home-projects {
         font-size: 10px;
     }
 }
+
+
+/* Compact transform toolbar: use a vertical floating panel below 890px. */
+@media (max-width: 890px) {
+    body:not(:has(#home-screen.show)) .transform-toolbar {
+        position: fixed;
+        top: 54px;
+        right: 12px;
+        bottom: auto;
+        left: auto;
+        width: min(280px, calc(100vw - 24px));
+        max-width: min(280px, calc(100vw - 24px));
+        max-height: calc(100dvh - 66px);
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 7px;
+        padding: 8px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        border-radius: 14px;
+        transform: translateX(8px) scale(0.96);
+        transform-origin: top right;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(var(--accent-rgb), 0.55) transparent;
+        overscroll-behavior: contain;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar.open {
+        transform: translateX(0) scale(1);
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group {
+        display: flex;
+        flex: 0 0 auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 5px;
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* Keep the six alignment actions compact in a clear 3-by-2 layout. */
+    body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group[title="Alignment"] {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        justify-items: center;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-divider {
+        flex: 0 0 1px;
+        width: 100%;
+        height: 1px;
+        margin: 1px 0;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .tool-action-btn {
+        flex: 0 0 auto;
+        width: 32px;
+        min-width: 32px;
+        height: 32px;
+        padding: 3px;
+        border-radius: 8px;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .tool-action-btn:has(span) {
+        width: auto;
+        min-width: 0;
+        padding: 4px 8px;
+        gap: 5px;
+        white-space: nowrap;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .mirror-axis-control {
+        flex: 1 1 auto;
+        justify-content: flex-start;
+        min-width: 0;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .mirror-axis-control select,
+    body:not(:has(#home-screen.show)) .transform-toolbar .mirror-axis-control input {
+        max-width: 76px;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar-toggle {
+        position: fixed;
+        top: 10px;
+        right: 12px;
+        z-index: 15001;
+    }
+}
