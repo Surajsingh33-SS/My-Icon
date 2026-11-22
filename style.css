@@ -7062,3 +7062,50 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 }
 
+/* Compact mobile editor workspace heading.
+   Keep the workspace size controls on one line down to 311px. */
+@media (max-width: 760px) {
+    .editor .workspace-heading {
+        gap: 6px;
+        padding: 7px 9px;
+    }
+
+    .editor .workspace-title-group {
+        flex: 0 1 auto;
+        min-width: 0;
+        flex-wrap: nowrap;
+        gap: 5px;
+        white-space: nowrap;
+    }
+
+    .editor .workspace-label {
+        font-size: 11px;
+        letter-spacing: -0.2px;
+    }
+
+    .editor .workspace-dimen {
+        padding: 2px 5px;
+        font-size: 9px;
+    }
+
+    .editor .artboard-size-selector {
+        flex: 0 0 auto;
+        gap: 1px;
+        margin-left: 2px;
+        padding: 1px;
+    }
+
+    .editor .artboard-size-selector .size-btn {
+        padding: 2px 5px;
+        font-size: 9px;
+    }
+}
+
+@media (max-width: 310px) {
+    .editor .workspace-title-group {
+        flex-wrap: wrap;
+        white-space: normal;
+        row-gap: 4px;
+    }
+}
+
