@@ -997,8 +997,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     gap: 12px;
     padding: 16px 28px;
     flex-shrink: 0;
-    container-type: inline-size;
-}
+    container-type: inline-size;}
 
 .home-search {
     flex: 1 1 250px;
@@ -1997,8 +1996,7 @@ html:not(.touch-hover-disabled) .project-details-close:hover{
         min-height: 0;
     }
 
-    .project-related {
-        display: none;
+    .project-related {        display: none;
     }
 
     .project-preview {
@@ -2997,7 +2995,6 @@ html:not(.touch-hover-disabled) .res-btn:hover{
         opacity: 0;
         transform: translateY(12px) scale(0.95);
     }
-
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -3997,8 +3994,7 @@ body.light-theme #save-project-button:hover{
 
 /* Selected icon */
 .styled-select[data-select="grid-mode"] .styled-select-label {
-    display: flex;
-    align-items: center;
+    display: flex;    align-items: center;
     justify-content: center;
 }
 
@@ -4997,8 +4993,7 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
     display: inline-flex;
     align-items: center;
     flex: 0 0 auto;
-    padding: 3px 7px;
-    border: 1px solid var(--border-subtle);
+    padding: 3px 7px;    border: 1px solid var(--border-subtle);
     border-radius: 999px;
     background: var(--bg-surface-raised);
     color: var(--text-secondary);
@@ -5229,6 +5224,7 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
     .home-controls {
         gap: 8px;
         padding: 12px;
+        flex-wrap: wrap;
     }
 
     .home-search {
@@ -5997,8 +5993,7 @@ body:has(#home-screen.show) #topbar-export-btn {
 }
 
 body:has(#home-screen.show #project-details.show) #topbar-export-btn {
-    display: inline-flex !important;
-}
+    display: inline-flex !important;}
 
 /* Keep the future home-page action placeholders desktop-only.
    Match the home-page selector specificity so this overrides its display rule. */
