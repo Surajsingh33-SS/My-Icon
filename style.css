@@ -3739,6 +3739,14 @@ select {
     min-width: 155px;
 }
 
+/* Keep compact gallery dropdown triggers at 40px; their menus retain content width. */
+@media (max-width: 1066px) {
+    .home-control-select > .styled-select[data-select="sort"] {
+        min-width: 40px;
+    }
+}
+
+
 /* Dropdown trigger */
 
 .styled-select-trigger {
