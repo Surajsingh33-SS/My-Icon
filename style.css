@@ -6118,23 +6118,12 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 }
 
-/* Keep the Files menu above the scrolling topbar without flipping it. */
+/* The mobile Files dropdown is portalled to body so no topbar stacking
+   context or horizontal-scroll container can cover or clip it. */
 @media (max-width: 760px) {
-    .topbar {
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
-    }
-
-    .topbar .file-menu-wrapper {
-        position: static !important;
-    }
-
-    .topbar .file-menu-wrapper > .file-dropdown {
+    body > #file-dropdown.file-dropdown {
         position: fixed !important;
-        top: 0;
-        left: 0;
-        right: auto;
-        z-index: 2000;
+        z-index: 99999 !important;
         width: min(260px, calc(100vw - 16px));
         max-height: min(70vh, 520px);
         overflow-x: hidden;
