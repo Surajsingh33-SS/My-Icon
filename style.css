@@ -7361,3 +7361,22 @@ body:has(#home-screen.show) .home-projects {
     max-width: 100%;
     overflow-x: hidden;
 }
+
+
+/* On compact screens, favorite state is changed from the selected icon
+   preview only. Keep the star visible on favorited tiles as a status marker. */
+@media (max-width: 760px) {
+    .home-card-fav-star {
+        pointer-events: none;
+    }
+
+    html .home-card-fav-star:not(.active) {
+        opacity: 0 !important;
+        visibility: hidden;
+    }
+
+    html .home-card-fav-star.active {
+        opacity: 1;
+        visibility: visible;
+    }
+}
