@@ -336,6 +336,7 @@
     const importProjectJsonBtn = document.getElementById("import-project-json-btn");
     const importProjectFileInput = document.getElementById("import-project-file-input");
     const shortcutsTriggerBtn = document.getElementById("shortcuts-trigger-btn");
+    const mobileNewIconButton = document.getElementById("mobile-new-icon-button");
     const unfinishedProjectList = document.getElementById("unfinished-project-list");
 
     // Home Screen & Gallery
@@ -11875,6 +11876,11 @@ if (finishCategoryManuallyChanged) {
     newProjectButton?.addEventListener("click", () => {
         createNewProject();
         fileDropdown?.classList.remove("show");
+    });
+
+    mobileNewIconButton?.addEventListener("click", () => {
+        createNewProject();
+        openIconEditor();
     });
 
     exportProjectJsonBtn?.addEventListener("click", () => {
