@@ -6122,6 +6122,10 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 
     /* In the selected-icon preview, place only its Export action beside
        the project name/status instead of hiding the whole actions group. */
+    body:has(#home-screen.show #project-details.show) .topbar-brand > .topbar-project-info {
+        margin-left: auto;
+    }
+
     body:has(#home-screen.show #project-details.show) .topbar .actions {
         display: flex !important;
         order: 4;
