@@ -776,6 +776,7 @@
     const relatedProjectGrid = document.getElementById("related-project-grid");
     const relatedHeadingText = document.getElementById("related-heading-text");
     const relatedCount = document.getElementById("related-count");
+    const relatedBackButton = document.getElementById("related-back-button");
 
     // Modals
     const finishModal = document.getElementById("finish-modal");
@@ -11645,7 +11646,12 @@ function getSelectedFinishCategories() {
         projectCategoryListExpanded = false;
         projectSearchTermsExpanded = false;
         updateHomeProjectSelection();
-        if (projectRelated) projectRelated.hidden = true;
+        if (projectRelated) {
+            projectRelated.hidden = true;
+            projectRelated.classList.remove("mobile-visible");
+        }
+        projectDetails?.classList.remove("mobile-related-view");
+        if (relatedBackButton) relatedBackButton.hidden = true;
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
         renderProjectCategoryBadges(project);
@@ -11694,7 +11700,12 @@ function getSelectedFinishCategories() {
         projectDetails?.classList.remove("show", "expanded");
         projectDetails?.setAttribute("aria-hidden", "true");
 
-        if (projectRelated) projectRelated.hidden = true; // ADD THIS
+        if (projectRelated) {
+            projectRelated.hidden = true;
+            projectRelated.classList.remove("mobile-visible");
+        }
+        projectDetails?.classList.remove("mobile-related-view");
+        if (relatedBackButton) relatedBackButton.hidden = true;
 
         selectedHomeProject = null;
         updateHomeProjectSelection();
@@ -11715,7 +11726,25 @@ function getSelectedFinishCategories() {
         if (!selectedHomeProject || !projectDetails || !projectRelated) return;
 
         projectRelated.hidden = false;
+
+        if (window.matchMedia("(max-width: 700px)").matches) {
+            // The compact drawer cannot show the preview and related grid together.
+            // Switch its content area instead of expanding the fixed-height sheet.
+            projectRelated.classList.add("mobile-visible");
+            projectDetails.classList.add("mobile-related-view");
+            if (relatedBackButton) relatedBackButton.hidden = false;
+            return;
+        }
+
         projectDetails.classList.add("expanded");
+    });
+
+    relatedBackButton?.addEventListener("click", () => {
+        if (!projectRelated || !projectDetails) return;
+        projectRelated.hidden = true;
+        projectRelated.classList.remove("mobile-visible");
+        projectDetails.classList.remove("mobile-related-view");
+        relatedBackButton.hidden = true;
     });
     // Export the currently previewed icon
     document.getElementById("project-export-button")?.addEventListener("click", () => {
