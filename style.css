@@ -5707,3 +5707,26 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         display: none !important;
     }
 }
+
+
+/* Mobile navigation: replace keyboard shortcuts with a direct New Icon action. */
+@media (max-width: 760px) {
+    #shortcuts-trigger-btn {
+        display: none !important;
+    }
+
+    .mobile-new-icon-button {
+        display: inline-flex !important;
+    }
+
+    /* The gallery already has its own New Icon action on desktop; avoid duplication on mobile. */
+    #home-edit-button {
+        display: none !important;
+    }
+}
+
+@media (min-width: 761px) {
+    .mobile-new-icon-button {
+        display: none !important;
+    }
+}
