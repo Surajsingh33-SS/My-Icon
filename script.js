@@ -11269,6 +11269,11 @@ function getSelectedFinishCategories() {
                 const name = document.createElement("span");
                 name.className = "home-project-name";
                 name.textContent = project.name || "Untitled icon";
+                requestAnimationFrame(() => {
+                    const overflow = Math.max(0, name.scrollWidth - name.clientWidth);
+                    name.classList.toggle("is-overflowing", overflow > 2);
+                    if (overflow > 2) name.style.setProperty("--gallery-name-overflow", overflow + "px");
+                });
 
                 const cat = document.createElement("span");
                 cat.className = "home-project-category";
