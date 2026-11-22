@@ -5641,8 +5641,9 @@ body.light-theme #save-project-button:hover {
 }
 
 
-/* Mobile topbar visibility — visual only; preserve all button behavior. */
-@media (max-width: 760px) {
+/
+
+/* Topbar visibility — visual only; preserve all button behavior. */
     /* Home page: Save and Finish are editor-only actions. */
     body:has(#home-screen.show) #save-project-button,
     body:has(#home-screen.show) #finish-project-button {
@@ -5657,4 +5658,3 @@ body.light-theme #save-project-button:hover {
     body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         display: inline-flex !important;
     }
-}
