@@ -6632,6 +6632,17 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         color: var(--accent);
     }
 
+    .editor-panel-toggle.editor-delete-toggle {
+        border-color: var(--danger-border);
+        background: var(--danger-bg);
+        color: var(--danger);
+    }
+
+    .editor-panel-toggle.editor-delete-toggle:active {
+        background: var(--danger);
+        color: #ffffff;
+    }
+
     .panel-toggle-icon {
         font-size: 15px;
         line-height: 1;
