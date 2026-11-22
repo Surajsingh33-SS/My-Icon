@@ -5649,10 +5649,10 @@ body:has(#home-screen.show) #finish-project-button {
     visibility: hidden !important;
 }
 
-/* Future home-page actions: hidden everywhere except the home screen. */
+/* Future home-page actions: hidden everywhere except the home screen.
+   Each placeholder inherits its matching Save, Finish, or Export button styles. */
 .home-action-placeholder {
     display: none;
-    cursor: default;
 }
 
 body:has(#home-screen.show) .topbar .actions > .home-action-placeholder {
