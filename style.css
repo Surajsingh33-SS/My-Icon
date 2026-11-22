@@ -8231,3 +8231,68 @@ body:not(:has(#home-screen.show)) .transform-toolbar .mirror-axis-control input 
         width: min(100%, 54dvh);
     }
 }
+
+
+/* Keep the transformation sidebar to roughly one quarter of the viewport. */
+.editor.transform-sidebar-open {
+    --transform-sidebar-width: clamp(160px, 25vw, 360px);
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar {
+    width: var(--transform-sidebar-width);
+    max-width: var(--transform-sidebar-width);
+    justify-content: space-evenly;
+    gap: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.editor.transform-sidebar-open .workspace-section {
+    margin-right: var(--transform-sidebar-width);
+    width: calc(100% - var(--transform-sidebar-width));
+    max-width: calc(100% - var(--transform-sidebar-width));
+    min-width: 0;
+    transition: width 0.28s ease, max-width 0.28s ease, margin-right 0.28s ease;
+}
+
+.editor.transform-sidebar-open .workspace-container {
+    max-width: 100%;
+}
+
+@media (max-width: 1190px) {
+    .editor.transform-sidebar-open {
+        --transform-sidebar-width: clamp(160px, 25vw, 300px);
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar {
+        width: var(--transform-sidebar-width);
+        max-width: var(--transform-sidebar-width);
+        justify-content: space-evenly;
+    }
+
+    .editor.transform-sidebar-open .workspace-section {
+        margin-right: 0;
+        width: calc(100% - var(--transform-sidebar-width));
+        max-width: calc(100% - var(--transform-sidebar-width));
+    }
+}
+
+@media (max-width: 760px) {
+    .editor.transform-sidebar-open {
+        --transform-sidebar-width: clamp(145px, 25vw, 210px);
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar {
+        width: var(--transform-sidebar-width);
+        max-width: var(--transform-sidebar-width);
+        padding-left: 6px;
+        padding-right: 6px;
+        gap: 5px;
+    }
+
+    body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group {
+        justify-content: center;
+        column-gap: 3px;
+        row-gap: 5px;
+    }
+}
