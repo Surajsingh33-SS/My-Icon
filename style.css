@@ -5712,16 +5712,22 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 /* Tablet navigation order: Icon Maker → File → Gallery → New Icon. */
 @media (min-width: 601px) and (max-width: 760px) {
     .topbar-brand {
-        gap: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex: 1 1 auto;
+        min-width: 0;
         flex-wrap: nowrap;
-        flex: 0 0 auto;
     }
 
     .topbar-brand > .menu {
         display: flex;
         align-items: center;
-        flex: 0 0 auto;
-        gap: 4px;
+        justify-content: space-between;
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: 12px;
         flex-wrap: nowrap;
     }
 
