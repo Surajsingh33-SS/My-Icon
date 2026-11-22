@@ -5817,10 +5817,14 @@ body.light-theme #save-project-button:hover {
     }
 
 
-    /* Keep non-gallery view toggles floating so they do not occupy header space. */
-    .home-view-section:not(#home-view-gallery) .mobile-sidebar-toggle {
-        display: inline-flex !important;
-        position: fixed !important;
+    /* Shared floating toggle for every non-gallery home view. */
+    .mobile-sidebar-toggle-floating {
+        display: none;
+    }
+
+    .home-screen.mobile-sidebar-floating-visible .mobile-sidebar-toggle-floating {
+        display: inline-flex;
+        position: fixed;
         right: 18px;
         bottom: 18px;
         z-index: 100;
