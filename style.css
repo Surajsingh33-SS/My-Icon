@@ -5709,32 +5709,56 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 }
 
 
-/* Tablet navigation order: Icon Maker → File → Gallery → New Icon. */
+/* Tablet topbar: brand left, compact navigation centered, category right. */
 @media (min-width: 601px) and (max-width: 760px) {
+    .topbar {
+        justify-content: space-between;
+    }
+
     .topbar-brand {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         min-width: 0;
-        flex-wrap: nowrap;
+        gap: 7px;
     }
 
-    .topbar-brand > .menu {
+    .topbar > .menu {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        flex: 1 1 auto;
-        min-width: 0;
-        gap: 12px;
+        justify-content: center;
+        flex: 0 0 auto;
+        gap: 4px;
         flex-wrap: nowrap;
+        white-space: nowrap;
     }
 
-    .topbar-brand > .menu .menu-btn {
+    .topbar > .menu .menu-btn {
         padding: 6px 7px;
         font-size: 11px;
         white-space: nowrap;
+    }
+
+    .topbar .actions {
+        display: none !important;
+    }
+
+    .tablet-category-label:not([hidden]) {
+        display: block;
+        margin-left: auto;
+        max-width: 120px;
+        overflow: hidden;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body:has(.tablet-category-label:not([hidden])) .gallery-category-group[data-category="Uncategorized"] .gallery-category-header {
+        display: none;
     }
 }
 
