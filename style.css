@@ -5316,6 +5316,22 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
         overflow: auto;
     }
 
+    /* Let the gallery use the full available phone width. */
+    .home-main,
+    .home-view-section {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .home-project-grid {
+        width: 100%;
+        max-width: 100%;
+        padding-left: 10px;
+        padding-right: 10px;
+        box-sizing: border-box;
+    }
+
     .home-project-grid {
         width: 100%;
         min-width: 0;
