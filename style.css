@@ -6352,3 +6352,160 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         gap: 8px;
     }
 }
+
+/* MOBILE EDITOR VISUAL POLISH
+   Styling only: editor interactions and desktop presentation remain unchanged. */
+@media (max-width: 760px) {
+    .workspace-heading {
+        gap: 10px;
+        padding: 11px 14px;
+    }
+
+    .workspace-title-group {
+        gap: 9px;
+    }
+
+    .workspace-label {
+        font-size: 13px;
+        letter-spacing: -0.1px;
+    }
+
+    .workspace-dimen {
+        padding: 3px 8px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+    }
+
+    .workspace-toggles {
+        gap: 6px;
+        padding-bottom: 2px;
+    }
+
+    .coordinate-toggle {
+        gap: 6px;
+        padding: 5px 8px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-full);
+        background: var(--bg-surface);
+        font-size: 10px;
+        white-space: nowrap;
+    }
+
+    .coordinate-toggle input {
+        width: 13px;
+        height: 13px;
+    }
+
+    .workspace-container {
+        border-color: var(--border-strong);
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(255, 255, 255, 0.035);
+    }
+
+    .workspace-side-controls {
+        gap: 7px;
+    }
+
+    .workspace-side-controls button {
+        border-radius: 10px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .workspace-tip {
+        border-top: 1px solid var(--border-subtle);
+        background: var(--bg-panel);
+    }
+
+    .tools-panel,
+    .code-panel {
+        background: var(--bg-panel);
+    }
+
+    .tools-panel > .collapse-heading,
+    .code-panel .collapse-heading {
+        padding: 12px 14px;
+    }
+
+    .tools-panel > .collapse-content,
+    .code-panel .collapse-content {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .tool-list {
+        gap: 8px;
+    }
+
+    .tool {
+        min-height: 70px;
+        padding: 9px 5px;
+        border: 1px solid var(--border-default);
+        border-radius: 12px;
+        background: var(--bg-surface);
+        box-shadow: 0 2px 7px rgba(0, 0, 0, 0.12);
+    }
+
+    .tool span {
+        font-size: 22px;
+        margin-bottom: 5px;
+    }
+
+    .tool p {
+        font-size: 11px;
+        line-height: 1.25;
+        text-align: center;
+    }
+
+    .trash-btn {
+        min-height: 42px;
+        border-radius: 11px;
+    }
+
+    .path-style-control,
+    .property-group {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    .properties-panel {
+        border-top: 1px solid var(--border-subtle);
+    }
+
+    .properties-panel > .collapse-heading {
+        padding: 12px 14px;
+    }
+
+    .layers-panel,
+    .svg,
+    .measurement-panel {
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .layer-item {
+        padding: 9px 10px;
+        border-radius: 10px;
+    }
+
+    .layer-controls button {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+    }
+
+    #svg-code {
+        min-height: 165px;
+        border-radius: 11px;
+        line-height: 1.5;
+    }
+
+    .property-field input[type="number"],
+    .measurement-field input[type="number"] {
+        height: 32px;
+    }
+
+    .measurement-field {
+        padding: 8px 10px;
+        border-radius: 9px;
+    }
+}
+
