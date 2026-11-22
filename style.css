@@ -5951,7 +5951,10 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
 
     .home-main {
         width: 100%;
-        flex: 1 1 100%;
+        max-width: 100%;
+        min-width: 0;
+        flex: 1 1 0%;
+        box-sizing: border-box;
         padding-top: 0;
     }
 }
