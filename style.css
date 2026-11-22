@@ -7156,3 +7156,95 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         row-gap: 4px;
     }
 }
+
+/* Mobile editor: place the Tools panel as a left-side collapsible rail.
+   This is layout-only; the existing collapse button and tool interactions remain unchanged. */
+@media (max-width: 760px) {
+    .editor {
+        --tools-sidebar-width: 184px;
+        flex-direction: row;
+        overflow: hidden;
+    }
+
+    .editor > .workspace-section {
+        order: 0;
+        flex: 1 1 auto;
+        width: auto;
+        max-width: none;
+        min-width: 0;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .editor > .tools-panel {
+        order: -1;
+        flex: 0 0 var(--tools-sidebar-width);
+        width: var(--tools-sidebar-width);
+        height: 100%;
+        max-height: none;
+        min-width: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        border-right: 1px solid var(--border-subtle);
+        border-top: 0;
+    }
+
+    .editor > .tools-panel > .collapse-heading {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 12px 9px;
+        background: var(--bg-panel);
+    }
+
+    .editor > .tools-panel > .collapse-heading h3 {
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    .editor > .tools-panel > .collapse-content {
+        padding: 9px;
+    }
+
+    .editor > .tools-panel .tool-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .editor > .tools-panel:has(> .collapse-content.collapsed) {
+        flex-basis: 42px;
+        width: 42px;
+        --tools-sidebar-width: 42px;
+    }
+
+    .editor > .tools-panel:has(> .collapse-content.collapsed) > .collapse-heading {
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 10px 4px;
+    }
+
+    .editor > .tools-panel:has(> .collapse-content.collapsed) > .collapse-heading h3 {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        letter-spacing: 1px;
+    }
+
+    /* Keep the left rail at its own width when the right editor drawer is open. */
+    .editor.panels-open > .tools-panel {
+        flex: 0 0 var(--tools-sidebar-width);
+        width: var(--tools-sidebar-width);
+        max-width: var(--tools-sidebar-width);
+    }
+
+    .editor.panels-open > .workspace-section {
+        width: calc(100% - var(--editor-panel-width) - var(--tools-sidebar-width));
+        max-width: calc(100% - var(--editor-panel-width) - var(--tools-sidebar-width));
+        flex: 0 0 auto;
+    }
+}
