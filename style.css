@@ -1299,7 +1299,7 @@ html:not(.touch-hover-disabled) .home-project-card.active:hover{
     left: 50%;
     transform: translateX(-50%) translateY(-4px);
     width: max-content;
-    max-width: min(280px, calc(100vw - 24px));
+    max-width: min(280px, calc(100vw - 24px), 100%);
     box-sizing: border-box;
     overflow: hidden;
     padding: 4px 8px;
