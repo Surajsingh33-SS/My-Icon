@@ -11602,10 +11602,6 @@ function getSelectedFinishCategories() {
             if (!section) return;
             section.style.display = name === viewName ? "flex" : "none";
         });
-        homeScreen?.classList.toggle(
-            "mobile-sidebar-floating-visible",
-            viewName !== "gallery"
-        );
 
         if (viewName === "projects") {
             renderManagementTable();
