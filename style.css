@@ -5394,9 +5394,8 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
         box-sizing: border-box;
     }
 
-    .home-project-grid,
-    .gallery-category-cards {
-        grid-template-columns: repeat(auto-fill, minmax(0, 1fr));
+    .home-project-grid {
+        grid-template-columns: repeat(auto-fill, minmax(min(90px, 100%), 1fr));
     }
 
     .home-project-grid .home-project-card,
