@@ -10753,8 +10753,8 @@ function getSelectedFinishCategories() {
         }
 
         if (categoryLabel) {
-            categoryLabel.textContent = uncategorizedTitle?.textContent.trim() || "";
-            categoryLabel.hidden = !(tabletRange && homeVisible && uncategorizedTitle);
+            categoryLabel.textContent = uncategorizedTitle?.textContent.trim() || "Uncategorized";
+            categoryLabel.hidden = !(tabletRange && homeVisible);
         }
     }
 
