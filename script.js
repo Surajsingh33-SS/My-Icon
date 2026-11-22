@@ -12724,6 +12724,35 @@ if (finishCategoryManuallyChanged) {
 
     // Responsive editor side panels: preserve the existing drawing/editor logic.
     const editorLayout = document.querySelector(".editor");
+
+    // Auto-hide only scrollbars belonging to the editor. The existing overflow,
+    // scrollbar dimensions, and scroll behaviour are left untouched.
+    if (editorLayout) {
+        const editorScrollbarTimers = new WeakMap();
+
+        editorLayout.addEventListener("scroll", event => {
+            const scroller = event.target;
+            if (!(scroller instanceof HTMLElement) || !editorLayout.contains(scroller)) return;
+
+            const styles = window.getComputedStyle(scroller);
+            const allowsScroll = value => value === "auto" || value === "scroll" || value === "overlay";
+            const canScrollX = allowsScroll(styles.overflowX) && scroller.scrollWidth > scroller.clientWidth + 1;
+            const canScrollY = allowsScroll(styles.overflowY) && scroller.scrollHeight > scroller.clientHeight + 1;
+            if (!canScrollX && !canScrollY) return;
+
+            scroller.classList.add("scrollbar-auto-hide", "scrollbar-active");
+
+            const previousTimer = editorScrollbarTimers.get(scroller);
+            if (previousTimer) window.clearTimeout(previousTimer);
+
+            const timer = window.setTimeout(() => {
+                scroller.classList.remove("scrollbar-active");
+                editorScrollbarTimers.delete(scroller);
+            }, 1500);
+
+            editorScrollbarTimers.set(scroller, timer);
+        }, true);
+    }
     const layersPanelToggle = document.getElementById("layers-panel-toggle");
     const responsiveDeleteToggle = document.getElementById("responsive-delete-toggle");
     const svgPanelToggle = document.getElementById("svg-panel-toggle");
