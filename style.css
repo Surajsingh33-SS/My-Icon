@@ -922,10 +922,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* Home Navbar */
 .home-navbar {
-    position: relative;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     padding: 14px 28px;
     border-bottom: 1px solid var(--border-subtle);
     background: var(--bg-surface);
@@ -934,17 +933,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .home-nav-options {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-.home-navbar-actions {
-    margin-left: auto;
 }
 
 .home-nav-option {
@@ -5829,10 +5820,7 @@ body.light-theme #save-project-button:hover {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        position: absolute;
-        left: -46px;
-        top: 50%;
-        transform: translateY(-50%);
+        position: static;
         flex: 0 0 38px;
         width: 38px;
         height: 38px;
@@ -5847,18 +5835,14 @@ body.light-theme #save-project-button:hover {
     }
 
     .home-navbar {
-        justify-content: flex-end;
+        justify-content: flex-start;
         gap: 8px;
         padding: 8px 10px;
-        min-height: 54px;
     }
 
     .home-nav-options {
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        min-width: max-content;
-        flex: 0 0 auto;
+        min-width: 0;
+        flex: 1 1 auto;
         gap: 4px;
     }
 
