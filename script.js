@@ -10732,27 +10732,22 @@ function getSelectedFinishCategories() {
         }
     });
 
-    // At tablet widths, place the existing File/Gallery/New Icon navigation
-    // beside the Uncategorized gallery heading without replacing its event handlers.
+    // At tablet widths, keep the existing File/Gallery/New Icon controls
+    // together in the top bar, immediately after the Icon Maker brand.
+    // Move the original nodes so their existing event handlers remain intact.
     function syncTabletGalleryMenuPlacement(forceRestore = false) {
         const topbar = document.querySelector(".topbar");
+        const brand = topbar?.querySelector(".topbar-brand");
+        const divider = brand?.querySelector(".topbar-divider");
         const menu = topbar?.querySelector(":scope > .menu") ||
-            document.querySelector(".tablet-gallery-menu-slot > .menu");
+            brand?.querySelector(":scope > .menu");
         const homeEditButton = document.getElementById("home-edit-button");
         const homeNavbarActions = document.querySelector(".home-navbar-actions");
         const tabletRange = window.innerWidth >= 601 && window.innerWidth <= 760;
-        const uncategorizedHeader = homeProjectGrid?.querySelector(
-            '.gallery-category-group[data-category="Uncategorized"] .gallery-category-header'
-        );
 
-        if (!forceRestore && tabletRange && galleryViewCategory === "categories" && uncategorizedHeader && menu && homeEditButton) {
-            let slot = uncategorizedHeader.querySelector(".tablet-gallery-menu-slot");
-            if (!slot) {
-                slot = document.createElement("div");
-                slot.className = "tablet-gallery-menu-slot";
-                uncategorizedHeader.appendChild(slot);
-            }
-            slot.append(menu, homeEditButton);
+        if (!forceRestore && tabletRange && brand && menu && homeEditButton) {
+            brand.insertBefore(menu, divider || brand.querySelector(".topbar-project-info") || null);
+            brand.insertBefore(homeEditButton, divider || brand.querySelector(".topbar-project-info") || null);
             return;
         }
 
@@ -10763,7 +10758,6 @@ function getSelectedFinishCategories() {
         if (homeEditButton && homeNavbarActions && homeEditButton.parentElement !== homeNavbarActions) {
             homeNavbarActions.appendChild(homeEditButton);
         }
-        homeProjectGrid?.querySelectorAll(".tablet-gallery-menu-slot").forEach(slot => slot.remove());
     }
 
     window.addEventListener("resize", syncTabletGalleryMenuPlacement);
