@@ -12725,6 +12725,7 @@ if (finishCategoryManuallyChanged) {
     // Responsive editor side panels: preserve the existing drawing/editor logic.
     const editorLayout = document.querySelector(".editor");
     const layersPanelToggle = document.getElementById("layers-panel-toggle");
+    const responsiveDeleteToggle = document.getElementById("responsive-delete-toggle");
     const svgPanelToggle = document.getElementById("svg-panel-toggle");
     const editorPanelClose = document.getElementById("editor-panel-close");
 
@@ -12733,6 +12734,9 @@ if (finishCategoryManuallyChanged) {
         layersPanelToggle?.setAttribute("aria-expanded", "false");
         svgPanelToggle?.setAttribute("aria-expanded", "false");
     }
+
+    // The compact Delete control reuses the existing delete action unchanged.
+    responsiveDeleteToggle?.addEventListener("click", () => deleteButton?.click());
 
     layersPanelToggle?.addEventListener("click", () => {
         const willOpen = !editorLayout?.classList.contains("panels-open");
