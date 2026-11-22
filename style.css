@@ -5732,7 +5732,10 @@ body.light-theme #save-project-button:hover {
 }
 
 @media (max-width: 760px) {
+    /* Keep the home layer above the app topbar so its fixed floating controls
+       can remain visible even when dragged into the topbar area. */
     .home-screen {
+        z-index: 1100;
         flex-direction: row;
     }
 
@@ -5823,7 +5826,7 @@ body.light-theme #save-project-button:hover {
         position: fixed !important;
         right: 18px;
         bottom: 18px;
-        z-index: 100;
+        z-index: 1200;
         flex: none;
         touch-action: none;
         user-select: none;
