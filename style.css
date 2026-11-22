@@ -5699,7 +5699,7 @@ body.light-theme #save-project-button:hover {
     .home-main {
         width: 100%;
         flex: 1 1 100%;
-        padding-top: 0;
+        padding-top: 50px;
     }
 }
 
