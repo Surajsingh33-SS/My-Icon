@@ -2038,9 +2038,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
     background: var(--bg-base);
 }
 
-/* The editor remains mounted behind the home screen; hide its heading while home is active. */
-.home-screen.show ~ .editor .workspace-heading {
-    display: none;
+/* Hide the editor workspace heading whenever the home screen is active. */
+body:has(#home-screen.show) .editor .workspace-heading {
+    display: none !important;
 }
 
 .workspace-heading {
