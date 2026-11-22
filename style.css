@@ -5388,6 +5388,37 @@ body.light-theme #save-project-button:hover {
     }
 }
 
+/* Stack the mobile topbar from 600px and below. */
+@media (max-width: 600px) {
+    .topbar {
+        height: auto;
+        min-height: 76px;
+        padding: 5px 8px;
+        flex-wrap: wrap;
+        overflow: visible;
+    }
+
+    .topbar-brand {
+        flex: 1 1 auto;
+        justify-content: space-between;
+    }
+
+    .topbar .menu {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        overflow-x: auto;
+    }
+
+    .topbar .actions {
+        margin-left: auto;
+    }
+
+    .home-screen {
+        inset: 86px 0 0;
+    }
+}
+
 @media (max-width: 480px) {
     .topbar {
         height: auto;
