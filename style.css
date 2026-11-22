@@ -5709,78 +5709,94 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 }
 
 
-/* Tablet topbar: brand left, compact navigation centered, category right. */
+/* Tablet topbar: brand and project status left, navigation centered in the remaining space. */
 @media (min-width: 601px) and (max-width: 760px) {
     .topbar {
+        display: flex;
         justify-content: space-between;
-        /* The tablet navbar must never become a scroll container for the File popover. */
+        align-items: center;
+        gap: 10px;
         overflow-x: visible !important;
         overflow-y: visible !important;
     }
 
     .topbar-brand {
-        flex: 0 0 auto;
+        flex: 0 1 auto;
         min-width: 0;
         gap: 7px;
+        white-space: nowrap;
     }
 
-    /* Show the existing project name and its existing Saved status beside the logo. */
+    /* Use the existing project title and Saved indicator; do not add a second label. */
     .topbar-brand > .topbar-divider {
         display: block;
+        flex: 0 0 1px;
     }
 
     .topbar-brand > .topbar-project-info {
         display: flex;
+        align-items: center;
+        flex: 0 1 auto;
         min-width: 0;
-        gap: 6px;
+        gap: 5px;
     }
 
     .topbar-project-info .active-project-name {
         display: inline-block !important;
-        max-width: 92px;
+        flex: 0 1 auto;
+        max-width: clamp(58px, 12vw, 88px);
+        overflow: hidden;
         font-size: 11px;
+        text-overflow: ellipsis;
         white-space: nowrap;
     }
 
     .topbar-project-info .save-pill {
         display: inline-flex;
+        flex: 0 0 auto;
         white-space: nowrap;
     }
 
+    /* Keep File, Gallery and New Icon together in normal layout flow.
+       This prevents the centered nav from overlapping the brand on narrower tablets. */
     .topbar > .menu {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
+        position: relative;
+        inset: auto;
+        left: auto;
+        top: auto;
+        transform: none;
         display: flex;
         align-items: center;
         justify-content: center;
         flex: 0 0 auto;
-        gap: 4px;
+        gap: 3px;
         flex-wrap: nowrap;
+        margin-inline: auto;
         white-space: nowrap;
-        /* Keep dropdowns above the complete topbar, not trapped in the nav stacking layer. */
+        overflow: visible !important;
         z-index: 1100;
-        overflow-x: visible !important;
-        overflow-y: visible !important;
     }
 
     .topbar > .menu .file-menu-wrapper {
         position: relative;
+        flex: 0 0 auto;
         z-index: 1101;
     }
 
-    /* Keep the menu panel out of navbar layout/scrolling; it floats below File. */
+    /* The popover is removed from navbar flow and scrolls independently only if tall. */
     .topbar > .menu .file-menu-wrapper > .file-dropdown {
         position: absolute !important;
         top: calc(100% + 8px);
         left: 0;
         z-index: 1102;
+        width: 260px;
         max-height: min(70vh, 520px);
+        overflow-x: hidden;
         overflow-y: auto;
     }
 
     .topbar > .menu .menu-btn {
+        flex: 0 0 auto;
         padding: 6px 7px;
         font-size: 11px;
         white-space: nowrap;
@@ -5789,7 +5805,6 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     .topbar .actions {
         display: none !important;
     }
-
 }
 
 /* Hide the vertical brand divider on mobile only (600px and below). */
