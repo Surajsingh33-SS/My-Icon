@@ -7295,3 +7295,41 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         flex: 0 0 auto;
     }
 }
+
+
+/* Mobile editor fixes: keep the collapse state effective even though the
+   content wrapper is flattened for the horizontal tool-strip layout. */
+@media (max-width: 760px) {
+    body:not(:has(#home-screen.show)) .editor .tools-panel > .collapse-content.collapsed {
+        display: none !important;
+    }
+
+    /* A consistently slim, themed horizontal scrollbar for the tool strip. */
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(var(--accent-rgb), 0.65) transparent;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list::-webkit-scrollbar {
+        display: block;
+        width: 3px;
+        height: 3px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: rgba(var(--accent-rgb), 0.65);
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list::-webkit-scrollbar-thumb:hover {
+        background: var(--accent);
+    }
+
+    body:not(:has(#home-screen.show)) .editor .tools-panel .tool-list::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+}
