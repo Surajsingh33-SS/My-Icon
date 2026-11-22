@@ -2038,8 +2038,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
     background: var(--bg-base);
 }
 
-/* Hide the editor workspace heading whenever the home screen is active. */
-body:has(#home-screen.show) .editor .workspace-heading {
+/* Keep the entire editor out of the page flow while the home screen is active. */
+body:has(#home-screen.show) .editor {
     display: none !important;
 }
 
