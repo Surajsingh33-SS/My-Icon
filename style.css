@@ -5555,7 +5555,7 @@ body.light-theme #save-project-button:hover {
     margin-top: 14px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 920px) {
     .mobile-preferences-accent-card {
         display: block;
     }
@@ -5897,8 +5897,8 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     }
 }
 
-/* Keep the replacement picker inside mobile Preferences. */
-@media (max-width: 760px) {
+/* Keep the replacement picker inside Preferences on compact layouts. */
+@media (max-width: 920px) {
     .home-view-section#home-view-settings .mobile-preferences-accent-card {
         display: flex;
     }
