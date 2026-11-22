@@ -11240,10 +11240,7 @@ function getSelectedFinishCategories() {
 
             const tooltip = document.createElement("div");
             tooltip.className = "home-card-tooltip";
-            const tooltipText = document.createElement("span");
-            tooltipText.className = "home-card-tooltip-text";
-            tooltipText.textContent = project.name || "Untitled icon";
-            tooltip.appendChild(tooltipText);
+            tooltip.textContent = project.name || "Untitled icon";
 
             const starBtn = document.createElement("button");
             starBtn.type = "button";
@@ -11287,14 +11284,6 @@ function getSelectedFinishCategories() {
             }
 
             card.appendChild(tooltip);
-            requestAnimationFrame(() => {
-                const maxDistance = tooltipText.scrollWidth - tooltip.clientWidth + 2;
-                if (maxDistance > 2) {
-                    tooltipText.classList.add("is-overflowing");
-                    tooltipText.style.setProperty("--tooltip-scroll-distance", `${-maxDistance}px`);
-                    tooltipText.style.setProperty("--tooltip-scroll-duration", `${Math.max(2.2, maxDistance / 24)}s`);
-                }
-            });
             card.appendChild(starBtn);
 
             card.addEventListener("click", () => showProjectPreview(project));
