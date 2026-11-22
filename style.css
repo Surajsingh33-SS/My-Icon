@@ -7416,3 +7416,99 @@ body:has(#home-screen.show) .home-projects {
         transform: none;
     }
 }
+
+
+/* Mobile/tablet: separate Layers and Measurements overlays.
+   The panel floats over the workspace so opening it never resizes the canvas. */
+@media (max-width: 1190px) {
+    body:not(:has(#home-screen.show)) .editor-panel-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    body:not(:has(#home-screen.show)) #layers-panel-toggle,
+    body:not(:has(#home-screen.show)) #measurement-panel-toggle {
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 0;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel {
+        display: flex !important;
+        position: fixed !important;
+        inset: auto auto auto auto;
+        z-index: 1400;
+        height: auto;
+        max-height: min(58dvh, 460px);
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 0;
+        border: 1px solid var(--border-strong);
+        border-radius: 12px;
+        background: var(--bg-panel);
+        box-shadow: 0 14px 38px rgba(0, 0, 0, 0.32);
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel > .layers-panel,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel > .measurement-panel {
+        display: block !important;
+        width: 100%;
+        min-width: 0;
+        border: 0;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel > .measurement-panel,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel > .layers-panel,
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel > .svg,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel > .svg {
+        display: none !important;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .editor-panel-drawer-heading,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .editor-panel-drawer-heading {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border-subtle);
+        background: var(--bg-panel);
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .layers-panel .collapse-content,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-panel .collapse-content {
+        padding: 10px 12px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .layer-list {
+        max-height: min(34dvh, 300px);
+        overflow-y: auto;
+    }
+
+    /* Do not apply the former side-drawer canvas-shrinking rules. */
+    body:not(:has(#home-screen.show)) .editor.layers-open .workspace-section,
+    body:not(:has(#home-screen.show)) .editor.layers-open .tools-panel,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .workspace-section,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .tools-panel {
+        width: auto;
+        max-width: none;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.layers-open .workspace-container,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .workspace-container {
+        width: min(480px, 58dvh, calc(100% - 112px));
+    }
+}
+
+@media (max-width: 760px) {
+    body:not(:has(#home-screen.show)) .editor.layers-open .workspace-container,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .workspace-container {
+        width: min(480px, 54dvh, calc(100% - 104px));
+    }
+}
