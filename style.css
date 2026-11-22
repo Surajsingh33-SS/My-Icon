@@ -5357,45 +5357,40 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
         overflow: auto;
     }
 
-    /* Let the gallery use the full available phone width. */
+    /* Keep the mobile flex chain inside the viewport without clipping content. */
     .home-main,
+    .home-view-section,
+    .home-projects {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
     .home-view-section {
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
+        width: auto;
+        flex: 1 1 0;
     }
 
-    .home-project-grid {
+    .home-projects {
         width: 100%;
-        max-width: 100%;
-        padding-left: 10px;
-        padding-right: 10px;
-        box-sizing: border-box;
     }
 
+    /* Preserve the existing icon grid and its tile sizing. */
     .home-project-grid {
         width: 100%;
         min-width: 0;
         max-width: 100%;
+        padding-left: 10px;
+        padding-right: 10px;
         box-sizing: border-box;
-        grid-template-columns: repeat(auto-fill, minmax(min(90px, 100%), 1fr));
         gap: 8px;
     }
 
-    /* Let gallery columns shrink to the available width instead of clipping overflow. */
-    .home-main,
-    .home-view-section,
-    .home-projects,
-    .home-project-grid,
     .home-project-grid .gallery-category-group,
     .home-project-grid .gallery-category-cards {
         min-width: 0;
         max-width: 100%;
         box-sizing: border-box;
-    }
-
-    .home-project-grid {
-        grid-template-columns: repeat(auto-fill, minmax(min(90px, 100%), 1fr));
     }
 
     .home-project-grid .home-project-card,
