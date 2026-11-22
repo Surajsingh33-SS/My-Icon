@@ -1294,6 +1294,10 @@ html:not(.touch-hover-disabled) .home-project-card.active:hover{
     bottom: auto;
     left: 50%;
     transform: translateX(-50%) translateY(-4px);
+    width: max-content;
+    max-width: min(280px, calc(100vw - 24px));
+    box-sizing: border-box;
+    overflow: hidden;
     padding: 4px 8px;
     background: var(--accent);
     color: var(--accent-contrast, #ffffff);
@@ -1303,16 +1307,37 @@ html:not(.touch-hover-disabled) .home-project-card.active:hover{
     border-radius: 4px;
     border: 1px solid rgba(var(--accent-rgb), 0.55);
     backdrop-filter: blur(8px);
--webkit-backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     box-shadow:
-    0 0 8px rgba(var(--accent-rgb), 0.30),
-    0 0 18px rgba(var(--accent-rgb), 0.22),
-    0 4px 14px rgba(0, 0, 0, 0.25);
+        0 0 8px rgba(var(--accent-rgb), 0.30),
+        0 0 18px rgba(var(--accent-rgb), 0.22),
+        0 4px 14px rgba(0, 0, 0, 0.25);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     transition: opacity 0.15s ease, transform 0.15s ease;
     z-index: 100;
+}
+
+.home-card-tooltip-text {
+    display: inline-block;
+    width: max-content;
+    max-width: none;
+}
+
+.home-card-tooltip-text.is-overflowing {
+    animation: homeTooltipNameScroll var(--tooltip-scroll-duration, 3s) ease-in-out infinite alternate;
+    animation-play-state: paused;
+}
+
+.home-project-card:hover .home-card-tooltip-text.is-overflowing,
+.home-project-card.touch-tooltip-active .home-card-tooltip-text.is-overflowing {
+    animation-play-state: running;
+}
+
+@keyframes homeTooltipNameScroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(var(--tooltip-scroll-distance, -40px)); }
 }html:not(.touch-hover-disabled) .home-project-card:hover .home-card-tooltip{
     opacity: 1;
     visibility: visible;
@@ -5357,18 +5382,25 @@ html:not(.touch-hover-disabled) .icon-library-saved-toggle[aria-pressed="true"]{
         gap: 8px;
     }
 
-    /* Keep gallery content inside the viewport on narrow phone layouts. */
-    .home-screen,
+    /* Let gallery columns shrink to the available width instead of clipping overflow. */
     .home-main,
     .home-view-section,
+    .home-projects,
     .home-project-grid,
-    .home-project-grid .gallery-category-group {
+    .home-project-grid .gallery-category-group,
+    .home-project-grid .gallery-category-cards {
         min-width: 0;
         max-width: 100%;
-        overflow-x: clip;
+        box-sizing: border-box;
     }
 
-    .home-project-grid .home-project-card {
+    .home-project-grid,
+    .gallery-category-cards {
+        grid-template-columns: repeat(auto-fill, minmax(0, 1fr));
+    }
+
+    .home-project-grid .home-project-card,
+    .gallery-category-cards .home-project-card {
         min-width: 0;
         max-width: 100%;
         box-sizing: border-box;
