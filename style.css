@@ -4358,7 +4358,17 @@ body.light-theme #save-project-button:hover {
 }
 
 @media (max-width: 700px) {
+    /* Keep the toolbar outside the scroll area so the information panel and
+       its footer share only the remaining drawer height. */
+    .project-content {
+        min-height: 0;
+        overflow: hidden;
+    }
+
     .project-info {
+        flex: 1 1 0;
+        height: auto;
+        min-height: 0;
         padding: 12px 16px;
         gap: 9px;
     }
