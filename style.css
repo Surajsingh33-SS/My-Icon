@@ -1373,6 +1373,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
     transform: translateX(-50%) translateY(0);
 }
 
+/* Prevent hybrid-laptop touch emulation from leaving an old :hover tooltip visible. */
+.gallery-touch-mode .home-project-card:hover:not(.touch-tooltip-active) .home-card-tooltip {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-50%) translateY(-4px);
+}
+
 .home-card-fav-star {
     position: absolute;
     top: 0px;
