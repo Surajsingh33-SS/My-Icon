@@ -847,10 +847,26 @@
                     </div>
                 </div>
 
-                <div class="workspace-toggles" hidden aria-hidden="true">
-                    <input type="checkbox" id="show-safe-area" checked>
-                    <input type="checkbox" id="show-guidelines" checked>
-                    <input type="checkbox" id="show-grid-highlight">
+                <div class="workspace-toggles">
+                    <label class="coordinate-toggle" title="Toggle 20×20 / 28×28 safe area boundary">
+                        <input type="checkbox" id="show-safe-area" checked>
+                        <span>Safe Area</span>
+                    </label>
+
+                    <label class="coordinate-toggle" title="Toggle center and grid guidelines">
+                        <input type="checkbox" id="show-guidelines" checked>
+                        <span>Guidelines</span>
+                    </label>
+
+                    <label class="coordinate-toggle" for="show-coordinates"
+                        title="Show 0, 4, 8, 12, 16, 20, 24 axis labels">
+                        <span>Coordinates</span>
+                    </label>
+
+                    <label class="coordinate-toggle" title="Highlight nearest integer coordinate point on hover">
+                        <input type="checkbox" id="show-grid-highlight">
+                        <span>Grid point</span>
+                    </label>
                 </div>
                 <div class="editor-panel-actions" aria-label="Editor side panels">
                     <button type="button" class="editor-panel-toggle" id="layers-panel-toggle" aria-expanded="false" aria-controls="code-panel">
