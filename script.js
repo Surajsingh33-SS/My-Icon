@@ -10732,40 +10732,40 @@ function getSelectedFinishCategories() {
         }
     });
 
-    // At tablet widths, keep the existing File/Gallery/New Icon controls
-    // together in the top bar, immediately after the Icon Maker brand.
-    // Move the original nodes so their existing event handlers remain intact.
-    function syncTabletGalleryMenuPlacement(forceRestore = false) {
+    // At tablet widths, place the original File/Gallery/New Icon navigation
+    // immediately after the Icon Maker logo. Moving the existing nav preserves
+    // all of its event handlers.
+    function syncTabletGalleryMenuPlacement() {
         const topbar = document.querySelector(".topbar");
         const brand = topbar?.querySelector(".topbar-brand");
+        const logo = brand?.querySelector(".logo-btn");
         const divider = brand?.querySelector(".topbar-divider");
         const menu = topbar?.querySelector(":scope > .menu") ||
             brand?.querySelector(":scope > .menu");
-        const homeEditButton = document.getElementById("home-edit-button");
-        const homeNavbarActions = document.querySelector(".home-navbar-actions");
         const tabletRange = window.innerWidth >= 601 && window.innerWidth <= 760;
 
-        if (!forceRestore && tabletRange && brand && menu && homeEditButton) {
-            brand.insertBefore(menu, divider || brand.querySelector(".topbar-project-info") || null);
-            brand.insertBefore(homeEditButton, divider || brand.querySelector(".topbar-project-info") || null);
+        if (!topbar || !brand || !menu) return;
+
+        if (tabletRange) {
+            if (logo && menu.parentElement !== brand) {
+                logo.insertAdjacentElement("afterend", menu);
+            } else if (logo && menu.previousElementSibling !== logo) {
+                logo.insertAdjacentElement("afterend", menu);
+            }
             return;
         }
 
-        if (menu && topbar) {
+        if (menu.parentElement !== topbar) {
             const actions = topbar.querySelector(":scope > .actions");
             topbar.insertBefore(menu, actions || null);
         }
-        if (homeEditButton && homeNavbarActions && homeEditButton.parentElement !== homeNavbarActions) {
-            homeNavbarActions.appendChild(homeEditButton);
-        }
     }
 
+    syncTabletGalleryMenuPlacement();
     window.addEventListener("resize", syncTabletGalleryMenuPlacement);
 
     function renderHomeProjects() {
         if (!homeProjectGrid) return;
-        // Restore moved controls before clearing dynamically rendered category headers.
-        syncTabletGalleryMenuPlacement(true);
         homeProjectGrid.innerHTML = "";
         const isCategoryRows =
             galleryViewCategory === "categories" && !selectedCategoryFilter;
