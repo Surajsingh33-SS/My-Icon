@@ -484,41 +484,79 @@
         setMobileSidebarOpen(false);
     });
 
-    // Close the mobile navigation drawer with a leftward swipe.
+    // Let the mobile sidebar follow a left swipe, then snap at the halfway point.
     const mobileSidebar = document.getElementById("home-sidebar");
-    let sidebarSwipeStart = null;
+    let sidebarSwipe = null;
 
     mobileSidebar?.addEventListener("touchstart", event => {
         if (!window.matchMedia("(max-width: 760px)").matches ||
             !homeScreen?.classList.contains("mobile-sidebar-open") ||
             event.touches.length !== 1) {
-            sidebarSwipeStart = null;
+            sidebarSwipe = null;
             return;
         }
 
         const touch = event.touches[0];
-        sidebarSwipeStart = { x: touch.clientX, y: touch.clientY };
+        sidebarSwipe = {
+            startX: touch.clientX,
+            startY: touch.clientY,
+            width: mobileSidebar.getBoundingClientRect().width,
+            dragging: false
+        };
     }, { passive: true });
 
-    mobileSidebar?.addEventListener("touchend", event => {
-        if (!sidebarSwipeStart || !homeScreen?.classList.contains("mobile-sidebar-open")) {
-            sidebarSwipeStart = null;
-            return;
+    mobileSidebar?.addEventListener("touchmove", event => {
+        if (!sidebarSwipe || event.touches.length !== 1) return;
+
+        const touch = event.touches[0];
+        const deltaX = touch.clientX - sidebarSwipe.startX;
+        const deltaY = touch.clientY - sidebarSwipe.startY;
+
+        if (!sidebarSwipe.dragging) {
+            // Ignore vertical movement so the sidebar can still scroll normally.
+            if (Math.abs(deltaY) > Math.abs(deltaX) || Math.abs(deltaX) < 8) return;
+            if (deltaX >= 0) return;
+            sidebarSwipe.dragging = true;
+            mobileSidebar.classList.add("is-swipe-dragging");
         }
 
-        const touch = event.changedTouches[0];
-        const deltaX = touch.clientX - sidebarSwipeStart.x;
-        const deltaY = touch.clientY - sidebarSwipeStart.y;
-        sidebarSwipeStart = null;
+        event.preventDefault();
+        const offset = Math.max(-sidebarSwipe.width, Math.min(0, deltaX));
+        mobileSidebar.style.transform = `translateX(${offset}px)`;
 
-        // Require a clear horizontal swipe so normal vertical scrolling still works.
-        if (deltaX < -60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
-            setMobileSidebarOpen(false);
+        const progress = 1 + offset / sidebarSwipe.width;
+        if (mobileSidebarBackdrop) {
+            mobileSidebarBackdrop.style.opacity = String(Math.max(0, Math.min(1, progress)));
+        }
+    }, { passive: false });
+
+    mobileSidebar?.addEventListener("touchend", () => {
+        if (!sidebarSwipe) return;
+
+        const wasDragging = sidebarSwipe.dragging;
+        const currentOffset = mobileSidebar.getBoundingClientRect().left -
+            homeScreen.getBoundingClientRect().left;
+        const shouldClose = wasDragging && Math.abs(currentOffset) >= sidebarSwipe.width / 2;
+        sidebarSwipe = null;
+
+        if (wasDragging) {
+            mobileSidebar.classList.remove("is-swipe-dragging");
+            mobileSidebar.style.transform = "";
+            if (mobileSidebarBackdrop) mobileSidebarBackdrop.style.opacity = "";
+            setMobileSidebarOpen(shouldClose ? false : true);
         }
     }, { passive: true });
 
     mobileSidebar?.addEventListener("touchcancel", () => {
-        sidebarSwipeStart = null;
+        if (!sidebarSwipe) return;
+        const wasDragging = sidebarSwipe.dragging;
+        sidebarSwipe = null;
+        if (wasDragging) {
+            mobileSidebar.classList.remove("is-swipe-dragging");
+            mobileSidebar.style.transform = "";
+            if (mobileSidebarBackdrop) mobileSidebarBackdrop.style.opacity = "";
+            setMobileSidebarOpen(true);
+        }
     }, { passive: true });
 
     // On mobile, tapping the sidebar brand closes the navigation drawer.
