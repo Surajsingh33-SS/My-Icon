@@ -7166,6 +7166,10 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         overflow: hidden;
     }
 
+    .editor:has(> .tools-panel > .collapse-content.collapsed) {
+        --tools-sidebar-width: 42px;
+    }
+
     .editor > .workspace-section {
         order: 0;
         flex: 1 1 auto;
