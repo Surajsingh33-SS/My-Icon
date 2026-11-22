@@ -5709,11 +5709,12 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 }
 
 
-/* Tablet top-bar navigation placement: only 601px–760px. */
+/* Tablet navigation order: Icon Maker → File → Gallery → New Icon. */
 @media (min-width: 601px) and (max-width: 760px) {
     .topbar-brand {
         gap: 6px;
         flex-wrap: nowrap;
+        flex: 0 0 auto;
     }
 
     .topbar-brand > .menu {
@@ -5729,18 +5730,10 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         font-size: 11px;
         white-space: nowrap;
     }
-
-    body:has(#home-screen.show) .topbar-brand #home-edit-button {
-        display: inline-flex !important;
-        flex: 0 0 auto;
-        padding: 6px 9px;
-        font-size: 11px;
-        white-space: nowrap;
-    }
 }
 
-/* Hide the vertical brand divider on mobile widths only. */
-@media (max-width: 760px) {
+/* Hide the vertical brand divider on mobile only (600px and below). */
+@media (max-width: 600px) {
     .topbar-divider {
         display: none !important;
     }
