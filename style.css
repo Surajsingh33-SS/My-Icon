@@ -5723,9 +5723,23 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         gap: 7px;
     }
 
-    .topbar-brand > .topbar-divider,
+    /* Keep the save-state indicator beside the logo, but omit the project name. */
+    .topbar-brand > .topbar-divider {
+        display: block;
+    }
+
     .topbar-brand > .topbar-project-info {
+        display: flex;
+        min-width: 0;
+    }
+
+    .topbar-project-info .active-project-name {
         display: none !important;
+    }
+
+    .topbar-project-info .save-pill {
+        display: inline-flex;
+        white-space: nowrap;
     }
 
     .topbar > .menu {
@@ -5740,6 +5754,19 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         gap: 4px;
         flex-wrap: nowrap;
         white-space: nowrap;
+        /* Keep dropdowns above the complete topbar, not trapped in the nav stacking layer. */
+        z-index: 1100;
+        overflow: visible;
+    }
+
+    .topbar > .menu .file-menu-wrapper {
+        position: relative;
+        z-index: 1101;
+    }
+
+    .topbar > .menu .file-dropdown {
+        top: calc(100% + 8px);
+        z-index: 1102;
     }
 
     .topbar > .menu .menu-btn {
