@@ -7813,3 +7813,47 @@ body:has(#home-screen.show) .home-projects {
         font-size: 10px;
     }
 }
+
+
+/* Final compact sizing for floating measurement and layer panels. */
+@media (max-width: 1190px) {
+    body:not(:has(#home-screen.show)) .editor.layers-open .code-panel,
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel {
+        max-height: min(40dvh, 300px) !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .code-panel {
+        height: auto !important;
+        max-height: min(40dvh, 300px) !important;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-fields {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 3px !important;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-field {
+        min-width: 0;
+        gap: 2px;
+        padding: 3px 4px;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-field label {
+        overflow: hidden;
+        font-size: 9px;
+        line-height: 1.15;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body:not(:has(#home-screen.show)) .editor.measurements-open .measurement-field input[type="number"] {
+        width: 100%;
+        min-width: 0;
+        height: 23px;
+        padding: 2px 3px;
+        font-size: 10px;
+    }
+}
