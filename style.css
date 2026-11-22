@@ -7657,6 +7657,7 @@ body:has(#home-screen.show) .home-projects {
 
     body:not(:has(#home-screen.show)) .editor.layers-open .editor-panel-drawer-heading,
     body:not(:has(#home-screen.show)) .editor.measurements-open .editor-panel-drawer-heading {
+        display: flex !important;
         position: sticky;
         top: 0;
         z-index: 4;
