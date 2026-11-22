@@ -5233,7 +5233,7 @@ body.light-theme #save-project-button:hover {
 
 @media (max-width: 1000px) {
     .home-sidebar {
-        width: 220px;
+        width: 250px;
     }
 
     .tools-panel {
