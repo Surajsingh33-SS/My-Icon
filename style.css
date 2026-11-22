@@ -6277,7 +6277,7 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
 
 
 /* Compact drawer: show related icons as a dedicated view without growing the 290px sheet. */
-@media (max-width: 700px) {
+@media (max-width: 760px) {
     .project-details.mobile-related-view .project-details-main {
         display: none;
     }
