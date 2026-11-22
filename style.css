@@ -1139,7 +1139,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* Switch filter labels to icons only when the search field is about to reach its minimum width. */
-@container (max-width: 760px) {
+@media (max-width: 1066px) {
     .home-control-select {
         position: relative;
         width: 40px;
