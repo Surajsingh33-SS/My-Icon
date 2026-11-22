@@ -5721,6 +5721,11 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         gap: 7px;
     }
 
+    .topbar-brand > .topbar-divider,
+    .topbar-brand > .topbar-project-info {
+        display: none !important;
+    }
+
     .topbar > .menu {
         position: absolute;
         left: 50%;
