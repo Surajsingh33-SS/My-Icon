@@ -11728,7 +11728,7 @@ function getSelectedFinishCategories() {
 
         projectRelated.hidden = false;
 
-        if (window.matchMedia("(max-width: 700px)").matches) {
+        if (window.matchMedia("(max-width: 760px)").matches) {
             // The compact drawer cannot show the preview and related grid together.
             // Switch its content area instead of expanding the fixed-height sheet.
             projectRelated.classList.add("mobile-visible");
