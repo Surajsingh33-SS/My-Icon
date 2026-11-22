@@ -484,6 +484,43 @@
         setMobileSidebarOpen(false);
     });
 
+    // Close the mobile navigation drawer with a leftward swipe.
+    const mobileSidebar = document.getElementById("home-sidebar");
+    let sidebarSwipeStart = null;
+
+    mobileSidebar?.addEventListener("touchstart", event => {
+        if (!window.matchMedia("(max-width: 760px)").matches ||
+            !homeScreen?.classList.contains("mobile-sidebar-open") ||
+            event.touches.length !== 1) {
+            sidebarSwipeStart = null;
+            return;
+        }
+
+        const touch = event.touches[0];
+        sidebarSwipeStart = { x: touch.clientX, y: touch.clientY };
+    }, { passive: true });
+
+    mobileSidebar?.addEventListener("touchend", event => {
+        if (!sidebarSwipeStart || !homeScreen?.classList.contains("mobile-sidebar-open")) {
+            sidebarSwipeStart = null;
+            return;
+        }
+
+        const touch = event.changedTouches[0];
+        const deltaX = touch.clientX - sidebarSwipeStart.x;
+        const deltaY = touch.clientY - sidebarSwipeStart.y;
+        sidebarSwipeStart = null;
+
+        // Require a clear horizontal swipe so normal vertical scrolling still works.
+        if (deltaX < -60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+            setMobileSidebarOpen(false);
+        }
+    }, { passive: true });
+
+    mobileSidebar?.addEventListener("touchcancel", () => {
+        sidebarSwipeStart = null;
+    }, { passive: true });
+
     // On mobile, tapping the sidebar brand closes the navigation drawer.
     document.querySelector(".home-logo")?.addEventListener("click", () => {
         if (window.matchMedia("(max-width: 760px)").matches) {
