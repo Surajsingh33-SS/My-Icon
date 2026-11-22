@@ -11616,6 +11616,9 @@ function getSelectedFinishCategories() {
         opt.addEventListener("click", () => {
             const view = opt.dataset.homeView;
             if (view) switchHomeView(view);
+            if (window.matchMedia("(max-width: 760px)").matches) {
+                setMobileSidebarOpen(false);
+            }
         });
     });
 
