@@ -596,7 +596,7 @@
         setMobileSidebarOpen(false);
     });
 
-    // Let the mobile bottom sheet follow a downward swipe, then snap at halfway.
+    // Let the mobile side drawer follow a leftward swipe, then snap at halfway.
     const mobileSidebar = document.getElementById("home-sidebar");
     let sidebarSwipe = null;
 
@@ -612,7 +612,7 @@
         sidebarSwipe = {
             startX: touch.clientX,
             startY: touch.clientY,
-            height: mobileSidebar.getBoundingClientRect().height,
+            width: mobileSidebar.getBoundingClientRect().width,
             dragging: false
         };
     }, { passive: true });
@@ -625,18 +625,18 @@
         const deltaY = touch.clientY - sidebarSwipe.startY;
 
         if (!sidebarSwipe.dragging) {
-            // Ignore horizontal movement so controls and content remain usable.
-            if (Math.abs(deltaX) > Math.abs(deltaY) || Math.abs(deltaY) < 8) return;
-            if (deltaY <= 0) return;
+            // Ignore vertical movement so scrolling and controls remain usable.
+            if (Math.abs(deltaY) > Math.abs(deltaX) || Math.abs(deltaX) < 8) return;
+            if (deltaX >= 0) return;
             sidebarSwipe.dragging = true;
             mobileSidebar.classList.add("is-swipe-dragging");
         }
 
         event.preventDefault();
-        const offset = Math.max(0, Math.min(sidebarSwipe.height, deltaY));
-        mobileSidebar.style.transform = `translateY(${offset}px)`;
+        const offset = Math.max(0, Math.min(sidebarSwipe.width, -deltaX));
+        mobileSidebar.style.transform = `translateX(-${offset}px)`;
 
-        const progress = 1 - offset / sidebarSwipe.height;
+        const progress = 1 - offset / sidebarSwipe.width;
         if (mobileSidebarBackdrop) {
             mobileSidebarBackdrop.style.opacity = String(Math.max(0, Math.min(1, progress)));
         }
@@ -646,9 +646,9 @@
         if (!sidebarSwipe) return;
 
         const wasDragging = sidebarSwipe.dragging;
-        const currentOffset = mobileSidebar.getBoundingClientRect().bottom -
-            homeScreen.getBoundingClientRect().bottom;
-        const shouldClose = wasDragging && currentOffset >= sidebarSwipe.height / 2;
+        const currentOffset = Math.max(0,
+            homeScreen.getBoundingClientRect().left - mobileSidebar.getBoundingClientRect().left);
+        const shouldClose = wasDragging && currentOffset >= sidebarSwipe.width / 2;
         sidebarSwipe = null;
 
         if (wasDragging) {
