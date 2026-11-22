@@ -6297,6 +6297,10 @@ body:has(#home-screen.show #project-details.show) #topbar-export-btn {
         gap: 8px;
     }
 
+    .related-back-button[hidden] {
+        display: none !important;
+    }
+
     .related-back-button {
         display: inline-flex;
         align-items: center;
