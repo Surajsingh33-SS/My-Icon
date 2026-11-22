@@ -7944,10 +7944,4 @@ body:has(#home-screen.show) .home-projects {
         max-width: 76px;
     }
 
-    body:not(:has(#home-screen.show)) .transform-toolbar-toggle {
-        position: fixed;
-        top: 10px;
-        right: 12px;
-        z-index: 15001;
-    }
 }
