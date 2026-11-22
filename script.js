@@ -11195,7 +11195,7 @@ function getSelectedFinishCategories() {
             // stuck on the first card. While touch interaction is active, let the
             // class below control the tooltip instead of the emulated hover state.
             document.addEventListener("touchstart", event => {
-                document.documentElement.classList.add("gallery-touch-mode");
+                document.documentElement.classList.add("gallery-touch-mode", "touch-hover-disabled");
                 const touch = event.touches[0];
                 if (touch) updateTouchTooltip(document.elementFromPoint(touch.clientX, touch.clientY));
             }, { passive: true });
@@ -11217,7 +11217,7 @@ function getSelectedFinishCategories() {
             // which would otherwise re-enable the stale emulated :hover state.
             document.addEventListener("pointermove", event => {
                 if (event.pointerType === "mouse") {
-                    document.documentElement.classList.remove("gallery-touch-mode");
+                    document.documentElement.classList.remove("gallery-touch-mode", "touch-hover-disabled");
                 }
             }, { passive: true });
         }
