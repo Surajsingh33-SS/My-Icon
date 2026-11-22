@@ -341,21 +341,25 @@
 
     // Home Screen & Gallery
     const homeScreen = document.getElementById("home-screen");
-    const mobileSidebarToggle = document.getElementById("mobile-sidebar-toggle");
+    const mobileSidebarToggles = document.querySelectorAll(".mobile-sidebar-toggle");
     const mobileSidebarBackdrop = document.getElementById("mobile-sidebar-backdrop");
 
     function setMobileSidebarOpen(isOpen) {
         if (!homeScreen) return;
         homeScreen.classList.toggle("mobile-sidebar-open", isOpen);
-        mobileSidebarToggle?.setAttribute("aria-expanded", String(isOpen));
-        mobileSidebarToggle?.setAttribute(
-            "aria-label",
-            isOpen ? "Close navigation menu" : "Open navigation menu"
-        );
+        mobileSidebarToggles.forEach(toggle => {
+            toggle.setAttribute("aria-expanded", String(isOpen));
+            toggle.setAttribute(
+                "aria-label",
+                isOpen ? "Close navigation menu" : "Open navigation menu"
+            );
+        });
     }
 
-    mobileSidebarToggle?.addEventListener("click", () => {
-        setMobileSidebarOpen(!homeScreen.classList.contains("mobile-sidebar-open"));
+    mobileSidebarToggles.forEach(toggle => {
+        toggle.addEventListener("click", () => {
+            setMobileSidebarOpen(!homeScreen.classList.contains("mobile-sidebar-open"));
+        });
     });
 
     mobileSidebarBackdrop?.addEventListener("click", () => {
