@@ -12177,6 +12177,17 @@ if (finishCategoryManuallyChanged) {
 
     fileMenuButton?.addEventListener("click", e => {
         e.stopPropagation();
+
+        if (fileDropdown && window.matchMedia("(max-width: 760px)").matches) {
+            const buttonRect = fileMenuButton.getBoundingClientRect();
+            const menuWidth = Math.min(260, window.innerWidth - 16);
+            const left = Math.max(8, Math.min(buttonRect.left, window.innerWidth - menuWidth - 8));
+
+            // Keep the menu upright and directly below the Files button.
+            fileDropdown.style.top = `${buttonRect.bottom + 8}px`;
+            fileDropdown.style.left = `${left}px`;
+        }
+
         fileDropdown?.classList.toggle("show");
     });
 
