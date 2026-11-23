@@ -8277,7 +8277,18 @@ function getSelectedFinishCategories() {
         }
     });
     clearCustomAxisBtn?.addEventListener("click", () => {
-        if (customMirrorAxes.length) beginHistoryAction();
+        const hasLinkedSymmetry = shapes.some(shape => shape.symmetryGroupId);
+        if (customMirrorAxes.length || hasLinkedSymmetry) beginHistoryAction();
+
+        // Clearing the custom axis also releases every generated symmetry
+        // member from its group. Keep the current geometry untouched so each
+        // former mirror copy becomes an independently editable shape.
+        shapes.forEach(shape => {
+            delete shape.symmetryGroupId;
+            delete shape.symmetryMember;
+            delete shape.symmetryTransforms;
+        });
+
         customMirrorAxes = [];
         selectedCustomAxisGroupId = null;
         mirrorAxisPlacementPoints = [];
@@ -8286,7 +8297,12 @@ function getSelectedFinishCategories() {
         customMirrorToolBtn?.classList.remove("active");
         renderCustomMirrorAxes();
         if (historyBeforeAction) commitHistoryAction();
-        showToast("Custom mirror axis removed", "success");
+        showToast(
+            hasLinkedSymmetry
+                ? "Custom mirror axis removed; mirror copies are now independent"
+                : "Custom mirror axis removed",
+            "success"
+        );
     });
 
     liveSymmetryHCheckbox?.addEventListener("change", e => {
