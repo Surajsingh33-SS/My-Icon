@@ -10760,12 +10760,21 @@ function getSelectedFinishCategories() {
 
     function updateIconLibraryMultiSelectionUI() {
         const count = selectedIconLibraryNames.size;
-        if (iconLibraryMultiToolbar) iconLibraryMultiToolbar.hidden = count === 0;
-        if (iconLibrarySelectionCount) iconLibrarySelectionCount.textContent = count.toLocaleString() + (count === 1 ? " icon selected" : " icons selected");
+        [iconLibraryMultiToolbar, document.getElementById("gallery-multi-toolbar")].forEach(toolbar => {
+            if (toolbar) toolbar.hidden = count === 0;
+        });
+        [iconLibrarySelectionCount, document.getElementById("gallery-selection-count")].forEach(label => {
+            if (label) label.textContent = count.toLocaleString() + (count === 1 ? " icon selected" : " icons selected");
+        });
         iconLibraryResultsList?.querySelectorAll(".icon-library-result").forEach(row => {
-            const selected = selectedIconLibraryNames.has(row.dataset.iconName);
+            const selected = selectedIconLibraryNames.has("library:" + row.dataset.iconName);
             row.classList.toggle("multi-selected", selected);
             row.setAttribute("aria-selected", String(selected));
+        });
+        homeProjectGrid?.querySelectorAll(".home-project-card").forEach(card => {
+            const selected = selectedIconLibraryNames.has("project:" + card.dataset.projectId);
+            card.classList.toggle("multi-selected", selected);
+            card.setAttribute("aria-selected", String(selected));
         });
     }
     function clearIconLibraryMultiSelection() {
@@ -10773,54 +10782,41 @@ function getSelectedFinishCategories() {
         updateIconLibraryMultiSelectionUI();
     }
     document.getElementById("icon-library-deselect")?.addEventListener("click", clearIconLibraryMultiSelection);
-    // Handle Ctrl-click at the document capture phase, before any
-    // result-tile, list, or ancestor click handler can change the active icon.
+    document.getElementById("gallery-deselect")?.addEventListener("click", clearIconLibraryMultiSelection);
+    // Ctrl-click multi-selection is shared by Icon Library results and Gallery cards.
     document.addEventListener("click", event => {
-        if (!iconLibraryResultsList) return;
-
-        const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-        const row = target?.closest(".icon-library-result");
-        if (!row || !iconLibraryResultsList.contains(row)) return;
-
-        // Temporary diagnostic: confirms whether the browser reports Ctrl on
-        // the actual tile click and whether the handler sees the expected row.
-        if (event.ctrlKey) {
-            console.info("[Icon Library multi-select] Ctrl-click received", {
-                icon: row.dataset.iconName,
-                ctrlKey: event.ctrlKey,
-                shiftKey: event.shiftKey,
-                activeIcon: selectedIconLibraryName,
-                selectedCountBefore: selectedIconLibraryNames.size
-            });
-        }
         if (!event.ctrlKey) return;
+        const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+        if (!target) return;
 
-        const name = row.dataset.iconName;
-        if (!name) return;
+        const row = target.closest(".icon-library-result");
+        const card = target.closest(".home-project-card");
+        let selectionKey = "";
+
+        if (row && iconLibraryResultsList?.contains(row)) {
+            const name = row.dataset.iconName;
+            if (!name) return;
+            selectionKey = "library:" + name;
+            if (selectedIconLibraryNames.size === 0 && selectedIconLibraryName && selectedIconLibraryName !== name) {
+                selectedIconLibraryNames.add("library:" + selectedIconLibraryName);
+            }
+        } else if (card && homeProjectGrid?.contains(card)) {
+            const id = card.dataset.projectId;
+            if (!id) return;
+            selectionKey = "project:" + id;
+            if (selectedIconLibraryNames.size === 0 && selectedHomeProject?.id && String(selectedHomeProject.id) !== String(id)) {
+                selectedIconLibraryNames.add("project:" + selectedHomeProject.id);
+            }
+        } else {
+            return;
+        }
 
         event.preventDefault();
         event.stopImmediatePropagation();
-
-        // When starting a multi-selection, preserve the icon currently shown
-        // in the details panel, then add the clicked icon.
-        if (
-            selectedIconLibraryNames.size === 0 &&
-            selectedIconLibraryName &&
-            selectedIconLibraryName !== name
-        ) {
-            selectedIconLibraryNames.add(selectedIconLibraryName);
-        }
-
-        // Ctrl-click toggles only the clicked icon; other selections stay.
-        if (selectedIconLibraryNames.has(name)) {
-            selectedIconLibraryNames.delete(name);
-        } else {
-            selectedIconLibraryNames.add(name);
-        }
-
+        if (selectedIconLibraryNames.has(selectionKey)) selectedIconLibraryNames.delete(selectionKey);
+        else selectedIconLibraryNames.add(selectionKey);
         updateIconLibraryMultiSelectionUI();
     }, true);
-
     function updateMultiExportChoice(group, value) {
         document.querySelectorAll("[data-multi-" + group + "]").forEach(button => {
             const active = button.getAttribute("data-multi-" + group) === value;
@@ -10858,6 +10854,7 @@ function getSelectedFinishCategories() {
         multiExportModal?.setAttribute("aria-hidden", "true");
     }
     document.getElementById("icon-library-multi-export")?.addEventListener("click", openMultiExportModal);
+    document.getElementById("gallery-multi-export")?.addEventListener("click", openMultiExportModal);
     document.getElementById("multi-export-cancel")?.addEventListener("click", closeMultiExportModal);
     multiExportModal?.addEventListener("click", event => {
         if (event.target === multiExportModal) closeMultiExportModal();
@@ -10866,15 +10863,21 @@ function getSelectedFinishCategories() {
     function safeMultiExportFilename(name) {
         return String(name || "icon").trim().replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "") || "icon";
     }
-    async function getMultiExportSVG(name) {
-        const project = getIconLibraryProjectMap().get(normalizeLibraryIconName(name));
+    async function getMultiExportSVG(selectionKey) {
+        const isProject = selectionKey.startsWith("project:");
+        const value = selectionKey.slice(selectionKey.indexOf(":") + 1);
+        const project = isProject
+            ? projectManager.projects.find(item => String(item.id) === value)
+            : getIconLibraryProjectMap().get(normalizeLibraryIconName(value));
+        const name = project?.name || value;
         let svg = String(project?.thumbnail || "").trim();
-        if (!svg) {
-            const url = "https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/" + encodeURIComponent(normalizeLibraryIconName(name)) + ".svg";
+        if (!svg && !isProject) {
+            const url = "https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/" + encodeURIComponent(normalizeLibraryIconName(value)) + ".svg";
             const response = await fetch(url);
             if (!response.ok) throw new Error("Could not load SVG for " + name);
             svg = await response.text();
         }
+        if (!svg) throw new Error("No saved SVG is available for " + name + ".");
         const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
         const root = parsed.documentElement;
         if (!root || root.localName !== "svg" || parsed.querySelector("parsererror")) throw new Error("Invalid SVG for " + name);
@@ -10970,12 +10973,17 @@ function getSelectedFinishCategories() {
         multiExportConfirmButton.textContent = "Preparing...";
         try {
             const files = [];
-            for (const name of names) {
-                const svg = await getMultiExportSVG(name);
+            for (const selectionKey of names) {
+                const svg = await getMultiExportSVG(selectionKey);
+                const value = selectionKey.slice(selectionKey.indexOf(":") + 1);
+                const project = selectionKey.startsWith("project:")
+                    ? projectManager.projects.find(item => String(item.id) === value)
+                    : null;
+                const filename = project?.name || value;
                 if (multiExportFormat === "svg") {
-                    files.push({ name: safeMultiExportFilename(name) + ".svg", content: svg });
+                    files.push({ name: safeMultiExportFilename(filename) + ".svg", content: svg });
                 } else {
-                    files.push({ name: safeMultiExportFilename(name) + ".png", bytes: await multiExportSVGToPNG(svg, name) });
+                    files.push({ name: safeMultiExportFilename(filename) + ".png", bytes: await multiExportSVGToPNG(svg, filename) });
                 }
             }
             if (multiExportMethod === "zip") {
