@@ -10747,6 +10747,222 @@ function getSelectedFinishCategories() {
         appendNextBatch();
     }
 
+
+    // Multi-selection is independent from the single active details row.
+    const selectedIconLibraryNames = new Set();
+    const iconLibraryMultiToolbar = document.getElementById("icon-library-multi-toolbar");
+    const iconLibrarySelectionCount = document.getElementById("icon-library-selection-count");
+    const multiExportModal = document.getElementById("multi-export-modal");
+    const multiExportConfirmButton = document.getElementById("multi-export-confirm");
+    let multiExportFormat = "svg";
+    let multiExportMethod = "zip";
+
+    function updateIconLibraryMultiSelectionUI() {
+        const count = selectedIconLibraryNames.size;
+        if (iconLibraryMultiToolbar) iconLibraryMultiToolbar.hidden = count === 0;
+        if (iconLibrarySelectionCount) iconLibrarySelectionCount.textContent = count.toLocaleString() + (count === 1 ? " icon selected" : " icons selected");
+        iconLibraryResultsList?.querySelectorAll(".icon-library-result").forEach(row => {
+            const selected = selectedIconLibraryNames.has(row.dataset.iconName);
+            row.classList.toggle("multi-selected", selected);
+            row.setAttribute("aria-selected", String(selected));
+        });
+    }
+    function clearIconLibraryMultiSelection() {
+        selectedIconLibraryNames.clear();
+        updateIconLibraryMultiSelectionUI();
+    }
+    document.getElementById("icon-library-deselect")?.addEventListener("click", clearIconLibraryMultiSelection);
+    iconLibraryResultsList?.addEventListener("click", event => {
+        const row = event.target.closest(".icon-library-result");
+        if (!row || !iconLibraryResultsList.contains(row) || !event.shiftKey) return;
+        const name = row.dataset.iconName;
+        if (!name) return;
+        event.preventDefault();
+        if (selectedIconLibraryNames.has(name)) selectedIconLibraryNames.delete(name);
+        else selectedIconLibraryNames.add(name);
+        updateIconLibraryMultiSelectionUI();
+    });
+
+    function updateMultiExportChoice(group, value) {
+        document.querySelectorAll("[data-multi-" + group + "]").forEach(button => {
+            const active = button.getAttribute("data-multi-" + group) === value;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+    }
+    function updateMultiExportNote() {
+        const note = document.getElementById("multi-export-note");
+        if (note) note.textContent = multiExportMethod === "zip"
+            ? "All selected " + multiExportFormat.toUpperCase() + " files will be placed in one ZIP archive."
+            : "Each selected icon will download as its own ." + multiExportFormat + " file.";
+    }
+    document.querySelectorAll("[data-multi-format]").forEach(button => button.addEventListener("click", () => {
+        multiExportFormat = button.dataset.multiFormat;
+        updateMultiExportChoice("format", multiExportFormat);
+        updateMultiExportNote();
+    }));
+    document.querySelectorAll("[data-multi-method]").forEach(button => button.addEventListener("click", () => {
+        multiExportMethod = button.dataset.multiMethod;
+        updateMultiExportChoice("method", multiExportMethod);
+        updateMultiExportNote();
+    }));
+    function openMultiExportModal() {
+        if (!selectedIconLibraryNames.size) {
+            showToast("Select icons with Shift + click first.", "info");
+            return;
+        }
+        updateMultiExportNote();
+        multiExportModal?.classList.add("show");
+        multiExportModal?.setAttribute("aria-hidden", "false");
+    }
+    function closeMultiExportModal() {
+        multiExportModal?.classList.remove("show");
+        multiExportModal?.setAttribute("aria-hidden", "true");
+    }
+    document.getElementById("icon-library-multi-export")?.addEventListener("click", openMultiExportModal);
+    document.getElementById("multi-export-cancel")?.addEventListener("click", closeMultiExportModal);
+    multiExportModal?.addEventListener("click", event => {
+        if (event.target === multiExportModal) closeMultiExportModal();
+    });
+
+    function safeMultiExportFilename(name) {
+        return String(name || "icon").trim().replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "") || "icon";
+    }
+    async function getMultiExportSVG(name) {
+        const project = getIconLibraryProjectMap().get(normalizeLibraryIconName(name));
+        let svg = String(project?.thumbnail || "").trim();
+        if (!svg) {
+            const url = "https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/" + encodeURIComponent(normalizeLibraryIconName(name)) + ".svg";
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Could not load SVG for " + name);
+            svg = await response.text();
+        }
+        const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
+        const root = parsed.documentElement;
+        if (!root || root.localName !== "svg" || parsed.querySelector("parsererror")) throw new Error("Invalid SVG for " + name);
+        root.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        root.setAttribute("width", "256");
+        root.setAttribute("height", "256");
+        root.setAttribute("viewBox", root.getAttribute("viewBox") || "0 0 24 24");
+        if (!root.hasAttribute("color")) root.setAttribute("color", "#000000");
+        return new XMLSerializer().serializeToString(root);
+    }
+    async function multiExportSVGToPNG(svg, name) {
+        const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+        try {
+            const img = new Image();
+            img.decoding = "async";
+            img.src = url;
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = () => reject(new Error("Could not render PNG for " + name));
+            });
+            const canvas = document.createElement("canvas");
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) throw new Error("PNG canvas is unavailable.");
+            ctx.clearRect(0, 0, 512, 512);
+            ctx.drawImage(img, 0, 0, 512, 512);
+            const png = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+            if (!png) throw new Error("Could not create PNG for " + name);
+            return new Uint8Array(await png.arrayBuffer());
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    }
+    function multiExportCRC32(bytes) {
+        let crc = -1;
+        for (let i = 0; i < bytes.length; i++) {
+            crc ^= bytes[i];
+            for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+        }
+        return (crc ^ -1) >>> 0;
+    }
+    function createMultiExportZip(files) {
+        const encoder = new TextEncoder();
+        const localParts = [];
+        const centralParts = [];
+        let offset = 0;
+        const w16 = (view, pos, value) => view.setUint16(pos, value, true);
+        const w32 = (view, pos, value) => view.setUint32(pos, value, true);
+        files.forEach(file => {
+            const name = encoder.encode(file.name);
+            const data = file.bytes || encoder.encode(file.content);
+            const crc = multiExportCRC32(data);
+            const local = new Uint8Array(30 + name.length);
+            const lv = new DataView(local.buffer);
+            w32(lv,0,0x04034b50); w16(lv,4,20); w16(lv,6,0x0800); w16(lv,8,0); w16(lv,10,0); w16(lv,12,0);
+            w32(lv,14,crc); w32(lv,18,data.length); w32(lv,22,data.length); w16(lv,26,name.length); w16(lv,28,0);
+            local.set(name,30);
+            localParts.push(local,data);
+            const central = new Uint8Array(46 + name.length);
+            const cv = new DataView(central.buffer);
+            w32(cv,0,0x02014b50); w16(cv,4,20); w16(cv,6,20); w16(cv,8,0x0800); w16(cv,10,0); w16(cv,12,0); w16(cv,14,0);
+            w32(cv,16,crc); w32(cv,20,data.length); w32(cv,24,data.length); w16(cv,28,name.length); w16(cv,30,0); w16(cv,32,0);
+            w16(cv,34,0); w16(cv,36,0); w32(cv,38,0); w32(cv,42,offset);
+            central.set(name,46);
+            centralParts.push(central);
+            offset += local.length + data.length;
+        });
+        const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+        const end = new Uint8Array(22);
+        const ev = new DataView(end.buffer);
+        w32(ev,0,0x06054b50); w16(ev,4,0); w16(ev,6,0); w16(ev,8,files.length); w16(ev,10,files.length);
+        w32(ev,12,centralSize); w32(ev,16,offset); w16(ev,20,0);
+        return new Blob([...localParts,...centralParts,end], { type: "application/zip" });
+    }
+    function downloadMultiExportBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+    multiExportConfirmButton?.addEventListener("click", async () => {
+        const names = [...selectedIconLibraryNames];
+        if (!names.length) {
+            closeMultiExportModal();
+            return;
+        }
+        multiExportConfirmButton.disabled = true;
+        multiExportConfirmButton.textContent = "Preparing...";
+        try {
+            const files = [];
+            for (const name of names) {
+                const svg = await getMultiExportSVG(name);
+                if (multiExportFormat === "svg") {
+                    files.push({ name: safeMultiExportFilename(name) + ".svg", content: svg });
+                } else {
+                    files.push({ name: safeMultiExportFilename(name) + ".png", bytes: await multiExportSVGToPNG(svg, name) });
+                }
+            }
+            if (multiExportMethod === "zip") {
+                downloadMultiExportBlob(createMultiExportZip(files), "icon-maker-" + multiExportFormat + "-icons.zip");
+            } else {
+                for (const file of files) {
+                    const blob = file.bytes
+                        ? new Blob([file.bytes], { type: "image/png" })
+                        : new Blob([file.content], { type: "image/svg+xml;charset=utf-8" });
+                    downloadMultiExportBlob(blob, file.name);
+                    await new Promise(resolve => window.setTimeout(resolve, 180));
+                }
+            }
+            closeMultiExportModal();
+            clearIconLibraryMultiSelection();
+            showToast("Exported " + files.length.toLocaleString() + " " + multiExportFormat.toUpperCase() + " icons.", "success");
+        } catch (error) {
+            console.error("Multi-export failed:", error);
+            showToast(error.message || "Multi-export failed. Please try again.", "error");
+        } finally {
+            multiExportConfirmButton.disabled = false;
+            multiExportConfirmButton.textContent = "Export Icons";
+        }
+    });
+
     // One delegated click handler replaces thousands of per-row listeners.
     iconLibraryResultsList?.addEventListener("click", event => {
         const item = event.target.closest(".icon-library-result");
