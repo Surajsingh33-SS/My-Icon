@@ -10773,11 +10773,13 @@ function getSelectedFinishCategories() {
         updateIconLibraryMultiSelectionUI();
     }
     document.getElementById("icon-library-deselect")?.addEventListener("click", clearIconLibraryMultiSelection);
-    // Capture Ctrl-click before the normal library selection handlers can
-    // update the active icon or trigger the bottom action bar.
-    iconLibraryResultsList?.addEventListener("click", event => {
-        if (!event.ctrlKey) return;
-        const row = event.target.closest(".icon-library-result");
+    // Handle Ctrl-click at the document capture phase. This runs before any
+    // result-tile, list, or ancestor click handler can change the active icon.
+    document.addEventListener("click", event => {
+        if (!event.ctrlKey || !iconLibraryResultsList) return;
+
+        const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+        const row = target?.closest(".icon-library-result");
         if (!row || !iconLibraryResultsList.contains(row)) return;
 
         const name = row.dataset.iconName;
@@ -10786,8 +10788,8 @@ function getSelectedFinishCategories() {
         event.preventDefault();
         event.stopImmediatePropagation();
 
-        // Seed the multi-selection with the active details icon only when
-        // starting a new selection and the Ctrl-click targets a different row.
+        // When starting a multi-selection, preserve the icon currently shown
+        // in the details panel, then add the Ctrl-clicked icon.
         if (
             selectedIconLibraryNames.size === 0 &&
             selectedIconLibraryName &&
@@ -10796,12 +10798,9 @@ function getSelectedFinishCategories() {
             selectedIconLibraryNames.add(selectedIconLibraryName);
         }
 
-        // Add a new icon without clearing earlier selections; Ctrl-clicking
-        // an already selected icon still toggles that icon off.
+        // Ctrl-click toggles only the clicked icon; all other selections stay.
         if (selectedIconLibraryNames.has(name)) {
-            if (selectedIconLibraryNames.size > 1 || name !== selectedIconLibraryName) {
-                selectedIconLibraryNames.delete(name);
-            }
+            selectedIconLibraryNames.delete(name);
         } else {
             selectedIconLibraryNames.add(name);
         }
