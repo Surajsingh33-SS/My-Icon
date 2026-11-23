@@ -3284,7 +3284,7 @@ function getSelectedFinishCategories() {
                 const data = item.data;
 
                 data.name =
-                    `${sourceShape.name || sourceShape.type} (Symmetry)`;
+                    sourceShape.name || sourceShape.type;
                 data.symmetryGroupId = groupId;
                 data.symmetryMember = `member-${index + 1}`;
                 data.symmetryTransforms = item.transforms;
