@@ -12338,6 +12338,7 @@ function getSelectedFinishCategories() {
         } else if (viewName === "icon-library") {
             renderIconLibrary();
         }
+        updateIconLibraryMultiSelectionUI();
     }
 
     sidebarOptions.forEach(opt => {
