@@ -12761,34 +12761,32 @@ if (finishCategoryManuallyChanged) {
 
     // Responsive editor side panels: preserve the existing drawing/editor logic.
 
-    // Auto-hide only scrollbars belonging to the editor. The existing overflow,
-    // scrollbar dimensions, and scroll behaviour are left untouched.
-    if (editorLayout) {
-        const editorScrollbarTimers = new WeakMap();
+    // Auto-hide every scrollable region in the app, including dynamically
+    // created dropdowns, dialogs, gallery sections, and editor panels.
+    const appScrollbarTimers = new WeakMap();
 
-        editorLayout.addEventListener("scroll", event => {
-            const scroller = event.target;
-            if (!(scroller instanceof HTMLElement) || !editorLayout.contains(scroller)) return;
+    document.addEventListener("scroll", event => {
+        const scroller = event.target;
+        if (!(scroller instanceof HTMLElement)) return;
 
-            const styles = window.getComputedStyle(scroller);
-            const allowsScroll = value => value === "auto" || value === "scroll" || value === "overlay";
-            const canScrollX = allowsScroll(styles.overflowX) && scroller.scrollWidth > scroller.clientWidth + 1;
-            const canScrollY = allowsScroll(styles.overflowY) && scroller.scrollHeight > scroller.clientHeight + 1;
-            if (!canScrollX && !canScrollY) return;
+        const styles = window.getComputedStyle(scroller);
+        const allowsScroll = value => value === "auto" || value === "scroll" || value === "overlay";
+        const canScrollX = allowsScroll(styles.overflowX) && scroller.scrollWidth > scroller.clientWidth + 1;
+        const canScrollY = allowsScroll(styles.overflowY) && scroller.scrollHeight > scroller.clientHeight + 1;
+        if (!canScrollX && !canScrollY) return;
 
-            scroller.classList.add("scrollbar-auto-hide", "scrollbar-active");
+        scroller.classList.add("scrollbar-auto-hide", "scrollbar-active");
 
-            const previousTimer = editorScrollbarTimers.get(scroller);
-            if (previousTimer) window.clearTimeout(previousTimer);
+        const previousTimer = appScrollbarTimers.get(scroller);
+        if (previousTimer) window.clearTimeout(previousTimer);
 
-            const timer = window.setTimeout(() => {
-                scroller.classList.remove("scrollbar-active");
-                editorScrollbarTimers.delete(scroller);
-            }, 1500);
+        const timer = window.setTimeout(() => {
+            scroller.classList.remove("scrollbar-active");
+            appScrollbarTimers.delete(scroller);
+        }, 1300);
 
-            editorScrollbarTimers.set(scroller, timer);
-        }, true);
-    }
+        appScrollbarTimers.set(scroller, timer);
+    }, true);
     const layersPanelToggle = document.getElementById("layers-panel-toggle");
     const measurementPanelToggle = document.getElementById("measurement-panel-toggle");
     const responsiveDeleteToggle = document.getElementById("responsive-delete-toggle");
