@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://icon-maker-pro.netlify.app/sitemap.xml
