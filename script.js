@@ -10775,10 +10775,11 @@ function getSelectedFinishCategories() {
     document.getElementById("icon-library-deselect")?.addEventListener("click", clearIconLibraryMultiSelection);
     iconLibraryResultsList?.addEventListener("click", event => {
         const row = event.target.closest(".icon-library-result");
-        if (!row || !iconLibraryResultsList.contains(row) || !event.shiftKey) return;
+        if (!row || !iconLibraryResultsList.contains(row) || !event.ctrlKey) return;
         const name = row.dataset.iconName;
         if (!name) return;
         event.preventDefault();
+        event.stopPropagation();
         if (selectedIconLibraryNames.has(name)) selectedIconLibraryNames.delete(name);
         else selectedIconLibraryNames.add(name);
         updateIconLibraryMultiSelectionUI();
@@ -10809,7 +10810,7 @@ function getSelectedFinishCategories() {
     }));
     function openMultiExportModal() {
         if (!selectedIconLibraryNames.size) {
-            showToast("Select icons with Shift + click first.", "info");
+            showToast("Select icons with Ctrl + click first.", "info");
             return;
         }
         updateMultiExportNote();
@@ -10970,7 +10971,7 @@ function getSelectedFinishCategories() {
         if (!item || !iconLibraryResultsList.contains(item)) return;
 
         const name = item.dataset.iconName;
-        if (!name || event.shiftKey || name === selectedIconLibraryName) return;
+        if (!name || event.ctrlKey || name === selectedIconLibraryName) return;
 
         selectedIconLibraryName = name;
         iconLibraryResultsList.querySelector(".icon-library-result.active")?.classList.remove("active");
