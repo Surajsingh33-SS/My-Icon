@@ -806,11 +806,7 @@
     const toastContainer = document.getElementById("toast-container");
     const editorLayout = document.querySelector(".editor");
     const transformToolbar = document.getElementById("transform-toolbar");
-    // Keep the transform toolbar outside editor layout so it remains a
-    // floating, single-row toolbar and never changes the canvas width.
-    if (transformToolbar && transformToolbar.parentElement !== document.body) {
-        document.body.appendChild(transformToolbar);
-    }
+    // Keep the transform toolbar in the workspace, directly below the canvas.
     const clearCustomAxisBtn = document.getElementById("clear-custom-axis-btn");
 
     // Settings View Controls
