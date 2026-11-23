@@ -327,6 +327,8 @@
     const newProjectButton = document.getElementById("new-project-button");
     const saveProjectButton = document.getElementById("save-project-button");
     const finishProjectButton = document.getElementById("finish-project-button");
+    const homeSaveProjectButton = document.getElementById("home-save-project-button");
+    const homeFinishProjectButton = document.getElementById("home-finish-project-button");
     const topbarExportBtn = document.getElementById("topbar-export-btn");
     const homeButton = document.getElementById("home-button");
     const logoHomeButton = document.getElementById("logo-home-button");
@@ -12366,6 +12368,10 @@ if (finishCategoryManuallyChanged) {
         saveProjectToBrowser();
         showToast("Project saved", "success");
     });
+
+    // Reuse the existing editor actions from the home-page topbar.
+    homeSaveProjectButton?.addEventListener("click", () => saveProjectButton?.click());
+    homeFinishProjectButton?.addEventListener("click", () => finishProjectButton?.click());
 
     newProjectButton?.addEventListener("click", () => {
         createNewProject();
