@@ -10760,9 +10760,11 @@ function getSelectedFinishCategories() {
 
     function updateIconLibraryMultiSelectionUI() {
         const count = selectedIconLibraryNames.size;
-        [iconLibraryMultiToolbar, document.getElementById("gallery-multi-toolbar")].forEach(toolbar => {
-            if (toolbar) toolbar.hidden = count === 0;
-        });
+        const libraryVisible = document.getElementById("home-view-icon-library")?.style.display !== "none";
+        const galleryVisible = document.getElementById("home-view-gallery")?.style.display !== "none";
+        if (iconLibraryMultiToolbar) iconLibraryMultiToolbar.hidden = count === 0 || !libraryVisible;
+        const galleryToolbar = document.getElementById("gallery-multi-toolbar");
+        if (galleryToolbar) galleryToolbar.hidden = count === 0 || !galleryVisible;
         [iconLibrarySelectionCount, document.getElementById("gallery-selection-count")].forEach(label => {
             if (label) label.textContent = count.toLocaleString() + (count === 1 ? " icon selected" : " icons selected");
         });
