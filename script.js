@@ -10737,6 +10737,7 @@ function getSelectedFinishCategories() {
             }
 
             iconLibraryResultsList.appendChild(fragment);
+            updateIconLibraryMultiSelectionUI();
             if (nextIndex < filtered.length) {
                 iconLibraryRenderFrame = window.requestAnimationFrame(appendNextBatch);
             } else {
@@ -10969,7 +10970,7 @@ function getSelectedFinishCategories() {
         if (!item || !iconLibraryResultsList.contains(item)) return;
 
         const name = item.dataset.iconName;
-        if (!name || name === selectedIconLibraryName) return;
+        if (!name || event.shiftKey || name === selectedIconLibraryName) return;
 
         selectedIconLibraryName = name;
         iconLibraryResultsList.querySelector(".icon-library-result.active")?.classList.remove("active");
@@ -12881,6 +12882,10 @@ if (finishCategoryManuallyChanged) {
             }
             if (shortcutsModal?.classList.contains("show")) {
                 shortcutsModal.classList.remove("show");
+                return;
+            }
+            if (multiExportModal?.classList.contains("show")) {
+                closeMultiExportModal();
                 return;
             }
             if (exportModal?.classList.contains("show")) {
