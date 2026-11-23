@@ -10773,17 +10773,24 @@ function getSelectedFinishCategories() {
         updateIconLibraryMultiSelectionUI();
     }
     document.getElementById("icon-library-deselect")?.addEventListener("click", clearIconLibraryMultiSelection);
+    // Capture Ctrl-click before the normal library selection handlers can
+    // update the active icon or trigger the bottom action bar.
     iconLibraryResultsList?.addEventListener("click", event => {
+        if (!event.ctrlKey) return;
         const row = event.target.closest(".icon-library-result");
-        if (!row || !iconLibraryResultsList.contains(row) || !event.ctrlKey) return;
+        if (!row || !iconLibraryResultsList.contains(row)) return;
+
         const name = row.dataset.iconName;
         if (!name) return;
+
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
+
         if (selectedIconLibraryNames.has(name)) selectedIconLibraryNames.delete(name);
         else selectedIconLibraryNames.add(name);
+
         updateIconLibraryMultiSelectionUI();
-    });
+    }, true);
 
     function updateMultiExportChoice(group, value) {
         document.querySelectorAll("[data-multi-" + group + "]").forEach(button => {
