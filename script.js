@@ -8296,6 +8296,14 @@ function getSelectedFinishCategories() {
         customAxisDrag = null;
         customMirrorToolBtn?.classList.remove("active");
         renderCustomMirrorAxes();
+
+        // The previous symmetry group may still be selected. Re-select the
+        // primary shape after removing group metadata so its copies are no
+        // longer dragged together.
+        if (selectedShape) {
+            selectShape(selectedShape);
+        }
+
         if (historyBeforeAction) commitHistoryAction();
         showToast(
             hasLinkedSymmetry
