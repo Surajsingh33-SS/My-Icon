@@ -895,11 +895,7 @@
                     </button>
                 </div>
             </div>
-<!-- TRANSFORM TOOLBAR TOGGLE -->
-            <button type="button" class="transform-toolbar-toggle" id="transform-toolbar-toggle"
-                title="Transform & Alignment" aria-label="Open Transform & Alignment toolbar" aria-expanded="false">
-                <img src="assets/icons/cross-reverse.svg" alt="">
-            </button>
+
             <!-- QUICK TRANSFORM & ALIGNMENT TOOLBAR -->
             <div class="transform-toolbar" id="transform-toolbar">
                 <div class="toolbar-group" title="Alignment">
@@ -1083,6 +1079,10 @@
                         title="Endpoint snapping ON (Alt + S)">
                         Snap
                     </button>
+                    <button type="button" class="transform-toolbar-toggle" id="transform-toolbar-toggle"
+                title="Transform & Alignment" aria-label="Open Transform & Alignment toolbar" aria-expanded="false">
+                <img src="assets/icons/cross-reverse.svg" alt="">
+            </button>
                     <label class="coordinate-icon-toggle" title="Toggle coordinate labels"
                         aria-label="Toggle coordinate labels">
                         <input type="checkbox" id="show-coordinates">
@@ -1194,6 +1194,146 @@
             <p class="workspace-tip">
                 Drag a shape from the tools panel onto the 24×24 canvas. Alt + Scroll to zoom, two-finger drag to pan.
             </p>
+
+            <!-- QUICK TRANSFORM & ALIGNMENT TOOLBAR -->
+            <div class="transform-toolbar" id="transform-toolbar">
+                <div class="toolbar-group" title="Alignment">
+                    <button type="button" class="tool-action-btn" data-action="align-left" title="Align Left">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="4" y1="2" x2="4" y2="22" />
+                            <rect x="8" y="5" width="12" height="5" rx="1" />
+                            <rect x="8" y="14" width="8" height="5" rx="1" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-center-x" title="Align Center X">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="2" x2="12" y2="22" />
+                            <rect x="6" y="5" width="12" height="5" rx="1" />
+                            <rect x="8" y="14" width="8" height="5" rx="1" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-right" title="Align Right">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="20" y1="2" x2="20" y2="22" />
+                            <rect x="4" y="5" width="12" height="5" rx="1" />
+                            <rect x="8" y="14" width="8" height="5" rx="1" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-top" title="Align Top">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="2" y1="4" x2="22" y2="4" />
+                            <rect x="5" y="8" width="5" height="12" rx="1" />
+                            <rect x="14" y="8" width="5" height="8" rx="1" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-middle-y" title="Align Middle Y">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="2" y1="12" x2="22" y2="12" />
+                            <rect x="5" y="6" width="5" height="12" rx="1" />
+                            <rect x="14" y="8" width="5" height="8" rx="1" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="align-bottom" title="Align Bottom">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="2" y1="20" x2="22" y2="20" />
+                            <rect x="5" y="4" width="5" height="12" rx="1" />
+                            <rect x="14" y="8" width="5" height="8" rx="1" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group" title="Flip / Mirror">
+                    <button type="button" class="tool-action-btn" data-action="flip-h" title="Flip Horizontal">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="2" x2="12" y2="22" />
+                            <polyline points="4 7 8 12 4 17" />
+                            <polyline points="20 7 16 12 20 17" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="flip-v" title="Flip Vertical">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="2" y1="12" x2="22" y2="12" />
+                            <polyline points="7 4 12 8 17 4" />
+                            <polyline points="7 20 12 16 17 20" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="custom-mirror-axis"
+                        id="custom-mirror-tool-btn" title="Place Custom Mirror Axis (Click 2 points on canvas)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="3" y1="21" x2="21" y2="3" stroke-dasharray="2 2" />
+                            <circle cx="6" cy="18" r="2" />
+                            <circle cx="18" cy="6" r="2" />
+                        </svg>
+                        <span>Custom Axis</span>
+                    </button>
+                    <label class="mirror-axis-control" title="Custom mirror-axis arrangement">
+                        <span>Mode</span>
+                        <select id="mirror-axis-mode" aria-label="Custom axis mode">
+                            <option value="uniform">Uniform</option>
+                            <option value="free">Free</option>
+                        </select>
+                    </label>
+                    <label class="mirror-axis-control" title="Number of equally spaced axes">
+                        <span>Count</span>
+                        <input id="mirror-axis-count" type="number" min="2" max="24" step="1" value="3" aria-label="Number of uniform axes">
+                    </label>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group" title="Order & Duplicate">
+                    <button type="button" class="tool-action-btn" data-action="duplicate" title="Duplicate (Ctrl+D)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="duplicate-mirror"
+                        title="Duplicate + Mirror Selection">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="8" y="8" width="12" height="12" rx="1.5" />
+                            <line x1="4" y1="2" x2="4" y2="22" stroke-dasharray="2 2" />
+                            <polygon points="4 14 1 12 4 10 4 14" />
+                        </svg>
+                        <span>Dup+Mirror</span>
+                    </button>
+                    <button type="button" class="tool-action-btn" data-action="bring-front" title="Bring to Front">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                            <polyline points="2 17 12 22 22 17" />
+                            <polyline points="2 12 12 17 22 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group live-symmetry-group" title="Live Drawing Symmetry">
+                    <label class="live-symmetry-label" title="Live horizontal reflection across center while drawing">
+                        <input type="checkbox" id="live-symmetry-h">
+                        <span>Live H</span>
+                    </label>
+                    <label class="live-symmetry-label" title="Live vertical reflection across center while drawing">
+                        <input type="checkbox" id="live-symmetry-v">
+                        <span>Live V</span>
+                    </label>
+                </div>
+            </div>
+
 
         </section>
 
