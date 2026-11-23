@@ -8705,3 +8705,81 @@ body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group {
 body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-divider {
     flex: 0 0 1px !important;
 }
+
+
+/* Place transform controls below the canvas and its launcher below Snap. */
+body:not(:has(#home-screen.show)) .transform-toolbar {
+    position: relative !important;
+    inset: auto !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 5px !important;
+    margin: 8px 0 0 !important;
+    padding: 7px 10px !important;
+    border-radius: var(--radius-md) !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    transform: none !important;
+    transform-origin: center !important;
+    z-index: 2 !important;
+    scrollbar-width: thin;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: none !important;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar:not(.open) {
+    display: none !important;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    width: max-content !important;
+    min-width: max-content !important;
+    gap: 4px !important;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-divider {
+    flex: 0 0 1px !important;
+    width: 1px !important;
+    height: 18px !important;
+    margin: 0 4px !important;
+}
+
+body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls .transform-toolbar-toggle {
+    position: relative !important;
+    inset: auto !important;
+    display: inline-flex !important;
+    flex: 0 0 34px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    margin-top: 2px !important;
+    border-radius: 8px !important;
+    z-index: 3 !important;
+}
+
+body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
+    align-items: center;
+}
