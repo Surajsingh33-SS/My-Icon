@@ -434,6 +434,12 @@
                     </button>
                 </header>
 
+                <div class="icon-library-multi-toolbar" id="icon-library-multi-toolbar" hidden>
+                    <span id="icon-library-selection-count">0 selected</span>
+                    <button type="button" class="btn btn-primary" id="icon-library-multi-export">Multi Export</button>
+                    <button type="button" class="btn btn-secondary" id="icon-library-deselect">Deselect Icons</button>
+                </div>
+
                 <div class="icon-library-toolbar">
                     <label class="icon-library-search">
                         <span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></span>
@@ -1496,6 +1502,22 @@
     <!-- =====================================
          TOAST NOTIFICATION CONTAINER
     ===================================== -->
+    <div class="multi-export-modal" id="multi-export-modal" aria-hidden="true">
+        <div class="multi-export-dialog" role="dialog" aria-modal="true" aria-labelledby="multi-export-title">
+            <div class="dialog-header"><h3 id="multi-export-title">Export Selected Icons</h3><p>Choose a format and how you want to download the selected icons.</p></div>
+            <div class="multi-export-section"><span class="multi-export-label">File format</span><div class="multi-export-choice-row">
+                <button type="button" class="multi-export-choice active" data-multi-format="svg" aria-pressed="true">SVG</button>
+                <button type="button" class="multi-export-choice" data-multi-format="png" aria-pressed="false">PNG</button>
+            </div></div>
+            <div class="multi-export-section"><span class="multi-export-label">Download method</span><div class="multi-export-choice-row">
+                <button type="button" class="multi-export-choice active" data-multi-method="zip" aria-pressed="true">As ZIP</button>
+                <button type="button" class="multi-export-choice" data-multi-method="separate" aria-pressed="false">Separately</button>
+            </div></div>
+            <p class="multi-export-note" id="multi-export-note">All selected icons will be included.</p>
+            <div class="multi-export-actions"><button type="button" class="btn btn-secondary" id="multi-export-cancel">Cancel</button><button type="button" class="btn btn-primary" id="multi-export-confirm">Export Icons</button></div>
+        </div>
+    </div>
+
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <button type="button" id="copy-error-button" class="copy-error-button" hidden>
