@@ -12079,6 +12079,15 @@ function getSelectedFinishCategories() {
     function showProjectPreview(project) {
         if (!project || !projectDetails) return;
 
+        // Clicking the already-selected gallery tile closes the bottom bar.
+        if (
+            selectedHomeProject &&
+            String(selectedHomeProject.id) === String(project.id)
+        ) {
+            closeProjectPreview();
+            return;
+        }
+
         selectedHomeProject = project;
         projectDetails.classList.remove("expanded");
         projectCategoryListExpanded = false;
