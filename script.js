@@ -10757,6 +10757,7 @@ function getSelectedFinishCategories() {
     const multiExportConfirmButton = document.getElementById("multi-export-confirm");
     let multiExportFormat = "svg";
     let multiExportMethod = "zip";
+    let multiExportColor = "original";
 
     function updateIconLibraryMultiSelectionUI() {
         const count = selectedIconLibraryNames.size;
@@ -10842,6 +10843,10 @@ function getSelectedFinishCategories() {
         updateMultiExportChoice("method", multiExportMethod);
         updateMultiExportNote();
     }));
+    document.querySelectorAll("[data-multi-color]").forEach(button => button.addEventListener("click", () => {
+        multiExportColor = button.dataset.multiColor;
+        updateMultiExportChoice("color", multiExportColor);
+    }));
     function openMultiExportModal() {
         if (!selectedIconLibraryNames.size) {
             showToast("Select icons with Ctrl + click first.", "info");
@@ -10865,6 +10870,44 @@ function getSelectedFinishCategories() {
     function safeMultiExportFilename(name) {
         return String(name || "icon").trim().replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "") || "icon";
     }
+    function applyMultiExportColor(svg, colorMode) {
+        if (colorMode === "original") return svg;
+
+        const color = colorMode === "white"
+            ? "#FFFFFF"
+            : colorMode === "black"
+                ? "#000000"
+                : document.body.getAttribute("data-accent") || "#ff0077";
+        const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
+        const root = parsed.documentElement;
+        if (!root || root.localName !== "svg" || parsed.querySelector("parsererror")) {
+            throw new Error("Could not apply the selected export color to an SVG.");
+        }
+
+        // Match Single Export: recolor strokes and any explicitly filled artwork,
+        // while keeping transparent/no-fill regions untouched.
+        root.setAttribute("color", color);
+        [root, ...root.querySelectorAll("*")].forEach(element => {
+            ["stroke", "fill"].forEach(attribute => {
+                const value = element.getAttribute(attribute);
+                if (value && value.trim().toLowerCase() !== "none") {
+                    element.setAttribute(attribute, color);
+                }
+            });
+
+            const inlineStyle = element.getAttribute("style");
+            if (inlineStyle) {
+                const recoloredStyle = inlineStyle.replace(
+                    /(stroke|fill)\s*:\s*(?!none\b)[^;]+/gi,
+                    match => match.replace(/:.*/, ": " + color)
+                );
+                element.setAttribute("style", recoloredStyle);
+            }
+        });
+
+        return new XMLSerializer().serializeToString(root);
+    }
+
     async function getMultiExportSVG(selectionKey) {
         const isProject = selectionKey.startsWith("project:");
         const value = selectionKey.slice(selectionKey.indexOf(":") + 1);
@@ -10976,7 +11019,8 @@ function getSelectedFinishCategories() {
         try {
             const files = [];
             for (const selectionKey of names) {
-                const svg = await getMultiExportSVG(selectionKey);
+                const originalSvg = await getMultiExportSVG(selectionKey);
+                const svg = applyMultiExportColor(originalSvg, multiExportColor);
                 const value = selectionKey.slice(selectionKey.indexOf(":") + 1);
                 const project = selectionKey.startsWith("project:")
                     ? projectManager.projects.find(item => String(item.id) === value)
