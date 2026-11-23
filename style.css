@@ -6073,13 +6073,14 @@ body:has(#home-screen.show) #finish-project-button {
     visibility: hidden !important;
 }
 
-/* Future home-page actions: hidden everywhere except the home screen.
-   Each placeholder inherits its matching Save, Finish, or Export button styles. */
-.home-action-placeholder {
+/* Home-page Save and Finish actions reuse the editor's existing handlers. */
+#home-save-project-button,
+#home-finish-project-button {
     display: none;
 }
 
-body:has(#home-screen.show) .topbar .actions > .home-action-placeholder {
+body:has(#home-screen.show) .topbar .actions > #home-save-project-button,
+body:has(#home-screen.show) .topbar .actions > #home-finish-project-button {
     display: inline-flex !important;
 }
 
@@ -6091,9 +6092,10 @@ body:has(#home-screen.show) #topbar-export-btn {
 body:has(#home-screen.show #project-details.show) #topbar-export-btn {
     display: inline-flex !important;}
 
-/* Keep the future home-page action placeholders desktop-only.
-   Match the home-page selector specificity so this overrides its display rule. */
-@media (max-width: 760px) {    body:has(#home-screen.show) .topbar .actions > .home-action-placeholder {
+/* Keep the additional home-page actions desktop-only, as before. */
+@media (max-width: 760px) {
+    body:has(#home-screen.show) .topbar .actions > #home-save-project-button,
+    body:has(#home-screen.show) .topbar .actions > #home-finish-project-button {
         display: none !important;
     }
 }
