@@ -795,7 +795,7 @@
     const exportModal = document.getElementById("export-modal");
     const exportCancel = document.getElementById("export-cancel");
     const exportTabs = document.querySelectorAll(".export-tab");
-    const exportOptions = document.querySelectorAll(".export-option");
+    const exportOptions = document.querySelectorAll("#export-modal .export-option");
     const pngResolutionSection = document.getElementById("png-resolution-section");
     const resButtons = document.querySelectorAll(".res-btn");
     const exportDownloadBtn = document.getElementById("export-download-btn");
