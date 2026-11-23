@@ -10773,14 +10773,27 @@ function getSelectedFinishCategories() {
         updateIconLibraryMultiSelectionUI();
     }
     document.getElementById("icon-library-deselect")?.addEventListener("click", clearIconLibraryMultiSelection);
-    // Handle Ctrl + Shift + Click at the document capture phase, before any
+    // Handle Ctrl-click at the document capture phase, before any
     // result-tile, list, or ancestor click handler can change the active icon.
     document.addEventListener("click", event => {
-        if (!event.ctrlKey || !event.shiftKey || !iconLibraryResultsList) return;
+        if (!iconLibraryResultsList) return;
 
         const target = event.target instanceof Element ? event.target : event.target?.parentElement;
         const row = target?.closest(".icon-library-result");
         if (!row || !iconLibraryResultsList.contains(row)) return;
+
+        // Temporary diagnostic: confirms whether the browser reports Ctrl on
+        // the actual tile click and whether the handler sees the expected row.
+        if (event.ctrlKey) {
+            console.info("[Icon Library multi-select] Ctrl-click received", {
+                icon: row.dataset.iconName,
+                ctrlKey: event.ctrlKey,
+                shiftKey: event.shiftKey,
+                activeIcon: selectedIconLibraryName,
+                selectedCountBefore: selectedIconLibraryNames.size
+            });
+        }
+        if (!event.ctrlKey) return;
 
         const name = row.dataset.iconName;
         if (!name) return;
@@ -10798,7 +10811,7 @@ function getSelectedFinishCategories() {
             selectedIconLibraryNames.add(selectedIconLibraryName);
         }
 
-        // Ctrl + Shift + Click toggles only the clicked icon; other selections stay.
+        // Ctrl-click toggles only the clicked icon; other selections stay.
         if (selectedIconLibraryNames.has(name)) {
             selectedIconLibraryNames.delete(name);
         } else {
@@ -10833,7 +10846,7 @@ function getSelectedFinishCategories() {
     }));
     function openMultiExportModal() {
         if (!selectedIconLibraryNames.size) {
-            showToast("Select icons with Ctrl + Shift + Click first.", "info");
+            showToast("Select icons with Ctrl + click first.", "info");
             return;
         }
         updateMultiExportNote();
@@ -10994,7 +11007,7 @@ function getSelectedFinishCategories() {
         if (!item || !iconLibraryResultsList.contains(item)) return;
 
         const name = item.dataset.iconName;
-        if (!name || (event.ctrlKey && event.shiftKey) || name === selectedIconLibraryName) return;
+        if (!name || event.ctrlKey || name === selectedIconLibraryName) return;
 
         selectedIconLibraryName = name;
         iconLibraryResultsList.querySelector(".icon-library-result.active")?.classList.remove("active");
