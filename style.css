@@ -238,7 +238,7 @@ kbd {
 /* Global scrollbar styling */
 * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(var(--accent-rgb), 0.55) transparent;
+    scrollbar-color: transparent transparent !important;
 }
 
 ::-webkit-scrollbar {
@@ -260,9 +260,22 @@ kbd {
     transition: background-color 0.2s ease, opacity 0.25s ease;
 }
 
+/* Scrollbars stay hidden until their own scroll container is used. */
+::-webkit-scrollbar-thumb {
+    background-color: transparent !important;
+}
+
 ::-webkit-scrollbar-thumb:hover {
     background: var(--accent);
     background-clip: padding-box;
+}
+
+.scrollbar-active {
+    scrollbar-color: rgba(var(--accent-rgb), 0.7) transparent !important;
+}
+
+.scrollbar-active::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--accent-rgb), 0.7) !important;
 }
 
 ::-webkit-scrollbar-corner {
