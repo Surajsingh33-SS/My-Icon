@@ -8831,3 +8831,14 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
 .multi-export-note{color:var(--text-secondary);font-size:12px}
 .multi-export-actions{display:flex;justify-content:flex-end;gap:9px}
 @media(max-width:700px){.icon-library-multi-toolbar{top:auto;right:12px;bottom:16px;left:12px;justify-content:space-between;flex-wrap:wrap}.icon-library-multi-toolbar>span{flex:1 1 100%}.multi-export-dialog{padding:20px}}
+
+/* Multi-export color choices reuse the Single Export option styling. */
+.multi-export-color-options {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+.multi-export-color-options .export-option {
+    min-width: 0;
+    cursor: pointer;
+}
