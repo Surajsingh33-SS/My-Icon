@@ -10773,10 +10773,10 @@ function getSelectedFinishCategories() {
         updateIconLibraryMultiSelectionUI();
     }
     document.getElementById("icon-library-deselect")?.addEventListener("click", clearIconLibraryMultiSelection);
-    // Handle Ctrl-click at the document capture phase. This runs before any
+    // Handle Ctrl + Shift + Click at the document capture phase, before any
     // result-tile, list, or ancestor click handler can change the active icon.
     document.addEventListener("click", event => {
-        if (!event.ctrlKey || !iconLibraryResultsList) return;
+        if (!event.ctrlKey || !event.shiftKey || !iconLibraryResultsList) return;
 
         const target = event.target instanceof Element ? event.target : event.target?.parentElement;
         const row = target?.closest(".icon-library-result");
@@ -10789,7 +10789,7 @@ function getSelectedFinishCategories() {
         event.stopImmediatePropagation();
 
         // When starting a multi-selection, preserve the icon currently shown
-        // in the details panel, then add the Ctrl-clicked icon.
+        // in the details panel, then add the clicked icon.
         if (
             selectedIconLibraryNames.size === 0 &&
             selectedIconLibraryName &&
@@ -10798,7 +10798,7 @@ function getSelectedFinishCategories() {
             selectedIconLibraryNames.add(selectedIconLibraryName);
         }
 
-        // Ctrl-click toggles only the clicked icon; all other selections stay.
+        // Ctrl + Shift + Click toggles only the clicked icon; other selections stay.
         if (selectedIconLibraryNames.has(name)) {
             selectedIconLibraryNames.delete(name);
         } else {
@@ -10833,7 +10833,7 @@ function getSelectedFinishCategories() {
     }));
     function openMultiExportModal() {
         if (!selectedIconLibraryNames.size) {
-            showToast("Select icons with Ctrl + click first.", "info");
+            showToast("Select icons with Ctrl + Shift + Click first.", "info");
             return;
         }
         updateMultiExportNote();
@@ -10994,7 +10994,7 @@ function getSelectedFinishCategories() {
         if (!item || !iconLibraryResultsList.contains(item)) return;
 
         const name = item.dataset.iconName;
-        if (!name || event.ctrlKey || name === selectedIconLibraryName) return;
+        if (!name || (event.ctrlKey && event.shiftKey) || name === selectedIconLibraryName) return;
 
         selectedIconLibraryName = name;
         iconLibraryResultsList.querySelector(".icon-library-result.active")?.classList.remove("active");
