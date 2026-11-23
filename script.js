@@ -10786,6 +10786,12 @@ function getSelectedFinishCategories() {
         event.preventDefault();
         event.stopImmediatePropagation();
 
+        // Keep the previously active icon as part of the multi-selection
+        // when Ctrl-click starts selecting another icon.
+        if (selectedIconLibraryName && selectedIconLibraryName !== name) {
+            selectedIconLibraryNames.add(selectedIconLibraryName);
+        }
+
         if (selectedIconLibraryNames.has(name)) selectedIconLibraryNames.delete(name);
         else selectedIconLibraryNames.add(name);
 
