@@ -10786,14 +10786,25 @@ function getSelectedFinishCategories() {
         event.preventDefault();
         event.stopImmediatePropagation();
 
-        // Keep the previously active icon as part of the multi-selection
-        // when Ctrl-click starts selecting another icon.
-        if (selectedIconLibraryName && selectedIconLibraryName !== name) {
+        // Seed the multi-selection with the active details icon only when
+        // starting a new selection and the Ctrl-click targets a different row.
+        if (
+            selectedIconLibraryNames.size === 0 &&
+            selectedIconLibraryName &&
+            selectedIconLibraryName !== name
+        ) {
             selectedIconLibraryNames.add(selectedIconLibraryName);
         }
 
-        if (selectedIconLibraryNames.has(name)) selectedIconLibraryNames.delete(name);
-        else selectedIconLibraryNames.add(name);
+        // Add a new icon without clearing earlier selections; Ctrl-clicking
+        // an already selected icon still toggles that icon off.
+        if (selectedIconLibraryNames.has(name)) {
+            if (selectedIconLibraryNames.size > 1 || name !== selectedIconLibraryName) {
+                selectedIconLibraryNames.delete(name);
+            }
+        } else {
+            selectedIconLibraryNames.add(name);
+        }
 
         updateIconLibraryMultiSelectionUI();
     }, true);
