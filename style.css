@@ -8677,3 +8677,31 @@ body:not(:has(#home-screen.show)) .transform-toolbar-toggle {
     right: 12px !important;
     left: auto !important;
 }
+
+
+/* Ensure the floating transform toolbar stays inside the editor viewport. */
+body:not(:has(#home-screen.show)) .transform-toolbar {
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-left: 10px !important;
+    padding-right: 48px !important;
+    transform: none !important;
+    transform-origin: top left !important;
+    scrollbar-width: thin;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-group {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+}
+
+body:not(:has(#home-screen.show)) .transform-toolbar .toolbar-divider {
+    flex: 0 0 1px !important;
+}
