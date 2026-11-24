@@ -7,6 +7,15 @@ const corsHeaders = {
   "Content-Type": "application/json"
 };
 
+class RequestError extends Error {
+  status: number;
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = "RequestError";
+    this.status = status;
+  }
+}
+
 function reply(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
 }
@@ -44,7 +53,7 @@ Deno.serve(async (req: Request) => {
     const secretKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || (secretEnv ? JSON.parse(secretEnv).default : undefined);
     const publishableEnv = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
     const publishableKey = publishableEnv ? JSON.parse(publishableEnv).default : Deno.env.get("SUPABASE_ANON_KEY");
-    if (!url || !secretKey || !publishableKey) throw new Error("Supabase server configuration is incomplete.");
+    if (!url || !secretKey || !publishableKey) throw new RequestError("Supabase server configuration is incomplete.");
 
     const authorization = req.headers.get("Authorization") || "";
     const token = authorization.replace(/^Bearer\s+/i, "");
@@ -82,11 +91,11 @@ Deno.serve(async (req: Request) => {
     const { data: ownerRow, error: ownerError } = await admin
       .from("markora_owner_registry").select("owner_id").eq("singleton", true).maybeSingle();
     if (ownerError) throw ownerError;
-    if (!ownerRow?.owner_id) throw new Error("Markora owner registry is not configured.");
+    if (!ownerRow?.owner_id) throw new RequestError("Markora owner registry is not configured.");
     const isOwner = ownerRow.owner_id === user.id;
 
     const requireOwner = () => {
-      if (!isOwner) throw new Error("Only the Markora Super Admin can perform this action.");
+      if (!isOwner) throw new RequestError("Only the Markora Super Admin can perform this action.");
     };
     const addAudit = async (actionName: string, subjectUserId: string | null, details: Record<string, unknown> = {}) => {
       const { error } = await admin.from("markora_audit_log").insert({
@@ -101,7 +110,7 @@ Deno.serve(async (req: Request) => {
     };
     const findUserByEmail = async (email: string) => {
       const target = email.trim().toLowerCase();
-      if (!target || !target.includes("@")) throw new Error("Enter a valid recipient email address.");
+      if (!target || !target.includes("@")) throw new RequestError("Enter a valid recipient email address.");
       for (let page = 1; page <= 20; page++) {
         const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 500 });
         if (error) throw error;
@@ -109,7 +118,7 @@ Deno.serve(async (req: Request) => {
         if (match) return match;
         if (data.users.length < 500) break;
       }
-      throw new Error("No Markora account was found with that email. The recipient must create and verify an account first.");
+      throw new RequestError("No Markora account was found with that email. The recipient must create and verify an account first.");
     };
 
     if (action === "get_status") {
@@ -135,7 +144,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "redeem_invite") {
-      if (!normalizedCode) throw new Error("Enter your invitation code.");
+      if (!normalizedCode) throw new RequestError("Enter your invitation code.");
       const { data, error } = await admin.rpc("markora_redeem_invite", {
         p_code_hash: await hashCode(normalizedCode), p_user_id: user.id
       });
@@ -163,11 +172,11 @@ Deno.serve(async (req: Request) => {
     if (action === "revoke_contributor") {
       requireOwner();
       const targetId = String(body.userId || "");
-      if (!targetId || targetId === user.id) throw new Error("The owner account cannot be revoked.");
+      if (!targetId || targetId === user.id) throw new RequestError("The owner account cannot be revoked.");
       const { data: target, error: targetError } = await admin.from("markora_contributors")
         .select("user_id,status").eq("user_id", targetId).maybeSingle();
       if (targetError) throw targetError;
-      if (!target || target.status !== "active") throw new Error("This account is not an active Semi-Publisher.");
+      if (!target || target.status !== "active") throw new RequestError("This account is not an active Semi-Publisher.");
       const { error } = await admin.from("markora_contributors")
         .update({ status: "revoked", revoked_at: new Date().toISOString() }).eq("user_id", targetId);
       if (error) throw error;
@@ -185,20 +194,20 @@ Deno.serve(async (req: Request) => {
       const { data: contributor, error: contributorError } = await admin.from("markora_contributors")
         .select("status").eq("user_id", user.id).maybeSingle();
       if (contributorError) throw contributorError;
-      if (isOwner || contributor?.status !== "active") throw new Error("An active Semi-Publisher account is required to submit icons.");
-      if (!body.project || typeof body.project !== "object" || Array.isArray(body.project)) throw new Error("Select a valid finished icon.");
+      if (isOwner || contributor?.status !== "active") throw new RequestError("An active Semi-Publisher account is required to submit icons.");
+      if (!body.project || typeof body.project !== "object" || Array.isArray(body.project)) throw new RequestError("Select a valid finished icon.");
       const incomingProject = body.project as Record<string, unknown>;
       const serializedProject = JSON.stringify(incomingProject);
       if (new TextEncoder().encode(serializedProject).byteLength > 512 * 1024) {
         return reply({ error: "This icon project is too large to submit (512 KB maximum)." }, 413);
       }
       if (typeof incomingProject.id !== "string" || incomingProject.id.length < 1 || incomingProject.id.length > 160) {
-        throw new Error("The icon project has an invalid identifier.");
+        throw new RequestError("The icon project has an invalid identifier.");
       }
       if (typeof incomingProject.name === "string" && incomingProject.name.length > 160) {
-        throw new Error("The icon name is too long.");
+        throw new RequestError("The icon name is too long.");
       }
-      if (incomingProject.status !== "finished") throw new Error("Only finished Private icons can be submitted.");
+      if (incomingProject.status !== "finished") throw new RequestError("Only finished Private icons can be submitted.");
       const project = cleanProject(incomingProject);
       // Enforce per-account limits atomically in Postgres to prevent concurrent bypasses.
       const { data: submissionResult, error: submissionError } = await admin.rpc("markora_submit_project", {
@@ -252,7 +261,7 @@ Deno.serve(async (req: Request) => {
     if (action === "review_submission") {
       requireOwner();
       const decision = String(body.decision || "");
-      if (!["approved", "rejected"].includes(decision)) throw new Error("Choose approve or reject.");
+      if (!["approved", "rejected"].includes(decision)) throw new RequestError("Choose approve or reject.");
       const { data, error } = await admin.rpc("markora_review_submission", {
         p_submission_id: String(body.submissionId || ""), p_reviewer_id: user.id,
         p_decision: decision, p_note: String(body.note || "").slice(0, 500)
@@ -265,10 +274,10 @@ Deno.serve(async (req: Request) => {
       requireOwner();
       const lastSignIn = Date.parse(user.last_sign_in_at || "");
       if (!Number.isFinite(lastSignIn) || Date.now() - lastSignIn > 5 * 60 * 1000) {
-        throw new Error("Re-enter your account password before authorizing an ownership transfer.");
+        throw new RequestError("Re-enter your account password before authorizing an ownership transfer.");
       }
       const recipient = await findUserByEmail(String(body.email || ""));
-      if (recipient.id === user.id) throw new Error("You are already the Super Admin.");
+      if (recipient.id === user.id) throw new RequestError("You are already the Super Admin.");
       const code = makeCode();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const { error } = await admin.from("markora_owner_transfers").insert({
@@ -281,7 +290,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "accept_transfer") {
-      if (!normalizedCode) throw new Error("Enter the ownership transfer code.");
+      if (!normalizedCode) throw new RequestError("Enter the ownership transfer code.");
       const { data, error } = await admin.rpc("markora_complete_owner_transfer", {
         p_code_hash: await hashCode(normalizedCode), p_new_owner_id: user.id
       });
@@ -319,6 +328,9 @@ Deno.serve(async (req: Request) => {
     return reply({ error: "Unknown Markora action." }, 400);
   } catch (error) {
     console.error("Markora publisher control error:", error);
-    return reply({ error: error?.message || "The request could not be completed." }, 400);
+    if (error instanceof RequestError) {
+      return reply({ error: error.message }, error.status);
+    }
+    return reply({ error: "The request could not be completed. Please try again." }, 500);
   }
 });
