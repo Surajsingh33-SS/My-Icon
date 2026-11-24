@@ -9273,3 +9273,42 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
         width: 100%;
     }
 }
+
+
+/* Markora dedicated Authority and Security Activity pages */
+.markora-publisher-entry { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px 18px; }
+.markora-entry-heading { display:flex; align-items:center; justify-content:space-between; grid-column:1/-1; }
+.markora-entry-icon { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--accent-light); color:var(--accent-color,var(--accent,#ff0077)); font-size:20px; }
+.markora-publisher-entry h3 { margin:0; font-size:15px; }
+.markora-publisher-entry p { margin:0; }
+.markora-publisher-entry .btn { justify-self:end; white-space:nowrap; }
+.markora-entry-divider { grid-column:1/-1; height:1px; margin:10px 0; background:var(--border-color); }
+.markora-admin-page { width:100%; min-width:0; padding:0 0 36px; }
+.markora-admin-page[hidden] { display:none !important; }
+.markora-admin-page-header { display:flex; align-items:flex-start; gap:20px; margin-bottom:22px; }
+.markora-admin-page-header h2 { margin:5px 0 4px; font-size:clamp(22px,3vw,30px); }
+.markora-admin-page-header .management-subtitle { margin:0; }
+.markora-admin-back { flex:0 0 auto; min-height:36px; }
+.markora-admin-page-content { width:100%; max-width:1100px; min-width:0; padding:22px; border:1px solid var(--border-color); border-radius:14px; background:var(--panel-bg,var(--bg-surface)); }
+.markora-audit-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+.markora-audit-toolbar input,.markora-audit-toolbar select { min-height:40px; min-width:0; padding:9px 12px; border:1px solid var(--border-color); border-radius:9px; background:var(--bg-input,var(--bg-surface)); color:var(--text-primary); font:inherit; }
+.markora-audit-toolbar input { flex:1 1 260px; }
+.markora-audit-toolbar select { flex:0 1 190px; }
+.markora-audit-count { margin-left:auto; color:var(--text-secondary); font-size:11px; white-space:nowrap; }
+.markora-audit-results { display:grid; gap:9px; }
+.markora-audit-event { display:grid; grid-template-columns:34px minmax(0,1fr) auto; align-items:start; gap:12px; padding:13px; border:1px solid var(--border-color); border-radius:10px; background:var(--bg-surface,transparent); }
+.markora-audit-event-icon { display:grid; place-items:center; width:32px; height:32px; border-radius:9px; background:var(--accent-light); color:var(--accent-color,var(--accent,#ff0077)); }
+.markora-audit-event-main { display:grid; gap:5px; min-width:0; }
+.markora-audit-event-main strong { font-size:13px; text-transform:capitalize; }
+.markora-audit-event-main span,.markora-audit-details,.markora-audit-event time { color:var(--text-secondary); font-size:11px; overflow-wrap:anywhere; }
+.markora-audit-details { margin:0; line-height:1.5; }
+.markora-audit-event time { white-space:nowrap; text-align:right; }
+@media(max-width:650px) {
+ .markora-publisher-entry { grid-template-columns:minmax(0,1fr); }
+ .markora-publisher-entry .btn { justify-self:stretch; }
+ .markora-admin-page-header { flex-direction:column; gap:12px; }
+ .markora-admin-page-content { padding:14px; }
+ .markora-audit-event { grid-template-columns:30px minmax(0,1fr); }
+ .markora-audit-event time { grid-column:2; text-align:left; }
+ .markora-audit-count { margin-left:0; width:100%; }
+}
