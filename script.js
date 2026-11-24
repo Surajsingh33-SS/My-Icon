@@ -11362,6 +11362,15 @@ function getSelectedFinishCategories() {
         [iconLibrarySelectionCount, document.getElementById("gallery-selection-count")].forEach(label => {
             if (label) label.textContent = count.toLocaleString() + (count === 1 ? " icon selected" : " icons selected");
         });
+        const selectedProjects = [...selectedIconLibraryNames].map(getMultiSelectedProject).filter(Boolean);
+        const canDeleteSelection = selectedProjects.length === count &&
+            selectedProjects.every(project =>
+                (project._gallerySpace || (selectedIconLibraryNames.values().next().value || "").startsWith("library:")
+                    ? (iconLibrarySavedOnly ? "private" : "official")
+                    : activeGallerySpace) !== "official" || isCurrentUserOfficialPublisher()
+            );
+        [document.getElementById("icon-library-multi-delete"), document.getElementById("gallery-multi-delete")]
+            .forEach(button => { if (button) button.hidden = count === 0 || !canDeleteSelection; });
         iconLibraryResultsList?.querySelectorAll(".icon-library-result").forEach(row => {
             const selected = selectedIconLibraryNames.has("library:" + row.dataset.iconName);
             row.classList.toggle("multi-selected", selected);
@@ -11373,6 +11382,102 @@ function getSelectedFinishCategories() {
             card.setAttribute("aria-selected", String(selected));
         });
     }
+    function getMultiSelectedProject(selectionKey) {
+        if (!selectionKey) return null;
+        const isProject = selectionKey.startsWith("project:");
+        const value = selectionKey.slice(selectionKey.indexOf(":") + 1);
+        if (isProject) {
+            return getAllGalleryProjects().find(project => String(project.id) === value) ||
+                projectManager.projects.find(project => String(project.id) === value) ||
+                OFFICIAL_GALLERY_PROJECTS.find(project => String(project.id) === value) || null;
+        }
+        return getIconLibraryProjectMap().get(normalizeLibraryIconName(value)) || null;
+    }
+
+    async function deleteSelectedIcons() {
+        const selectionKeys = [...selectedIconLibraryNames];
+        if (!selectionKeys.length) return;
+        const selected = selectionKeys.map(key => ({ key, project: getMultiSelectedProject(key) }));
+        if (selected.some(item => !item.project)) {
+            showToast("One or more selected icons are no longer available. Refresh the selection and try again.", "error");
+            return;
+        }
+        const officialItems = selected.filter(({ project, key }) =>
+            (project._gallerySpace || (key.startsWith("library:") ? (iconLibrarySavedOnly ? "private" : "official") : activeGallerySpace)) === "official"
+        );
+        if (officialItems.length && !isCurrentUserOfficialPublisher()) {
+            showToast("Only an authorized Official Publisher can delete Official icons.", "error");
+            return;
+        }
+        const privateItems = selected.filter(item => !officialItems.includes(item));
+        const officialCount = officialItems.length;
+        const message = [
+            "Permanently delete " + selected.length + (selected.length === 1 ? " selected icon?" : " selected icons?"),
+            privateItems.length ? privateItems.length + " Private icon(s) will be removed from your library." : "",
+            officialCount ? officialCount + " Official icon(s) will be removed from the shared library for every user." : "",
+            "This action cannot be undone."
+        ].filter(Boolean).join("\n\n");
+        const decision = await showAppDialog({
+            title: "Delete selected icons?",
+            message,
+            confirmText: "Delete " + selected.length + (selected.length === 1 ? " icon" : " icons"),
+            danger: true
+        });
+        if (!decision.confirmed) return;
+
+        const failed = [];
+        let deletedPrivate = 0;
+        let deletedOfficial = 0;
+        for (const { project } of privateItems) {
+            try {
+                projectManager.projects = projectManager.projects.filter(item => String(item.id) !== String(project.id));
+                window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error =>
+                    console.error("Private cloud delete failed:", error)
+                );
+                deletedPrivate++;
+            } catch (error) {
+                failed.push(project.name || "Private icon");
+            }
+        }
+        if (deletedPrivate) saveProjectManager();
+
+        for (const { project } of officialItems) {
+            try {
+                if (!window.IconMakerSupabase?.deleteOfficialProject) {
+                    throw new Error("Official Library deletion is unavailable.");
+                }
+                await window.IconMakerSupabase.deleteOfficialProject(project.id);
+                OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(item =>
+                    String(item.id) !== String(project.id)
+                );
+                deletedOfficial++;
+            } catch (error) {
+                console.error("Official Library delete failed:", error);
+                failed.push(project.name || "Official icon");
+            }
+        }
+
+        if (selectedHomeProject && selectionKeys.some(key =>
+            key.startsWith("project:") && key.slice(8) === String(selectedHomeProject.id)
+        )) closeProjectPreview();
+
+        clearIconLibraryMultiSelection();
+        renderHomeProjects();
+        renderManagementTable();
+        renderUnfinishedProjects();
+        updateProjectCounters();
+
+        const deletedCount = deletedPrivate + deletedOfficial;
+        if (failed.length) {
+            showToast("Deleted " + deletedCount + " icon(s); " + failed.length + " could not be deleted.", "error");
+        } else {
+            showToast("Deleted " + deletedCount + " selected icon(s).", "success");
+        }
+    }
+
+    document.getElementById("icon-library-multi-delete")?.addEventListener("click", deleteSelectedIcons);
+    document.getElementById("gallery-multi-delete")?.addEventListener("click", deleteSelectedIcons);
+
     function clearIconLibraryMultiSelection() {
         selectedIconLibraryNames.clear();
         updateIconLibraryMultiSelectionUI();
