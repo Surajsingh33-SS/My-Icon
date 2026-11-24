@@ -261,11 +261,18 @@ Deno.serve(async (req: Request) => {
 
     if (action === "list_audit") {
       requireOwner();
-      const { data, error } = await admin.from("markora_audit_log")
-        .select("id,actor_user_id,subject_user_id,action,details,created_at")
-        .order("created_at", { ascending: false }).limit(50);
+      const requestedLimit = Number(body.limit);
+      const requestedOffset = Number(body.offset);
+      const pageSize = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(50, Math.floor(requestedLimit))) : 50;
+      const offset = Number.isFinite(requestedOffset) ? Math.max(0, Math.floor(requestedOffset)) : 0;
+      const { data, error, count } = await admin.from("markora_audit_log")
+        .select("id,actor_user_id,subject_user_id,action,details,created_at", { count: "exact" })
+        .order("created_at", { ascending: false }).order("id", { ascending: false })
+        .range(offset, offset + pageSize - 1);
       if (error) throw error;
-      return reply({ events: data || [] });
+      const events = data || [];
+      const total = count || 0;
+      return reply({ events, total, offset, hasMore: offset + events.length < total });
     }
 
     return reply({ error: "Unknown Markora action." }, 400);
