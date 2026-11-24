@@ -770,19 +770,9 @@
     // Official Library is server-managed; browser-local copies are not authoritative.
     OFFICIAL_GALLERY_PROJECTS = [];
 
-    function saveOfficialGalleryProjects(allowRecoveryWrite = false) {
-        if (officialGalleryRecoveryRequired && !allowRecoveryWrite) {
-            console.warn("Official Gallery save blocked until its existing data is recovered.");
-            return false;
-        }
-        try {
-            localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, JSON.stringify(OFFICIAL_GALLERY_PROJECTS));
-            return true;
-        } catch (error) {
-            console.error("Could not save Official Gallery:", error);
-            showToast("Failed to save Official Gallery icons. Previous saved data was kept.", "error");
-            return false;
-        }
+    function saveOfficialGalleryProjects() {
+        console.warn("Official Library is read-only. Browser-side changes are not published.");
+        return false;
     }
 
     // One-time migration for projects created before Official and Private were
@@ -12671,6 +12661,11 @@ function getSelectedFinishCategories() {
 
     projectRemixButton?.addEventListener("click", () => {
         if (!selectedHomeProject) return;
+        if (!window.IconMakerSupabase?.getSession?.()) {
+            window.IconMakerSupabase?.openAuthModal?.();
+            showToast("Sign in to save a Remix to your Private Library.", "info");
+            return;
+        }
 
         if (
             projectManager.activeProjectId &&
