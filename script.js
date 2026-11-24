@@ -1086,6 +1086,7 @@
     const settingDefaultGridHover = document.getElementById("setting-default-grid-hover");
     const settingDefaultGuidelines = document.getElementById("setting-default-guidelines");
     const settingsBackupBtn = document.getElementById("settings-backup-btn");
+    const settingsImportBackupBtn = document.getElementById("settings-import-backup-btn");
     const settingsClearAllBtn = document.getElementById("settings-clear-all-btn");
 
     // ========================================================================
@@ -13021,6 +13022,8 @@ function getSelectedFinishCategories() {
 
     // Preferences Actions
     settingsBackupBtn?.addEventListener("click", downloadProjectFile);
+    // Use the same validated, rollback-safe importer as File > Restore Projects.
+    settingsImportBackupBtn?.addEventListener("click", () => importProjectFileInput?.click());
     settingsClearAllBtn?.addEventListener("click", async () => {
         const decision = await showAppDialog({ title: "Clear all data?", message: "This will clear all saved icons and preferences from this browser. This cannot be undone.", confirmText: "Clear all", danger: true });
         if (!decision.confirmed) return;
