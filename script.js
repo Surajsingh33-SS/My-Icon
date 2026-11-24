@@ -10365,11 +10365,18 @@ function getSelectedFinishCategories() {
 
     function updateIconLibrarySavedToggle() {
         if (!iconLibrarySavedToggleButton) return;
-        iconLibrarySavedToggleButton.textContent = iconLibrarySavedOnly ? "Saved only" : "All icons";
+        const sourceName = iconLibrarySavedOnly ? "Private Icons" : "Official Icons";
+        const nextSourceName = iconLibrarySavedOnly ? "Official Icons" : "Private Icons";
+        iconLibrarySavedToggleButton.textContent = sourceName;
         iconLibrarySavedToggleButton.setAttribute("aria-pressed", String(iconLibrarySavedOnly));
-        iconLibrarySavedToggleButton.title = iconLibrarySavedOnly
-            ? "Currently showing saved Gallery icons only. Switch to all library icons."
-            : "Currently showing all library icons. Switch to saved icons only.";
+        iconLibrarySavedToggleButton.setAttribute("aria-label", "Showing " + sourceName + ". Switch to " + nextSourceName + ".");
+        iconLibrarySavedToggleButton.title = "Currently showing " + sourceName + ". Switch to " + nextSourceName + ".";
+        const description = document.querySelector("#home-view-icon-library .icon-library-header > div p");
+        if (description) {
+            description.textContent = iconLibrarySavedOnly
+                ? "Browse and manage the finished icons in your Private Gallery."
+                : "Browse the finished icons published in your Official Gallery.";
+        }
     }
 
 
@@ -10727,7 +10734,9 @@ function getSelectedFinishCategories() {
         const title = document.createElement("h3");
         title.textContent = iconName;
         const subtitle = document.createElement("p");
-        subtitle.textContent = project ? "Saved in your projects" : "Library icon";
+        subtitle.textContent = project
+            ? (iconLibrarySavedOnly ? "Private Gallery icon" : "Official Gallery icon")
+            : (iconLibrarySavedOnly ? "Private Gallery" : "Official Gallery");
         const source = getIconLibraryCategorySource(iconName, projectMap, metadata);
         const sourceBadge = document.createElement("span");
         sourceBadge.className = `icon-library-source-badge is-${source}`;
@@ -10827,8 +10836,9 @@ function getSelectedFinishCategories() {
 
         const index = getIconLibraryIndex();
         const { entries, projectMap, savedNames, providedMetadata } = index;
-        const allCategories = getAllIconCategories()
-            .filter(category => category !== "Uncategorized")
+        const allCategories = [...new Set(index.items
+            .flatMap(item => item.categories || [])
+            .filter(category => category && category !== "Uncategorized"))]
             .sort((a, b) => a.localeCompare(b));
 
         if (iconLibraryCategoryFilter) {
@@ -10916,8 +10926,10 @@ function getSelectedFinishCategories() {
             const empty = document.createElement("p");
             empty.className = "icon-library-empty";
             empty.textContent = entries.length
-                ? "No icons match this search or category."
-                : "Your icon library is empty.";
+                ? "No icons match these filters. Try another search or category."
+                : (iconLibrarySavedOnly
+                    ? "Your Private Gallery is empty. Finish an icon in the editor to see it here."
+                    : "Your Official Gallery is empty. Published icons will appear here.");
             iconLibraryResultsList.appendChild(empty);
             selectedIconLibraryName = "";
             if (iconLibraryDetails) {
@@ -11151,13 +11163,8 @@ function getSelectedFinishCategories() {
             ? projectManager.projects.find(item => String(item.id) === value)
             : getIconLibraryProjectMap().get(normalizeLibraryIconName(value));
         const name = project?.name || value;
-        let svg = String(project?.thumbnail || "").trim();
-        if (!svg && !isProject) {
-            const url = "https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/" + encodeURIComponent(normalizeLibraryIconName(value)) + ".svg";
-            const response = await fetch(url);
-            if (!response.ok) throw new Error("Could not load SVG for " + name);
-            svg = await response.text();
-        }
+        const svg = String(project?.thumbnail || "").trim();
+        if (!project) throw new Error("This icon is no longer available in the selected collection: " + name + ".");
         if (!svg) throw new Error("No saved SVG is available for " + name + ".");
         const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
         const root = parsed.documentElement;
@@ -11323,21 +11330,22 @@ function getSelectedFinishCategories() {
             window.clearTimeout(iconLibrarySearchTimer);
             iconLibrarySearchTimer = 0;
         }
+        clearIconLibraryMultiSelection();
+        selectedIconLibraryName = "";
+        invalidateIconLibraryIndex();
+        if (iconLibraryCategoryFilter) iconLibraryCategoryFilter.value = "all";
+        if (iconLibrarySourceFilter) iconLibrarySourceFilter.value = "all";
         updateIconLibrarySavedToggle();
         renderIconLibrary();
     });
     iconLibrarySearchInput?.addEventListener("input", () => {
-        // Saved-only search stays immediate. All Icons waits briefly after typing
-        // stops so rapid keystrokes trigger just one filter/render pass.
-        if (iconLibrarySearchTimer) window.clearTimeout(iconLibrarySearchTimer);
-        if (iconLibrarySavedOnly) {
-            renderIconLibrary();
-            return;
-        }
-        iconLibrarySearchTimer = window.setTimeout(() => {
+        // Both collections are user-owned project sets, so keep search responsive
+        // and consistent regardless of the selected source.
+        if (iconLibrarySearchTimer) {
+            window.clearTimeout(iconLibrarySearchTimer);
             iconLibrarySearchTimer = 0;
-            renderIconLibrary();
-        }, 300);
+        }
+        renderIconLibrary();
     });
     iconLibraryCategoryFilter?.addEventListener("change", renderIconLibrary);
     iconLibrarySourceFilter?.addEventListener("change", renderIconLibrary);
