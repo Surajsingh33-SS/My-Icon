@@ -12810,6 +12810,13 @@ function getSelectedFinishCategories() {
     }
 
     function ensureOfficialEditorBar() {
+        // New Official icons use the editor's existing Finish button. Do not
+        // show a separate floating creation banner or a redundant Cancel action.
+        if (officialEditSession?.mode === "create") {
+            document.getElementById("official-editor-bar")?.remove();
+            return null;
+        }
+
         let bar = document.getElementById("official-editor-bar");
         if (bar) return bar;
 
@@ -12817,20 +12824,13 @@ function getSelectedFinishCategories() {
         bar.id = "official-editor-bar";
         bar.className = "official-editor-bar";
         bar.innerHTML = `
-            <span class="official-editor-bar-label">${officialEditSession?.mode === "create" ? "Creating Official icon" : "Editing Official icon"}</span>
-            <span class="official-editor-bar-hint">${officialEditSession?.mode === "create" ? "Finish & Publish to add this icon to the shared Official Gallery" : "Changes are a draft until you save them"}</span>
+            <span class="official-editor-bar-label">Editing Official icon</span>
+            <span class="official-editor-bar-hint">Changes are a draft until you save them</span>
             <div class="official-editor-bar-actions">
-                <button type="button" data-official-cancel>Cancel</button>
-                ${officialEditSession?.mode === "create" ? "" : '<button type="button" data-official-save>Save to Official</button>'}
+                <button type="button" data-official-save>Save to Official</button>
             </div>`;
         document.body.appendChild(bar);
 
-        bar.querySelector("[data-official-cancel]")?.addEventListener("click", () => {
-            if (!officialEditSession) return;
-            if (!window.confirm("Discard your unsaved Official icon changes?")) return;
-            finishOfficialEdit(null);
-            showToast("Official edit cancelled. The published icon was not changed.", "info");
-        });
         bar.querySelector("[data-official-save]")?.addEventListener("click", async event => {
             if (!officialEditSession || officialEditSession.mode === "create") return;
             const button = event.currentTarget;
