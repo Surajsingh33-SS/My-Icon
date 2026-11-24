@@ -2064,12 +2064,36 @@ function getSelectedFinishCategories() {
                 projectManager.activeProjectId = nextProject.id;
             }
 
-            localStorage.setItem(CATEGORY_MIGRATION_KEY, "true");
+            try {
+                localStorage.setItem(CATEGORY_MIGRATION_KEY, "true");
+            } catch (markerError) {
+                console.warn("Could not update the optional category migration marker:", markerError);
+            }
             saveProjectManager();
         } catch (error) {
             console.error("Could not safely load projects; existing saved data has been preserved:", error);
             preserveProjectStorageForRecovery();
+
+            // If the old single-project save is still readable, load it as a
+            // temporary read-only fallback while keeping the damaged manager intact.
             projectManager = { activeProjectId: null, projects: [] };
+            try {
+                const legacyRaw = localStorage.getItem(PROJECT_STORAGE_KEY);
+                if (legacyRaw !== null) {
+                    const legacyData = JSON.parse(legacyRaw);
+                    if (legacyData && typeof legacyData === "object" &&
+                        !Array.isArray(legacyData) && Array.isArray(legacyData.shapes)) {
+                        const fallbackProject = createProject(legacyData);
+                        projectManager = {
+                            activeProjectId: fallbackProject.id,
+                            projects: [fallbackProject]
+                        };
+                    }
+                }
+            } catch (fallbackError) {
+                console.warn("The legacy project fallback was not readable:", fallbackError);
+            }
+            setSaveStatus(false);
             showToast("Saved project data needs recovery. Existing data was preserved and protected from overwriting.", "error");
         }
     }
@@ -2077,6 +2101,7 @@ function getSelectedFinishCategories() {
 
     function saveProjectManager() {
         if (projectStorageRecoveryRequired) {
+            setSaveStatus(false);
             console.warn("Project save blocked until the existing saved data is recovered.");
             return false;
         }
@@ -2087,6 +2112,7 @@ function getSelectedFinishCategories() {
             invalidateIconLibraryIndex();
             return true;
         } catch (error) {
+            setSaveStatus(false);
             console.error("Could not save projects:", error);
             showToast("Failed to save to local storage. Previous saved data was kept.", "error");
             return false;
@@ -2124,6 +2150,7 @@ function getSelectedFinishCategories() {
 
             return saveProjectManager();
         } catch (error) {
+            setSaveStatus(false);
             console.error("Could not autosave project:", error);
             return false;
         }
