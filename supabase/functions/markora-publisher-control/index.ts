@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
   try {
     const url = Deno.env.get("SUPABASE_URL");
     const secretEnv = Deno.env.get("SUPABASE_SECRET_KEYS");
-    const secretKey = secretEnv ? JSON.parse(secretEnv).default : Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const secretKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || (secretEnv ? JSON.parse(secretEnv).default : undefined);
     const publishableEnv = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
     const publishableKey = publishableEnv ? JSON.parse(publishableEnv).default : Deno.env.get("SUPABASE_ANON_KEY");
     if (!url || !secretKey || !publishableKey) throw new Error("Supabase server configuration is incomplete.");
