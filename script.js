@@ -830,11 +830,13 @@
         let previousOfficial = null;
         let previousPrivate = null;
         let previousMarker = null;
+        let storageWritesStarted = false;
         try {
             previousOfficial = localStorage.getItem(OFFICIAL_GALLERY_STORAGE_KEY);
             previousPrivate = localStorage.getItem(PROJECTS_STORAGE_KEY);
             previousMarker = localStorage.getItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY);
 
+            storageWritesStarted = true;
             localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, JSON.stringify(nextOfficial));
             localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(nextManager));
             if (!conflicts) localStorage.setItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, "true");
@@ -854,17 +856,19 @@
             console.info(`Gallery migration: moved ${movedProjects.length} finished project(s); ${conflicts} conflict(s) left in Private.`);
             return { moved: movedProjects.length, conflicts };
         } catch (error) {
-            const restoreStorageValue = (key, value) => {
-                if (value === null) localStorage.removeItem(key);
-                else localStorage.setItem(key, value);
-            };
-            try {
-                restoreStorageValue(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficial);
-                restoreStorageValue(PROJECTS_STORAGE_KEY, previousPrivate);
-                restoreStorageValue(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, previousMarker);
-            } catch (rollbackError) {
-                console.error("Gallery migration rollback was incomplete:", rollbackError);
-                projectStorageRecoveryRequired = true;
+            if (storageWritesStarted) {
+                const restoreStorageValue = (key, value) => {
+                    if (value === null) localStorage.removeItem(key);
+                    else localStorage.setItem(key, value);
+                };
+                try {
+                    restoreStorageValue(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficial);
+                    restoreStorageValue(PROJECTS_STORAGE_KEY, previousPrivate);
+                    restoreStorageValue(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, previousMarker);
+                } catch (rollbackError) {
+                    console.error("Gallery migration rollback was incomplete:", rollbackError);
+                    projectStorageRecoveryRequired = true;
+                }
             }
             console.error("Could not complete Private-to-Official migration:", error);
             return { moved: 0, conflicts: finished.length, skipped: true };
