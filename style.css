@@ -1526,6 +1526,7 @@ html:not(.touch-hover-disabled) .home-card-fav-star.active{
     flex-direction: row;
     align-items: center;
     justify-content: flex-start;
+    aspect-ratio: auto;
     padding: 10px 16px;
     gap: 16px;
 }html:not(.touch-hover-disabled) .home-project-grid.list-view .home-project-card:hover{
