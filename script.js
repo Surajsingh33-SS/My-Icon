@@ -14551,12 +14551,16 @@ if (finishCategoryManuallyChanged) {
                 // Autosaves can still be in flight when the account is reopened, so
                 // choose the newest project payload by its own savedAt timestamp.
                 const getProjectFreshness = project => {
-                    const timestamps = [
-                        project?.savedAt,
-                        project?.data?.savedAt,
-                        project?._cloudUpdatedAt
-                    ].map(value => Date.parse(value || "")).filter(Number.isFinite);
-                    return timestamps.length ? Math.max(...timestamps) : 0;
+                    // savedAt belongs to the project payload and tracks the
+                    // actual editor save. A later database updated_at can merely
+                    // mean an older snapshot was uploaded later, so use it only
+                    // when the payload has no save timestamp.
+                    const projectTimestamp = Date.parse(
+                        project?.savedAt || project?.data?.savedAt || ""
+                    );
+                    if (Number.isFinite(projectTimestamp)) return projectTimestamp;
+                    const cloudTimestamp = Date.parse(project?._cloudUpdatedAt || "");
+                    return Number.isFinite(cloudTimestamp) ? cloudTimestamp : 0;
                 };
                 const combined = new Map();
                 const candidates = [
