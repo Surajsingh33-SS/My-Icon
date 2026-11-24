@@ -12006,6 +12006,11 @@ function getSelectedFinishCategories() {
             gallerySpaceToggle.setAttribute("aria-label", label);
         }
         if (homeEditButton) {
+            const canCreateOfficial = !!window.IconMakerSupabase?.isOfficialPublisher?.();
+            const showCreateButton = !isOfficial || canCreateOfficial;
+            homeEditButton.hidden = !showCreateButton;
+            homeEditButton.setAttribute("aria-hidden", String(!showCreateButton));
+            homeEditButton.disabled = !showCreateButton;
             const buttonLabel = homeEditButton.querySelector("span");
             if (buttonLabel) buttonLabel.textContent = isOfficial ? "＋ New Official Icon" : "＋ New Private Icon";
             homeEditButton.title = isOfficial
