@@ -715,13 +715,12 @@
     // Official icons will be loaded from the shared published collection in the next step.
     // Keep the collection separate from each visitor's local projects.
     const OFFICIAL_GALLERY_PROJECTS = [];
-    const GALLERY_FAVORITES_STORAGE_KEY = "iconMakerGalleryFavorites";
     const GALLERY_RECENT_STORAGE_KEY = "iconMakerGalleryRecent";
     let activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "private"
         ? "private"
         : "official";
 
-    function getGalleryProjectKey(project, space = activeGallerySpace) {
+    function getGalleryProjectKey(project, space = project?._gallerySpace || activeGallerySpace) {
         return `${space}:${String(project?.id ?? "")}`;
     }
 
@@ -735,12 +734,10 @@
         }
     }
 
-    let galleryFavoriteKeys = readGalleryStorage(GALLERY_FAVORITES_STORAGE_KEY, []);
     let galleryRecentItems = readGalleryStorage(GALLERY_RECENT_STORAGE_KEY, []);
 
     function saveGalleryActivity() {
         try {
-            localStorage.setItem(GALLERY_FAVORITES_STORAGE_KEY, JSON.stringify([...new Set(galleryFavoriteKeys)]));
             localStorage.setItem(GALLERY_RECENT_STORAGE_KEY, JSON.stringify(galleryRecentItems.slice(0, 200)));
         } catch (error) {
             console.warn("Could not save gallery activity:", error);
@@ -748,18 +745,13 @@
     }
 
     function isGalleryProjectFavorite(project) {
-        return galleryFavoriteKeys.includes(getGalleryProjectKey(project));
+        return Boolean(project?.favorite);
     }
 
     function setGalleryProjectFavorite(project, isFavorite) {
-        const key = getGalleryProjectKey(project);
-        galleryFavoriteKeys = galleryFavoriteKeys.filter(item => item !== key);
-        if (isFavorite) galleryFavoriteKeys.unshift(key);
-        if (project && project._gallerySpace === "private") {
-            project.favorite = isFavorite;
-            saveProjectManager();
-        }
-        saveGalleryActivity();
+        if (!project) return;
+        project.favorite = isFavorite;
+        if (project._gallerySpace === "private") saveProjectManager();
         updateProjectCounters();
     }
 
@@ -1933,8 +1925,8 @@ function getSelectedFinishCategories() {
     function updateProjectCounters() {
         const activeFinishedCount = (activeGallerySpace === "official" ? OFFICIAL_GALLERY_PROJECTS : projectManager.projects)
             .filter(project => project.status === "finished").length;
-        const favCount = getAllGalleryProjects()
-            .filter(project => galleryFavoriteKeys.includes(getGalleryProjectKey(project, project._gallerySpace))).length;
+        const favCount = (activeGallerySpace === "official" ? OFFICIAL_GALLERY_PROJECTS : projectManager.projects)
+            .filter(project => project.status === "finished" && project.favorite).length;
 
         if (tabCountAll) tabCountAll.textContent = activeFinishedCount;
         if (tabCountFav) tabCountFav.textContent = favCount;
@@ -11532,14 +11524,14 @@ function getSelectedFinishCategories() {
         const allFinished = activeSpaceProjects;
         let finished = activeHomeTab === "all" ? [...activeSpaceProjects] : [...allGalleryProjects];
 
-        // Recent and Favorites are intentionally shared between Official and Private spaces.
+        // Recent stays shared across spaces; Favorites are local to the active space.
         if (activeHomeTab === "recent") {
             const recentOrder = new Map(galleryRecentItems.map((item, index) => [item.key, index]));
             finished = finished
                 .filter(project => recentOrder.has(getGalleryProjectKey(project, project._gallerySpace)))
                 .sort((a, b) => recentOrder.get(getGalleryProjectKey(a, a._gallerySpace)) - recentOrder.get(getGalleryProjectKey(b, b._gallerySpace)));
         } else if (activeHomeTab === "favorites") {
-            finished = finished.filter(project => galleryFavoriteKeys.includes(getGalleryProjectKey(project, project._gallerySpace)));
+            finished = finished.filter(project => project.favorite);
         }
 
         // Populate alphabetical category list in sidebar
@@ -13481,7 +13473,6 @@ if (finishCategoryManuallyChanged) {
     // 25. APP INITIALIZATION LIFECYCLE
     // ========================================================================
     loadProjectManager();
-    migrateLegacyGalleryFavorites();
     restoreProjectFromBrowser();
     renderHomeProjects();
     renderUnfinishedProjects();
