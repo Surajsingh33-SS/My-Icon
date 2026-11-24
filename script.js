@@ -12821,7 +12821,7 @@ function getSelectedFinishCategories() {
             <span class="official-editor-bar-hint">${officialEditSession?.mode === "create" ? "Finish & Publish to add this icon to the shared Official Gallery" : "Changes are a draft until you save them"}</span>
             <div class="official-editor-bar-actions">
                 <button type="button" data-official-cancel>Cancel</button>
-                <button type="button" data-official-save>${officialEditSession?.mode === "create" ? "Finish & Publish" : "Save to Official"}</button>
+                ${officialEditSession?.mode === "create" ? "" : '<button type="button" data-official-save>Save to Official</button>'}
             </div>`;
         document.body.appendChild(bar);
 
@@ -12832,11 +12832,7 @@ function getSelectedFinishCategories() {
             showToast("Official edit cancelled. The published icon was not changed.", "info");
         });
         bar.querySelector("[data-official-save]")?.addEventListener("click", async event => {
-            if (!officialEditSession) return;
-            if (officialEditSession.mode === "create") {
-                finishProjectButton?.click();
-                return;
-            }
+            if (!officialEditSession || officialEditSession.mode === "create") return;
             const button = event.currentTarget;
             button.disabled = true;
             const oldLabel = button.textContent;
