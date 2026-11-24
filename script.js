@@ -14533,16 +14533,26 @@ if (finishCategoryManuallyChanged) {
     // Supabase account bootstrap: preserve guest projects and isolate account-owned caches.
     let guestProjectManagerSnapshot = null;
     let activeCloudUserId = null;
+    let cloudAuthSyncToken = 0;
     async function handleSupabaseAuthChanged(session) {
         const userId = session?.user?.id || null;
         if (userId && userId !== activeCloudUserId) {
+            const syncToken = ++cloudAuthSyncToken;
+            const isCurrentSync = () =>
+                syncToken === cloudAuthSyncToken &&
+                activeCloudUserId === userId &&
+                window.IconMakerSupabase?.getSession?.()?.user?.id === userId;
             if (!guestProjectManagerSnapshot) {
                 try { guestProjectManagerSnapshot = structuredClone(projectManager); }
                 catch (_) { guestProjectManagerSnapshot = { activeProjectId: projectManager.activeProjectId, projects: [...projectManager.projects] }; }
             }
             activeCloudUserId = userId;
             try {
-                const remoteProjects = await window.IconMakerSupabase.fetchPrivateProjects();
+                const remoteProjects = await window.IconMakerSupabase.fetchPrivateProjects(userId);
+                // Auth can change while the network request is pending. Never let
+                // an older account's response replace the newly active account's
+                // in-memory projects or be written into that account's cloud rows.
+                if (!isCurrentSync()) return;
                 const cacheRaw = localStorage.getItem(`iconMakerProjectsCloudCache:${userId}`);
                 const cache = cacheRaw ? JSON.parse(cacheRaw) : null;
                 const migrateGuest = localStorage.getItem("iconMakerLegacyCloudMigrationV1") !== "true";
@@ -14585,9 +14595,12 @@ if (finishCategoryManuallyChanged) {
                 projectManager.activeProjectId = projectManager.projects.some(p => String(p.id) === String(preferredId))
                     ? preferredId : (projectManager.projects.find(p => p.status !== "finished") || projectManager.projects[0]).id;
                 saveProjectManager();
-                await window.IconMakerSupabase.savePrivateProjects(projectManager.projects);
+                await window.IconMakerSupabase.savePrivateProjects(projectManager.projects, userId);
+                if (!isCurrentSync()) return;
                 if (migrateGuest && guestProjects.length) localStorage.setItem("iconMakerLegacyCloudMigrationV1", "true");
-                OFFICIAL_GALLERY_PROJECTS = await window.IconMakerSupabase.fetchOfficialProjects();
+                const officialProjects = await window.IconMakerSupabase.fetchOfficialProjects();
+                if (!isCurrentSync()) return;
+                OFFICIAL_GALLERY_PROJECTS = officialProjects;
                 renderHomeProjects(); renderManagementTable(); renderUnfinishedProjects(); updateProjectCounters();
                 if (restorePrivateSpaceAfterAuth) {
                     restorePrivateSpaceAfterAuth = false;
@@ -14595,12 +14608,15 @@ if (finishCategoryManuallyChanged) {
                 }
                 showToast("Private Library synced with your account.", "success");
             } catch (error) {
+                if (!isCurrentSync()) return;
                 console.error("Private Library sync failed:", error);
                 showToast("Could not sync your Private Library. Existing browser projects were preserved.", "error");
             }
             return;
         }
         if (!userId && activeCloudUserId) {
+            // Invalidate any account bootstrap still waiting on a network response.
+            cloudAuthSyncToken++;
             activeCloudUserId = null;
             if (guestProjectManagerSnapshot) {
                 projectManager = structuredClone(guestProjectManagerSnapshot);
