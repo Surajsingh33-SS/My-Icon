@@ -10904,7 +10904,7 @@ function getSelectedFinishCategories() {
             overlay.className = "icon-library-metadata-overlay";
             overlay.innerHTML = '<section class="icon-library-metadata-modal" role="dialog" aria-modal="true" aria-labelledby="icon-library-metadata-title">' +
                 '<header><div><h3 id="icon-library-metadata-title">Provide metadata</h3><p>Supply detailed icon information in bulk. You can provide any fields you have.</p></div><button type="button" class="icon-library-metadata-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12" /></svg></button></header>' +
-                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [], "svg": "..." } }</code><span>SVG is visual reference only and never changes the saved drawing. Choose Merge or Replace when applying. List fields must be arrays of strings. The older brace format is still supported.</span></div>' +
+                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [], "svg": "..." } }</code><span>SVG is visual reference only and never changes the saved drawing. Metadata is always merged: supplied fields are updated, omitted fields are kept, and unlisted icons remain unchanged. List fields must be arrays of strings. The older brace format is still supported.</span></div>' +
                 '<textarea class="icon-library-metadata-input" spellcheck="false" aria-label="Bulk icon metadata" placeholder="{&#10;  &quot;settings&quot;: {&#10;    &quot;categories&quot;: [&quot;Tools&quot;, &quot;Productivity&quot;],&#10;    &quot;description&quot;: &quot;A gear icon for app settings.&quot;,&#10;    &quot;meaning&quot;: &quot;Configuration and preferences.&quot;,&#10;    &quot;tags&quot;: [&quot;gear&quot;, &quot;cog&quot;],&#10;    &quot;aliases&quot;: [&quot;cog&quot;, &quot;gear&quot;],&#10;    &quot;searchTerms&quot;: [&quot;preferences&quot;, &quot;configuration&quot;],&#10;    &quot;useCases&quot;: [&quot;Application settings&quot;],&#10;    &quot;relatedConcepts&quot;: [&quot;sliders&quot;, &quot;wrench&quot;]&#10;  }&#10;}"></textarea>' +
                 '<div class="icon-library-metadata-feedback" aria-live="polite"></div><footer><button type="button" class="btn btn-secondary icon-library-metadata-cancel">Cancel</button><button type="button" class="btn btn-primary icon-library-metadata-save">Apply metadata</button></footer></section>';
             document.body.appendChild(overlay);
@@ -10912,7 +10912,7 @@ function getSelectedFinishCategories() {
             overlay.querySelector(".icon-library-metadata-close").addEventListener("click", close);
             overlay.querySelector(".icon-library-metadata-cancel").addEventListener("click", close);
             overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
-            overlay.querySelector(".icon-library-metadata-save").addEventListener("click", async () => {
+            overlay.querySelector(".icon-library-metadata-save").addEventListener("click", () => {
                 const feedback = overlay.querySelector(".icon-library-metadata-feedback");
                 const parsed = parseIconLibraryUserMetadata(overlay.querySelector(".icon-library-metadata-input").value);
                 if (!parsed.entries.length) {
@@ -10921,14 +10921,12 @@ function getSelectedFinishCategories() {
                     return;
                 }
 
-                // OK = Replace; Cancel = Merge. Unlisted icons remain unchanged.
-                const choice = await showAppDialog({ title: "Apply metadata", message: "Replace overwrites supplied metadata for listed icons. Merge updates supplied fields and keeps omitted fields. Unlisted icons remain unchanged.", confirmText: "Replace", cancelText: "Merge" });
-                const replace = choice.confirmed;
+                // Always merge supplied fields; preserve omitted fields and unlisted icons.
                 const saved = getIconLibraryUserMetadata();
                 parsed.entries.forEach(entry => {
                     const key = normalizeLibraryIconName(entry.name);
                     const cleanEntry = { ...entry, name: entry.name };
-                    saved[key] = replace ? cleanEntry : { ...(saved[key] || {}), ...cleanEntry };
+                    saved[key] = { ...(saved[key] || {}), ...cleanEntry };
                 });
 
                 try {
@@ -10940,11 +10938,11 @@ function getSelectedFinishCategories() {
                         feedback.className = "icon-library-metadata-feedback error";
                         feedback.textContent = "Applied " + parsed.entries.length + " valid entr" +
                             (parsed.entries.length === 1 ? "y. " : "ies. ") +
-                            "using " + (replace ? "Replace" : "Merge") + ". Skipped invalid entries: " + parsed.errors.join(" ");
+                            "using Merge. Skipped invalid entries: " + parsed.errors.join(" ");
                     } else {
                         feedback.className = "icon-library-metadata-feedback success";
                         feedback.textContent = "Applied metadata to " + parsed.entries.length +
-                            " icon(s) using " + (replace ? "Replace." : "Merge.");
+                            " icon(s) using Merge.");
                         window.setTimeout(close, 900);
                     }
                 } catch (error) {
