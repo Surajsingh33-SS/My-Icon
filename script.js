@@ -1725,17 +1725,21 @@ function getSelectedFinishCategories() {
         };
     }
 
-    // Finished Gallery icons must have unique names. Drafts may share
-    // the default "Untitled project" name until they are finished.
+    // Finished icon names must be unique within their own Gallery space.
+    // Official and Private may each contain one icon with the same name.
+    // Drafts may share the default "Untitled project" name until finished.
     function normalizeProjectName(name) {
         return String(name || "").normalize("NFKC").trim().toLowerCase()
             .replace(/[\\s_-]+/g, " ");
     }
 
-    function findDuplicateFinishedIconName(name, ignoreProjectId = null) {
+    function findDuplicateFinishedIconName(name, ignoreProjectId = null, space = "private") {
         const normalized = normalizeProjectName(name);
         if (!normalized) return null;
-        return projectManager.projects.find(project =>
+        const sourceProjects = space === "official"
+            ? OFFICIAL_GALLERY_PROJECTS
+            : projectManager.projects;
+        return sourceProjects.find(project =>
             project.status === "finished" &&
             project.id !== ignoreProjectId &&
             normalizeProjectName(project.name) === normalized
