@@ -717,7 +717,9 @@
     // Official icons are kept in their own collection, separate from Private projects.
     // This is browser-local storage for now; shared publishing requires the backend step.
     const OFFICIAL_GALLERY_STORAGE_KEY = "iconMakerOfficialGalleryProjects";
+    const OFFICIAL_GALLERY_RECOVERY_STORAGE_KEY = "iconMakerOfficialGalleryRecovery";
     let OFFICIAL_GALLERY_PROJECTS = [];
+    let officialGalleryRecoveryRequired = false;
     const GALLERY_RECENT_STORAGE_KEY = "iconMakerGalleryRecent";
     let activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "private"
         ? "private"
@@ -729,9 +731,25 @@
 
     function readGalleryStorage(key, fallback) {
         try {
-            const value = JSON.parse(localStorage.getItem(key) || "null");
-            return Array.isArray(value) ? value : fallback;
+            const raw = localStorage.getItem(key);
+            const value = JSON.parse(raw || "null");
+            if (Array.isArray(value)) return value;
+            if (key === OFFICIAL_GALLERY_STORAGE_KEY && raw !== null) {
+                throw new Error("Official Gallery storage does not contain a project array.");
+            }
+            return fallback;
         } catch (error) {
+            if (key === OFFICIAL_GALLERY_STORAGE_KEY) {
+                officialGalleryRecoveryRequired = true;
+                try {
+                    const raw = localStorage.getItem(OFFICIAL_GALLERY_STORAGE_KEY);
+                    if (raw !== null) {
+                        localStorage.setItem(OFFICIAL_GALLERY_RECOVERY_STORAGE_KEY, raw);
+                    }
+                } catch (recoveryError) {
+                    console.error("Could not create an Official Gallery recovery copy; original storage was left untouched:", recoveryError);
+                }
+            }
             console.warn(`Could not read ${key}:`, error);
             return fallback;
         }
@@ -739,7 +757,11 @@
 
     OFFICIAL_GALLERY_PROJECTS = readGalleryStorage(OFFICIAL_GALLERY_STORAGE_KEY, []);
 
-    function saveOfficialGalleryProjects() {
+    function saveOfficialGalleryProjects(allowRecoveryWrite = false) {
+        if (officialGalleryRecoveryRequired && !allowRecoveryWrite) {
+            console.warn("Official Gallery save blocked until its existing data is recovered.");
+            return false;
+        }
         try {
             localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, JSON.stringify(OFFICIAL_GALLERY_PROJECTS));
             return true;
@@ -756,8 +778,8 @@
     const PRIVATE_TO_OFFICIAL_MIGRATION_KEY = "iconMakerPrivateToOfficialMigrationV1";
 
     function migrateFinishedPrivateProjectsToOfficial() {
-        if (projectStorageRecoveryRequired) {
-            console.warn("Gallery migration skipped because project storage needs recovery.");
+        if (projectStorageRecoveryRequired || officialGalleryRecoveryRequired) {
+            console.warn("Gallery migration skipped because collection storage needs recovery.");
             return { moved: 0, conflicts: 0, skipped: true };
         }
 
@@ -876,6 +898,7 @@
             } catch (rollbackError) {
                 console.error("Gallery migration rollback was incomplete:", rollbackError);
                 projectStorageRecoveryRequired = true;
+                officialGalleryRecoveryRequired = true;
             }
             console.error("Could not complete Private-to-Official migration:", error);
             return { moved: 0, conflicts: finished.length, skipped: true };
@@ -1938,7 +1961,7 @@ function getSelectedFinishCategories() {
 
     // Official backup data is restored only into Official Gallery. It never
     // enters the Private project manager or changes the active editing project.
-    function mergeImportedOfficialProjects(importedProjects) {
+    function mergeImportedOfficialProjects(importedProjects, allowRecoveryWrite = false) {
         const seenNames = new Set(OFFICIAL_GALLERY_PROJECTS
             .filter(project => project?.status === "finished")
             .map(project => normalizeProjectName(project.name)).filter(Boolean));
@@ -1967,7 +1990,7 @@ function getSelectedFinishCategories() {
             added.push(imported);
         });
 
-        const saved = added.length ? saveOfficialGalleryProjects() : true;
+        const saved = added.length ? saveOfficialGalleryProjects(allowRecoveryWrite) : true;
         return { added, skippedDuplicateNames, skippedDuplicateIds, saved };
     }
 
@@ -13224,11 +13247,12 @@ if (finishCategoryManuallyChanged) {
                     throw new Error("Unrecognized project file format.");
                 }
 
-                const isRecoveryImport = projectStorageRecoveryRequired;
+                const isProjectRecoveryImport = projectStorageRecoveryRequired;
+                const isOfficialRecoveryImport = officialGalleryRecoveryRequired;
 
-                // Normal imports first save the current editor. During recovery, do
-                // not write the read-only fallback over the damaged project manager.
-                if (!isRecoveryImport && saveProjectToBrowser() === false) {
+                // Normal imports first save the current editor. During project
+                // recovery, do not write the read-only fallback over damaged data.
+                if (!isProjectRecoveryImport && saveProjectToBrowser() === false) {
                     showToast("Import cancelled because the current project could not be saved.", "error");
                     return;
                 }
@@ -13242,7 +13266,10 @@ if (finishCategoryManuallyChanged) {
                 let officialWriteSucceeded = false;
                 try {
                     const privateResult = mergeImportedProjects(importedProjects, requestedActiveId);
-                    const officialResult = mergeImportedOfficialProjects(importedOfficialProjects);
+                    const officialResult = mergeImportedOfficialProjects(
+                        importedOfficialProjects,
+                        isOfficialRecoveryImport
+                    );
                     officialWriteSucceeded = officialResult.added.length > 0 && officialResult.saved;
                     const totalAdded = privateResult.added.length + officialResult.added.length;
 
@@ -13259,14 +13286,17 @@ if (finishCategoryManuallyChanged) {
                     }
 
                     const privateSaved = privateResult.added.length
-                        ? saveProjectManager(isRecoveryImport)
+                        ? saveProjectManager(isProjectRecoveryImport)
                         : true;
                     privateWriteSucceeded = privateResult.added.length > 0 && privateSaved;
                     if (!privateSaved || !officialResult.saved) {
                         throw new Error("One or more Gallery collections could not be saved.");
                     }
-                    if (isRecoveryImport && privateWriteSucceeded) {
+                    if (isProjectRecoveryImport && privateWriteSucceeded) {
                         projectStorageRecoveryRequired = false;
+                    }
+                    if (isOfficialRecoveryImport && officialWriteSucceeded) {
+                        officialGalleryRecoveryRequired = false;
                     }
 
                     restoreProjectFromBrowser();
@@ -13284,7 +13314,8 @@ if (finishCategoryManuallyChanged) {
                 } catch (importError) {
                     projectManager = previousManager;
                     OFFICIAL_GALLERY_PROJECTS = previousOfficialProjects;
-                    if (isRecoveryImport) projectStorageRecoveryRequired = true;
+                    if (isProjectRecoveryImport) projectStorageRecoveryRequired = true;
+                    if (isOfficialRecoveryImport) officialGalleryRecoveryRequired = true;
                     try {
                         if (privateWriteSucceeded) {
                             if (previousPrivateStorage === null) localStorage.removeItem(PROJECTS_STORAGE_KEY);
