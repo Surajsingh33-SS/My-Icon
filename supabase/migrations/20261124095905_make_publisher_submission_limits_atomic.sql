@@ -11,6 +11,7 @@ begin
      or p_project_data ->> 'status' <> 'finished' then
     raise exception 'Invalid finished project submission.';
   end if;
+  -- Serialize submissions per account so concurrent requests cannot bypass limits.
   perform pg_advisory_xact_lock(pg_catalog.hashtextextended(p_user_id::text, 0));
   select count(*) into pending_count from public.publisher_submissions
     where user_id = p_user_id and status = 'pending';
