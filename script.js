@@ -761,7 +761,7 @@
         const official = [...OFFICIAL_GALLERY_PROJECTS];
         const officialIds = new Set(official.map(project => String(project?.id || "")).filter(Boolean));
         const officialNames = new Set(official.map(project =>
-            String(project?.name || "").trim().toLowerCase().replace(/[\\s_]+/g, "-")
+            normalizeProjectName(project?.name)
         ).filter(Boolean));
 
         const movedIds = new Set();
@@ -770,7 +770,7 @@
 
         finished.forEach(project => {
             const id = String(project?.id || "");
-            const name = String(project?.name || "").trim().toLowerCase().replace(/[\\s_]+/g, "-");
+            const name = normalizeProjectName(project?.name);
             if ((id && officialIds.has(id)) || (name && officialNames.has(name))) {
                 conflicts++;
                 return;
@@ -12343,6 +12343,14 @@ function getSelectedFinishCategories() {
         if (relatedBackButton) relatedBackButton.hidden = true;
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
+        const isOfficialProject = (project._gallerySpace || activeGallerySpace) === "official";
+        if (projectEditButton) {
+            projectEditButton.disabled = isOfficialProject;
+            projectEditButton.textContent = isOfficialProject ? "Read only" : "Edit";
+            projectEditButton.title = isOfficialProject
+                ? "Official icons cannot be edited directly. Use Remix to create a Private copy."
+                : "Edit this Private icon";
+        }
         renderProjectCategoryBadges(project);
         ensureProjectCategoryEditor();
         if (projectDateBadge) projectDateBadge.textContent = `Saved ${new Date(project.savedAt).toLocaleDateString()}`;
