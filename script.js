@@ -10162,14 +10162,17 @@ function getSelectedFinishCategories() {
     function getIconLibraryProjectMap() {
         const map = new Map();
         const scores = new Map();
-        const projects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
+        // Saved only = the user's Private Gallery. All icons = creator-published
+        // projects in the Official Gallery. Never use the full Lucide metadata
+        // catalogue as a source of visible icons.
+        const projects = iconLibrarySavedOnly
+            ? (Array.isArray(projectManager?.projects) ? projectManager.projects : [])
+            : (Array.isArray(OFFICIAL_GALLERY_PROJECTS) ? OFFICIAL_GALLERY_PROJECTS : []);
 
         const hasValues = value => normalizeCategoryList(value)
             .some(category => category !== "Uncategorized");
 
         const getCategorySourceScore = project => {
-            // Select the duplicate that actually carries the user's category data.
-            // Explicit manual assignments must always outrank automatic suggestions.
             if (hasValues(project.manualCategories)) return 400;
             if (project.categorySource === "manual"
                 && (hasValues(project.categories) || hasValues(project.category))) return 350;
@@ -10180,52 +10183,45 @@ function getSelectedFinishCategories() {
 
         projects.forEach(project => {
             if (project?.status !== "finished") return;
-
             const key = normalizeLibraryIconName(project?.name);
             if (!key) return;
-
-            const categoryScore = getCategorySourceScore(project);
-            const score = categoryScore;
-            const existingScore = scores.get(key) ?? -1;
-
-            if (!map.has(key) || score > existingScore) {
+            const score = getCategorySourceScore(project);
+            if (!map.has(key) || score > (scores.get(key) ?? -1)) {
                 map.set(key, project);
                 scores.set(key, score);
             }
         });
-
         return map;
     }
 
-    // Combine every valid metadata entry with every finished Gallery project.
-    // Saved projects do not need an external metadata record to appear here.
+    // The Icon Library only lists projects belonging to the selected source:
+    // Private Gallery projects in Saved only, creator-published projects in All icons.
+    // Lucide metadata enriches those projects but never adds unrelated icons.
     function getIconLibraryEntries() {
-        const entriesByKey = new Map();
-
+        const projects = iconLibrarySavedOnly
+            ? (Array.isArray(projectManager?.projects) ? projectManager.projects : [])
+            : (Array.isArray(OFFICIAL_GALLERY_PROJECTS) ? OFFICIAL_GALLERY_PROJECTS : []);
+        const metadataByKey = new Map();
         Object.entries(iconSearchMetadata || {}).forEach(([name, record]) => {
             if (!name || !record || typeof record !== "object" || Array.isArray(record)) return;
             const key = normalizeLibraryIconName(name);
-            if (!key || entriesByKey.has(key)) return;
-            entriesByKey.set(key, [name, record]);
+            if (key && !metadataByKey.has(key)) metadataByKey.set(key, record);
         });
 
-        const projects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
+        const entriesByKey = new Map();
         projects.forEach(project => {
             if (project?.status !== "finished") return;
             const name = String(project?.name || "").trim();
             const key = normalizeLibraryIconName(name);
             if (!key || entriesByKey.has(key)) return;
-            entriesByKey.set(key, [name, {}]);
+            entriesByKey.set(key, [name, metadataByKey.get(key) || {}]);
         });
-
         return [...entriesByKey.values()].sort((a, b) => a[0].localeCompare(b[0]));
     }
 
     function getIconLibrarySavedNames() {
-        const projects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
-        return new Set(projects
-            .filter(project => project?.status === "finished")
-            .map(project => normalizeLibraryIconName(project.name))
+        return new Set(getIconLibraryEntries()
+            .map(([name]) => normalizeLibraryIconName(name))
             .filter(Boolean));
     }
 
