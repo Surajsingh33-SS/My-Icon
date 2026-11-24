@@ -10633,6 +10633,7 @@ function getSelectedFinishCategories() {
     let iconLibraryMetadataModal = null;
     let iconLibrarySavedOnly = true;
     const ICON_LIBRARY_USER_METADATA_KEY = "iconMakerUserIconMetadata";
+    const ICON_LIBRARY_OFFICIAL_METADATA_KEY = "iconMakerOfficialIconMetadata";
 
     function normalizeLibraryIconName(value) {
         return String(value || "")
@@ -10725,11 +10726,23 @@ function getSelectedFinishCategories() {
     }
 
 
-    function getIconLibraryUserMetadata() {
+    function getIconLibraryUserMetadata(source = (iconLibrarySavedOnly ? "private" : "official")) {
+        const storageKey = source === "official" ? ICON_LIBRARY_OFFICIAL_METADATA_KEY : ICON_LIBRARY_USER_METADATA_KEY;
         try {
-            const value = JSON.parse(localStorage.getItem(ICON_LIBRARY_USER_METADATA_KEY) || "{}");
+            const value = JSON.parse(localStorage.getItem(storageKey) || "{}");
             return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-        } catch (error) { console.warn("Could not load provided icon metadata:", error); return {}; }
+        } catch (error) {
+            console.warn("Could not load provided icon metadata:", error);
+            return {};
+        }
+    }
+
+    function getIconLibraryProjectNames(source) {
+        const projects = source === "official"
+            ? (Array.isArray(OFFICIAL_GALLERY_PROJECTS) ? OFFICIAL_GALLERY_PROJECTS : [])
+            : (Array.isArray(projectManager?.projects) ? projectManager.projects : []);
+        return new Set(projects.filter(project => project?.status === "finished")
+            .map(project => normalizeLibraryIconName(project?.name)).filter(Boolean));
     }
 
     function findDuplicateTopLevelMetadataNames(source) {
@@ -10904,7 +10917,7 @@ function getSelectedFinishCategories() {
             overlay.className = "icon-library-metadata-overlay";
             overlay.innerHTML = '<section class="icon-library-metadata-modal" role="dialog" aria-modal="true" aria-labelledby="icon-library-metadata-title">' +
                 '<header><div><h3 id="icon-library-metadata-title">Provide metadata</h3><p>Supply detailed icon information in bulk. You can provide any fields you have.</p></div><button type="button" class="icon-library-metadata-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12" /></svg></button></header>' +
-                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [], "svg": "..." } }</code><span>SVG is visual reference only and never changes the saved drawing. Metadata is always merged: supplied fields are updated, omitted fields are kept, and unlisted icons remain unchanged. List fields must be arrays of strings. The older brace format is still supported.</span></div>' +
+                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [], "svg": "..." } }</code><span class="icon-library-metadata-scope"></span><span>SVG is visual reference only and never changes the saved drawing. Metadata is always merged: supplied fields are updated, omitted fields are kept, and unlisted icons remain unchanged. List fields must be arrays of strings. Replace is unavailable here. The older brace format is still supported.</span></div>' +
                 '<textarea class="icon-library-metadata-input" spellcheck="false" aria-label="Bulk icon metadata" placeholder="{&#10;  &quot;settings&quot;: {&#10;    &quot;categories&quot;: [&quot;Tools&quot;, &quot;Productivity&quot;],&#10;    &quot;description&quot;: &quot;A gear icon for app settings.&quot;,&#10;    &quot;meaning&quot;: &quot;Configuration and preferences.&quot;,&#10;    &quot;tags&quot;: [&quot;gear&quot;, &quot;cog&quot;],&#10;    &quot;aliases&quot;: [&quot;cog&quot;, &quot;gear&quot;],&#10;    &quot;searchTerms&quot;: [&quot;preferences&quot;, &quot;configuration&quot;],&#10;    &quot;useCases&quot;: [&quot;Application settings&quot;],&#10;    &quot;relatedConcepts&quot;: [&quot;sliders&quot;, &quot;wrench&quot;]&#10;  }&#10;}"></textarea>' +
                 '<div class="icon-library-metadata-feedback" aria-live="polite"></div><footer><button type="button" class="btn btn-secondary icon-library-metadata-cancel">Cancel</button><button type="button" class="btn btn-primary icon-library-metadata-save">Apply metadata</button></footer></section>';
             document.body.appendChild(overlay);
@@ -10921,16 +10934,31 @@ function getSelectedFinishCategories() {
                     return;
                 }
 
-                // Always merge supplied fields; preserve omitted fields and unlisted icons.
-                const saved = getIconLibraryUserMetadata();
+                // Scope merges to icons that exist in the selected library(s).
+                const privateNames = getIconLibraryProjectNames("private");
+                const officialNames = getIconLibraryProjectNames("official");
+                const privateMetadata = getIconLibraryUserMetadata("private");
+                const officialMetadata = getIconLibraryUserMetadata("official");
+                const applyMerge = (target, entry) => {
+                    const key = normalizeLibraryIconName(entry.name);
+                    target[key] = { ...(target[key] || {}), ...entry, name: entry.name };
+                };
+
                 parsed.entries.forEach(entry => {
                     const key = normalizeLibraryIconName(entry.name);
-                    const cleanEntry = { ...entry, name: entry.name };
-                    saved[key] = { ...(saved[key] || {}), ...cleanEntry };
+                    if (iconLibrarySavedOnly) {
+                        if (privateNames.has(key)) applyMerge(privateMetadata, entry);
+                        return;
+                    }
+                    if (officialNames.has(key)) applyMerge(officialMetadata, entry);
+                    if (privateNames.has(key)) applyMerge(privateMetadata, entry);
                 });
 
                 try {
-                    localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(saved));
+                    localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(privateMetadata));
+                    if (!iconLibrarySavedOnly) {
+                        localStorage.setItem(ICON_LIBRARY_OFFICIAL_METADATA_KEY, JSON.stringify(officialMetadata));
+                    }
                     invalidateIconLibraryIndex();
                     renderIconLibrary();
                     renderHomeProjects();
@@ -10951,6 +10979,12 @@ function getSelectedFinishCategories() {
                 }
             });
             iconLibraryMetadataModal = overlay;
+        }
+        const scope = iconLibraryMetadataModal.querySelector(".icon-library-metadata-scope");
+        if (scope) {
+            scope.textContent = iconLibrarySavedOnly
+                ? "Private Icons selected: Merge updates only matching icons in your Private Library. Official metadata is never changed."
+                : "Official Icons selected: Merge updates matching Official icons and also matching Private icons when the same icon exists in both. Official-only icons receive Official metadata only. Replace is disabled.";
         }
         const scope = iconLibraryMetadataModal.querySelector(".icon-library-metadata-scope");
         if (scope) {
