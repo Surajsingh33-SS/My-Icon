@@ -9094,3 +9094,182 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
         margin-left: auto;
     }
 }
+
+
+/* ==========================================================================
+   MARKORA OWNER / CONTRIBUTOR PORTAL
+   ========================================================================== */
+.markora-publisher-portal {
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+.markora-portal-heading,
+.markora-portal-section-heading,
+.markora-portal-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+.markora-portal-heading h3,
+.markora-portal-section h4 {
+    margin: 4px 0 6px;
+}
+.markora-portal-kicker {
+    color: var(--accent-color, #ff0077);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .13em;
+}
+.markora-portal-role {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border: 1px solid color-mix(in srgb, var(--accent-color, #ff0077) 45%, transparent);
+    border-radius: 999px;
+    color: var(--accent-color, #ff0077);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+.markora-portal-role.is-contributor {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+.markora-portal-section {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-color);
+}
+.markora-portal-section > p,
+.markora-portal-section-heading p {
+    margin: 4px 0 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.55;
+}
+.markora-portal-list,
+.markora-portal-audit-list {
+    display: grid;
+    gap: 8px;
+}
+.markora-portal-row {
+    flex-wrap: wrap;
+    padding: 11px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-surface, rgba(127,127,127,.04));
+}
+.markora-portal-row-main {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    flex: 1 1 220px;
+}
+.markora-portal-row-main strong {
+    overflow-wrap: anywhere;
+    font-size: 13px;
+}
+.markora-portal-row-main span,
+.markora-portal-row > p {
+    color: var(--text-secondary);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+.markora-portal-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.markora-portal-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.markora-portal-form input,
+.markora-portal-form select {
+    flex: 1 1 220px;
+    min-width: 0;
+    min-height: 40px;
+    padding: 9px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 9px;
+    color: var(--text-primary);
+    background: var(--bg-input, var(--bg-surface));
+    font: inherit;
+}
+.markora-portal-code-output {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px dashed var(--accent-color, #ff0077);
+    border-radius: 10px;
+}
+.markora-portal-code-output strong,
+.markora-portal-code-output span {
+    grid-column: 1 / -1;
+    font-size: 12px;
+}
+.markora-portal-code-output code {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .06em;
+}
+.markora-portal-code-output span {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+.markora-portal-empty {
+    padding: 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    border: 1px dashed var(--border-color);
+    border-radius: 9px;
+}
+.markora-submission-status {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--bg-surface-hover);
+    color: var(--text-secondary);
+    font-size: 10px;
+    text-transform: capitalize;
+}
+.markora-submission-status.is-approved { color: #16a34a; }
+.markora-submission-status.is-rejected { color: #dc6262; }
+.markora-portal-audit-row {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 11px;
+}
+.markora-portal-audit-row time { color: var(--text-secondary); }
+.markora-portal-section .btn-small {
+    min-height: 30px;
+    padding: 6px 10px;
+    font-size: 11px;
+}
+@media (max-width: 600px) {
+    .markora-portal-heading,
+    .markora-portal-section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .markora-portal-code-output {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .markora-portal-code-output > * {
+        grid-column: 1;
+    }
+    .markora-portal-form > button {
+        width: 100%;
+    }
+}
