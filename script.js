@@ -1995,8 +1995,10 @@ function getSelectedFinishCategories() {
             added.push(imported);
         });
 
-        const saved = added.length ? saveOfficialGalleryProjects(allowRecoveryWrite) : true;
-        return { added, skippedDuplicateNames, skippedDuplicateIds, saved };
+        const shouldPersist = added.length > 0 ||
+            (allowRecoveryWrite && Array.isArray(importedProjects));
+        const saved = shouldPersist ? saveOfficialGalleryProjects(allowRecoveryWrite) : true;
+        return { added, skippedDuplicateNames, skippedDuplicateIds, saved, persisted: shouldPersist && saved };
     }
 
 
@@ -13233,19 +13235,18 @@ if (finishCategoryManuallyChanged) {
                 let importedProjects = [];
                 let requestedActiveId = null;
                 let importedOfficialProjects = [];
+                let hasOfficialBackupData = false;
 
                 if (parsed.projectManager && Array.isArray(parsed.projectManager.projects)) {
                     importedProjects = parsed.projectManager.projects;
                     requestedActiveId = parsed.projectManager.activeProjectId || null;
-                    importedOfficialProjects = Array.isArray(parsed.officialGalleryProjects)
-                        ? parsed.officialGalleryProjects
-                        : [];
+                    hasOfficialBackupData = Array.isArray(parsed.officialGalleryProjects);
+                    importedOfficialProjects = hasOfficialBackupData ? parsed.officialGalleryProjects : [];
                 } else if (Array.isArray(parsed.projects)) {
                     importedProjects = parsed.projects;
                     requestedActiveId = parsed.activeProjectId || null;
-                    importedOfficialProjects = Array.isArray(parsed.officialGalleryProjects)
-                        ? parsed.officialGalleryProjects
-                        : [];
+                    hasOfficialBackupData = Array.isArray(parsed.officialGalleryProjects);
+                    importedOfficialProjects = hasOfficialBackupData ? parsed.officialGalleryProjects : [];
                 } else if (parsed.shapes && parsed.version) {
                     importedProjects = [createProject(parsed)];
                 } else {
@@ -13273,9 +13274,9 @@ if (finishCategoryManuallyChanged) {
                     const privateResult = mergeImportedProjects(importedProjects, requestedActiveId);
                     const officialResult = mergeImportedOfficialProjects(
                         importedOfficialProjects,
-                        isOfficialRecoveryImport
+                        isOfficialRecoveryImport && hasOfficialBackupData
                     );
-                    officialWriteSucceeded = officialResult.added.length > 0 && officialResult.saved;
+                    officialWriteSucceeded = officialResult.persisted;
                     const totalAdded = privateResult.added.length + officialResult.added.length;
 
                     if (!totalAdded) {
