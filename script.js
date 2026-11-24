@@ -11,9 +11,19 @@
     // subset for previews; scripts, event handlers, foreign content, external
     // references, CSS and animation elements are deliberately discarded.
     function sanitizeSVGPreview(markup) {
-        if (typeof markup !== "string" || markup.length > 200000) return "";
-        const parser = new DOMParser();
-        const parsed = parser.parseFromString(markup, "image/svg+xml");
+        if (typeof markup !== "string" || markup.length > 200000 ||
+            typeof window.DOMPurify?.sanitize !== "function") return "";
+
+        // DOMPurify handles known SVG/HTML parsing hazards; the app-specific
+        // allowlist below further limits previews to the vector primitives used
+        // by Icon Maker Pro. Keep this fail-closed if the library is unavailable.
+        const sanitizedMarkup = window.DOMPurify.sanitize(markup, {
+            USE_PROFILES: { svg: true },
+            FORBID_TAGS: ["foreignObject", "script", "style", "animate", "animateMotion", "animateTransform", "set"],
+            FORBID_ATTR: ["style"],
+            RETURN_TRUSTED_TYPE: false
+        });
+        const parsed = new DOMParser().parseFromString(sanitizedMarkup, "image/svg+xml");
         const root = parsed.documentElement;
         if (!root || root.localName.toLowerCase() !== "svg" ||
             parsed.querySelector("parsererror")) return "";
@@ -34,6 +44,12 @@
             "spreadMethod", "offset", "stop-color", "stop-opacity",
             "fx", "fy"
         ]);
+        const isSafeAttributeValue = value => {
+            const normalized = String(value || "").trim();
+            if (/javascript:|data:|https?:|\/\//i.test(normalized)) return false;
+            return !normalized.includes("url(") ||
+                /^url\(#[A-Za-z0-9_.:-]+\)$/i.test(normalized);
+        };
 
         const elements = [...root.querySelectorAll("*")].reverse();
         for (const element of elements) {
@@ -42,22 +58,18 @@
                 continue;
             }
             for (const attribute of [...element.attributes]) {
-                const name = attribute.name;
-                const value = attribute.value.trim();
-                if (!allowedAttrs.has(name) || /^on/i.test(name) ||
-                    /javascript:|data:|https?:|\/\//i.test(value) ||
-                    (value.includes("url(") && !/^url\(#[A-Za-z0-9_.:-]+\)$/.test(value))) {
-                    element.removeAttribute(name);
+                if (!allowedAttrs.has(attribute.name) ||
+                    /^on/i.test(attribute.name) ||
+                    !isSafeAttributeValue(attribute.value)) {
+                    element.removeAttribute(attribute.name);
                 }
             }
         }
         for (const attribute of [...root.attributes]) {
-            const name = attribute.name;
-            const value = attribute.value.trim();
-            if (!allowedAttrs.has(name) || /^on/i.test(name) ||
-                /javascript:|data:|https?:|\/\//i.test(value) ||
-                (value.includes("url(") && !/^url\(#[A-Za-z0-9_.:-]+\)$/.test(value))) {
-                root.removeAttribute(name);
+            if (!allowedAttrs.has(attribute.name) ||
+                /^on/i.test(attribute.name) ||
+                !isSafeAttributeValue(attribute.value)) {
+                root.removeAttribute(attribute.name);
             }
         }
         return new XMLSerializer().serializeToString(root);
