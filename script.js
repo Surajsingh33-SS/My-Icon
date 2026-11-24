@@ -11524,6 +11524,8 @@ function getSelectedFinishCategories() {
         }
         updateGallerySpaceUI();
         renderHomeProjects();
+        renderManagementTable();
+        renderUnfinishedProjects();
         updateIconLibraryMultiSelectionUI();
     }
 
@@ -11538,9 +11540,9 @@ function getSelectedFinishCategories() {
         const allGalleryProjects = getAllGalleryProjects();
         const activeSpaceProjects = allGalleryProjects.filter(project => project._gallerySpace === activeGallerySpace);
         const allFinished = activeSpaceProjects;
-        let finished = activeHomeTab === "all" ? [...activeSpaceProjects] : [...allGalleryProjects];
+        let finished = [...activeSpaceProjects];
 
-        // Recent stays shared across spaces; Favorites are local to the active space.
+        // All, Recent, and Favorites are all scoped to the currently selected space.
         if (activeHomeTab === "recent") {
             const recentOrder = new Map(
                 galleryRecentItems
@@ -12513,8 +12515,7 @@ function getSelectedFinishCategories() {
     // ========================================================================
     // 20. SIDEBAR NAVIGATION: GALLERY, ALL PROJECTS, PREFERENCES
     // ========================================================================
-    function switchHomeView(viewName) {
-        gallerySpaceToggle?.addEventListener("click", event => {
+    gallerySpaceToggle?.addEventListener("click", event => {
         event.preventDefault();
         event.stopPropagation();
         setGallerySpace(activeGallerySpace === "private" ? "official" : "private");
@@ -12527,6 +12528,7 @@ function getSelectedFinishCategories() {
         setGallerySpace(activeGallerySpace === "private" ? "official" : "private");
     });
 
+    function switchHomeView(viewName) {
     sidebarOptions.forEach(opt => {
             opt.classList.toggle("active", opt.dataset.homeView === viewName);
         });
@@ -12560,13 +12562,19 @@ function getSelectedFinishCategories() {
     updateGallerySpaceUI();
 
     function renderManagementTable() {
-        const finished = projectManager.projects.filter(p => p.status === "finished");
-        const unfinished = projectManager.projects.filter(p => p.status === "unfinished");
+        const spaceProjects = activeGallerySpace === "official"
+            ? OFFICIAL_GALLERY_PROJECTS
+            : projectManager.projects;
+        const finished = spaceProjects.filter(p => p.status === "finished");
+        const unfinished = activeGallerySpace === "official"
+            ? []
+            : spaceProjects.filter(p => p.status === "unfinished");
 
         if (managerFinishedCount) managerFinishedCount.textContent = finished.length;
         if (managerUnfinishedCount) managerUnfinishedCount.textContent = unfinished.length;
 
         function createProjectManagerCard(project, isFinished) {
+            const isOfficialProject = activeGallerySpace === "official";
             const card = document.createElement("div");
             card.className = "management-project-card";
             card.dataset.id = project.id;
@@ -12599,11 +12607,16 @@ function getSelectedFinishCategories() {
             const editBtn = document.createElement("button");
             editBtn.type = "button";
             editBtn.className = "btn btn-sm btn-secondary";
-            editBtn.textContent = "Edit";
-            editBtn.addEventListener("click", () => {
-                const success = switchProject(project.id);
-                if (success) openIconEditor();
-            });
+            editBtn.textContent = isOfficialProject ? "Read only" : "Edit";
+            editBtn.disabled = isOfficialProject;
+            if (isOfficialProject) {
+                editBtn.title = "Official icons cannot be edited from the Private editor.";
+            } else {
+                editBtn.addEventListener("click", () => {
+                    const success = switchProject(project.id);
+                    if (success) openIconEditor();
+                });
+            }
 
             const delBtn = document.createElement("button");
             delBtn.type = "button";
@@ -12619,7 +12632,12 @@ function getSelectedFinishCategories() {
                         deleteConfirmBtn.onclick = () => {
                             deleteConfirmModal.style.display = "none";
                             deleteConfirmModal.classList.remove("show");
-                            projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                            if (isOfficialProject) {
+                                OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(p => p.id !== project.id);
+                                saveOfficialGalleryProjects();
+                            } else {
+                                projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                            }
                             saveProjectManager();
                             renderManagementTable();
                             renderHomeProjects();
