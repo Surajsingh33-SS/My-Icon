@@ -12764,7 +12764,7 @@ document.getElementById("add-custom-category")?.addEventListener("click", async 
             return;
         }
 
-        const duplicate = findDuplicateFinishedIconName(name, projectManager.activeProjectId);
+        const duplicate = findDuplicateFinishedIconName(name, projectManager.activeProjectId, activeGallerySpace);
         if (duplicate) {
             showToast('An icon named "' + duplicate.name + '" already exists. Choose a different name.', "error");
             finishIconName.focus();
