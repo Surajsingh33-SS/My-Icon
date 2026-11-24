@@ -1946,7 +1946,11 @@ function getSelectedFinishCategories() {
 
         if (tabCountAll) tabCountAll.textContent = activeFinishedCount;
         if (tabCountFav) tabCountFav.textContent = favCount;
-        if (sidebarProjectsCount) sidebarProjectsCount.textContent = projectManager.projects.length;
+        if (sidebarProjectsCount) {
+            sidebarProjectsCount.textContent = (activeGallerySpace === "official"
+                ? OFFICIAL_GALLERY_PROJECTS
+                : projectManager.projects).length;
+        }
     }
 
     function createNewProject() {
@@ -12652,7 +12656,12 @@ function getSelectedFinishCategories() {
                     } else {
                         const decision = await showAppDialog({ title: "Delete finished icon?", message: `Permanently delete finished icon "${project.name}"?`, confirmText: "Delete", danger: true });
                         if (decision.confirmed) {
-                            projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                            if (isOfficialProject) {
+                                OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(p => p.id !== project.id);
+                                saveOfficialGalleryProjects();
+                            } else {
+                                projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                            }
                             saveProjectManager();
                             renderManagementTable();
                             renderHomeProjects();
@@ -12661,7 +12670,12 @@ function getSelectedFinishCategories() {
                         }
                     }
                 } else {
-                    projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                    if (isOfficialProject) {
+                        OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(p => p.id !== project.id);
+                        saveOfficialGalleryProjects();
+                    } else {
+                        projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                    }
                     saveProjectManager();
                     renderManagementTable();
                     renderHomeProjects();
