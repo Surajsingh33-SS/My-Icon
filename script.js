@@ -7,6 +7,62 @@
 
 (function () {
     "use strict";
+    // Treat stored/imported SVG markup as untrusted. Keep a conservative SVG-only
+    // subset for previews; scripts, event handlers, foreign content, external
+    // references, CSS and animation elements are deliberately discarded.
+    function sanitizeSVGPreview(markup) {
+        if (typeof markup !== "string" || markup.length > 200000) return "";
+        const parser = new DOMParser();
+        const parsed = parser.parseFromString(markup, "image/svg+xml");
+        const root = parsed.documentElement;
+        if (!root || root.localName.toLowerCase() !== "svg" ||
+            parsed.querySelector("parsererror")) return "";
+
+        const allowedTags = new Set([
+            "svg", "g", "path", "circle", "ellipse", "rect", "line",
+            "polyline", "polygon", "defs", "clipPath", "mask",
+            "linearGradient", "radialGradient", "stop", "title", "desc"
+        ]);
+        const allowedAttrs = new Set([
+            "xmlns", "viewBox", "width", "height", "preserveAspectRatio",
+            "d", "points", "x", "y", "x1", "y1", "x2", "y2",
+            "cx", "cy", "r", "rx", "ry", "fill", "fill-rule",
+            "fill-opacity", "stroke", "stroke-width", "stroke-linecap",
+            "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray",
+            "stroke-dashoffset", "stroke-opacity", "opacity", "transform",
+            "id", "clip-path", "mask", "gradientUnits", "gradientTransform",
+            "spreadMethod", "offset", "stop-color", "stop-opacity",
+            "fx", "fy"
+        ]);
+
+        const elements = [...root.querySelectorAll("*")].reverse();
+        for (const element of elements) {
+            if (!allowedTags.has(element.localName)) {
+                element.remove();
+                continue;
+            }
+            for (const attribute of [...element.attributes]) {
+                const name = attribute.name;
+                const value = attribute.value.trim();
+                if (!allowedAttrs.has(name) || /^on/i.test(name) ||
+                    /javascript:|data:|https?:|\/\//i.test(value) ||
+                    (value.includes("url(") && !/^url\(#[A-Za-z0-9_.:-]+\)$/.test(value))) {
+                    element.removeAttribute(name);
+                }
+            }
+        }
+        for (const attribute of [...root.attributes]) {
+            const name = attribute.name;
+            const value = attribute.value.trim();
+            if (!allowedAttrs.has(name) || /^on/i.test(name) ||
+                /javascript:|data:|https?:|\/\//i.test(value) ||
+                (value.includes("url(") && !/^url\(#[A-Za-z0-9_.:-]+\)$/.test(value))) {
+                root.removeAttribute(name);
+            }
+        }
+        return new XMLSerializer().serializeToString(root);
+    }
+
 
     // App-styled replacement for browser alert/confirm/prompt dialogs.
     function showAppDialog({ title = "Icon Maker Pro", message = "", input = false, confirmText = "Continue", cancelText = "Cancel", danger = false } = {}) {
@@ -1248,7 +1304,13 @@
         toast.className = `toast toast-${type}`;
 
         const icon = type === "success" ? "✓" : type === "error" ? "✕" : "✦";
-        toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-message">${message}</span>`;
+        const iconNode = document.createElement("span");
+        const messageNode = document.createElement("span");
+        iconNode.className = "toast-icon";
+        messageNode.className = "toast-message";
+        iconNode.textContent = icon;
+        messageNode.textContent = String(message ?? "");
+        toast.append(iconNode, messageNode);
 
         toastContainer.appendChild(toast);
 
@@ -7727,40 +7789,62 @@ function getSelectedFinishCategories() {
         layerCount.textContent = shapes.length;
 
         if (shapes.length === 0) {
-            layerList.innerHTML = `<p class="empty-layers">No layers yet</p>`;
+            const empty = document.createElement("p");
+            empty.className = "empty-layers";
+            empty.textContent = "No layers yet";
+            layerList.replaceChildren(empty);
             return;
         }
 
-        layerList.innerHTML = [...shapes]
-            .map(shape => {
-                const index = shapes.indexOf(shape);
-                const isSelected = selectedShapes.includes(shape) || selectedShape === shape;
-                const safeName = shape.name || `${shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}`;
+        const fragment = document.createDocumentFragment();
+        [...shapes].reverse().forEach(shape => {
+            const index = shapes.indexOf(shape);
+            const isSelected = selectedShapes.includes(shape) || selectedShape === shape;
+            const type = String(shape.type || "shape");
+            const name = String(shape.name || (type.charAt(0).toUpperCase() + type.slice(1)));
+            const item = document.createElement("div");
+            item.className = "layer-item";
+            if (isSelected) item.classList.add("active");
+            item.dataset.layerIndex = String(index);
 
-                // Bug Fix: When shape.locked is true, show locked.svg!
-                const lockIconSrc = shape.locked ? "assets/icons/locked.svg" : "assets/icons/unlocked.svg";
-                const lockTitle = shape.locked ? "Unlock layer" : "Lock layer";
+            const nameNode = document.createElement("span");
+            nameNode.className = "layer-name";
+            nameNode.title = "Double click to rename";
+            nameNode.textContent = name;
 
-                return `
-                    <div class="layer-item ${isSelected ? "active" : ""}" data-layer-index="${index}">
-                        <span class="layer-name" title="Double click to rename">${safeName}</span>
-                        <span class="layer-type">${shape.type}</span>
-                        <div class="layer-controls">
-                            <button class="layer-move-btn" data-layer-action="up" data-layer-index="${index}" type="button" title="Bring forward" ${index === shapes.length - 1 ? "disabled" : ""}>↑</button>
-                            <button class="layer-move-btn" data-layer-action="down" data-layer-index="${index}" type="button" title="Send backward" ${index === 0 ? "disabled" : ""}>↓</button>
-                            <button class="layer-visibility-btn" data-layer-action="visibility" data-layer-index="${index}" type="button" title="${shape.hidden ? "Show layer" : "Hide layer"}">
-                                ${shape.hidden ? "○" : "●"}
-                            </button>
-                            <button class="layer-lock-btn" data-layer-action="lock" data-layer-index="${index}" type="button" title="${lockTitle}">
-                                <img src="${lockIconSrc}" alt="${shape.locked ? "Locked" : "Unlocked"}">
-                            </button>
-                            <button class="layer-delete-btn" data-layer-action="delete" data-layer-index="${index}" type="button" title="Delete layer">×</button>
-                        </div>
-                    </div>
-                `;
-            })
-            .reverse()
-            .join("");
+            const typeNode = document.createElement("span");
+            typeNode.className = "layer-type";
+            typeNode.textContent = type;
+
+            const controls = document.createElement("div");
+            controls.className = "layer-controls";
+            const addButton = (className, action, title, label, disabled = false) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = className;
+                button.dataset.layerAction = action;
+                button.dataset.layerIndex = String(index);
+                button.title = title;
+                button.textContent = label;
+                button.disabled = disabled;
+                controls.appendChild(button);
+                return button;
+            };
+            addButton("layer-move-btn", "up", "Bring forward", "↑", index === shapes.length - 1);
+            addButton("layer-move-btn", "down", "Send backward", "↓", index === 0);
+            addButton("layer-visibility-btn", "visibility", shape.hidden ? "Show layer" : "Hide layer", shape.hidden ? "○" : "●");
+
+            const lockButton = addButton("layer-lock-btn", "lock", shape.locked ? "Unlock layer" : "Lock layer", "");
+            const lockImage = document.createElement("img");
+            lockImage.src = shape.locked ? "assets/icons/locked.svg" : "assets/icons/unlocked.svg";
+            lockImage.alt = shape.locked ? "Locked" : "Unlocked";
+            lockButton.appendChild(lockImage);
+            addButton("layer-delete-btn", "delete", "Delete layer", "×");
+
+            item.append(nameNode, typeNode, controls);
+            fragment.appendChild(item);
+        });
+        layerList.replaceChildren(fragment);
     }
 
     function reorderShape(index, direction) {
@@ -7937,7 +8021,13 @@ function getSelectedFinishCategories() {
             propertiesSelection.textContent = shape.name || shape.type;
         }
 
-        const strokeWidth = shape.type === "line" ? shape.width : shape.strokeWidth;
+        const rawStrokeWidth = shape.type === "line" ? shape.width : shape.strokeWidth;
+        const strokeWidth = Number.isFinite(Number(rawStrokeWidth))
+            ? Math.max(0.1, Math.min(5, Number(rawStrokeWidth)))
+            : 2;
+        const safeStrokeColor = /^#[0-9a-f]{6}$/i.test(String(shape.color || ""))
+            ? String(shape.color)
+            : "#ffffff";
         const isFillable =
             shape.type === "circle" ||
             shape.type === "ellipse" ||
@@ -7949,7 +8039,7 @@ function getSelectedFinishCategories() {
                 <h4>Stroke</h4>
                 <div class="property-field">
                     <span>Color</span>
-                    <input type="color" data-style="stroke-color" value="${shape.color || "#ffffff"}">
+                    <input type="color" data-style="stroke-color" value="${safeStrokeColor}">
                 </div>
                 <div class="property-field">
                     <span>Width</span>
@@ -7960,7 +8050,10 @@ function getSelectedFinishCategories() {
 
         if (isFillable) {
             const fillEnabled = shape.fill !== "none";
-            const fillColor = fillEnabled ? shape.fill : (shape.fillColor || "#ffffff");
+            const rawFillColor = fillEnabled ? shape.fill : shape.fillColor;
+            const fillColor = /^#[0-9a-f]{6}$/i.test(String(rawFillColor || ""))
+                ? String(rawFillColor)
+                : "#ffffff";
 
             html += `
                 <div class="property-group">
@@ -9537,6 +9630,18 @@ function getSelectedFinishCategories() {
 
         return fallback;
     }
+    function safeImportedSVGPaint(value, fallback) {
+        const paint = String(value || "").trim();
+        if (paint === "none") return "none";
+        if (/^#[0-9a-f]{3,8}$/i.test(paint) ||
+            /^[a-z]{1,24}$/i.test(paint) ||
+            /^rgba?\([0-9.% ,/+-]+\)$/i.test(paint) ||
+            /^hsla?\([0-9.% ,/+-]+\)$/i.test(paint)) {
+            return paint;
+        }
+        return fallback;
+    }
+
     // Bug Fix: Enhanced SVG Source Parser that accepts arbitrary paths and large arcs
     function readSVGSource() {
         const parser = new DOMParser();
@@ -9577,6 +9682,12 @@ function getSelectedFinishCategories() {
 
                 if (fill === "currentColor") fill = "#FFFFFF";
             }
+
+            // Paint attributes are copied into live editor SVG elements below.
+            // Reject CSS functions and arbitrary values such as url(...) so imported
+            // markup cannot attach external resources or unexpected paint servers.
+            stroke = safeImportedSVGPaint(stroke, "#FFFFFF");
+            fill = safeImportedSVGPaint(fill, "none");
 
             if (tag === "line") {
                 parsed.push({
@@ -10869,7 +10980,7 @@ function getSelectedFinishCategories() {
         const preview = document.createElement("div");
         preview.className = "icon-library-detail-preview";
         if (project?.thumbnail) {
-            preview.innerHTML = project.thumbnail;
+            preview.innerHTML = sanitizeSVGPreview(project.thumbnail) || "";
             const svg = preview.querySelector("svg");
             if (svg) {
                 svg.removeAttribute("width");
@@ -11880,7 +11991,13 @@ function getSelectedFinishCategories() {
                 const item = document.createElement("button");
                 item.type = "button";
                 item.className = `cat-list-pill ${selectedCategoryFilter === cat ? "active" : ""}`;
-                item.innerHTML = `<span class="cat-pill-name">${cat}</span><span class="cat-pill-count">${categoryCounts[cat]}</span>`;
+                const nameNode = document.createElement("span");
+                const countNode = document.createElement("span");
+                nameNode.className = "cat-pill-name";
+                countNode.className = "cat-pill-count";
+                nameNode.textContent = String(cat);
+                countNode.textContent = String(categoryCounts[cat]);
+                item.append(nameNode, countNode);
                 item.addEventListener("click", () => {
                     selectedCategoryFilter = selectedCategoryFilter === cat ? null : cat;
                     renderHomeProjects();
@@ -11956,7 +12073,10 @@ function getSelectedFinishCategories() {
                 : activeGallerySpace === "official"
                     ? "No icons have been published to the Official Gallery yet."
                     : "No finished projects yet.";
-            homeProjectGrid.innerHTML = `<p class="home-no-results">${msg}</p>`;
+            const emptyMessage = document.createElement("p");
+            emptyMessage.className = "home-no-results";
+            emptyMessage.textContent = msg;
+            homeProjectGrid.replaceChildren(emptyMessage);
             updateProjectCounters();
             return;
         }
@@ -12029,7 +12149,7 @@ function getSelectedFinishCategories() {
             preview.className = "home-project-preview";
 
             if (project.thumbnail) {
-                preview.innerHTML = project.thumbnail;
+                preview.innerHTML = sanitizeSVGPreview(project.thumbnail) || "";
             } else {
                 preview.textContent = "✦";
             }
@@ -12157,13 +12277,13 @@ function getSelectedFinishCategories() {
 
                     const header = document.createElement("div");
                     header.className = "gallery-category-header";
-                    header.innerHTML = `
-                <span class="cat-header-title">${catName}</span>
-                <span class="cat-header-count">
-                    ${grouped[catName].length}
-                    ${grouped[catName].length === 1 ? "icon" : "icons"}
-                </span>
-            `;
+                    const title = document.createElement("span");
+                    title.className = "cat-header-title";
+                    title.textContent = catName;
+                    const count = document.createElement("span");
+                    count.className = "cat-header-count";
+                    count.textContent = `${grouped[catName].length} ${grouped[catName].length === 1 ? "icon" : "icons"}`;
+                    header.append(title, count);
 
                     const cardsGrid = document.createElement("div");
                     cardsGrid.className = "gallery-category-cards";
@@ -13158,7 +13278,7 @@ function getSelectedFinishCategories() {
             const preview = document.createElement("div");
             preview.className = "management-card-preview";
             if (project.thumbnail) {
-                preview.innerHTML = project.thumbnail;
+                preview.innerHTML = sanitizeSVGPreview(project.thumbnail) || "";
             } else {
                 preview.textContent = "✦";
             }
