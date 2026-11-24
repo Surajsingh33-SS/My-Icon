@@ -12730,6 +12730,78 @@ function getSelectedFinishCategories() {
         return !!window.IconMakerSupabase?.isOfficialPublisher?.();
     }
 
+    function startNewOfficialProject() {
+        if (!isCurrentUserOfficialPublisher()) {
+            showToast("Only an authorized Official Publisher can create Official icons. Switch to Private Gallery to create a private icon.", "error");
+            return false;
+        }
+        if (!window.IconMakerSupabase?.getSession?.()) {
+            window.IconMakerSupabase?.openAuthModal?.();
+            showToast("Sign in with an Official Publisher account to create an Official icon.", "info");
+            return false;
+        }
+        if (officialEditSession) {
+            showToast("Finish or cancel the current Official editor session first.", "info");
+            return false;
+        }
+        if (saveProjectToBrowser() === false) {
+            showToast("Could not save your current project before opening the Official editor.", "error");
+            return false;
+        }
+
+        const managerSnapshot = structuredClone(projectManager);
+        const workingProject = createProject({
+            version: PROJECT_FORMAT_VERSION,
+            savedAt: new Date().toISOString(),
+            selectedShapeIndex: -1,
+            settings: {
+                showCoordinates: false,
+                showGridHighlight: false,
+                pathStyle: "straight"
+            },
+            shapes: []
+        });
+
+        projectManager.projects.push(workingProject);
+        projectManager.activeProjectId = workingProject.id;
+        officialEditSession = {
+            mode: "create",
+            sourceProject: null,
+            managerSnapshot,
+            previousActiveProjectId: managerSnapshot.activeProjectId,
+            workingProject
+        };
+
+        activeGallerySpace = "official";
+        try { localStorage.setItem(GALLERY_SPACE_STORAGE_KEY, "official"); } catch (_) {}
+        updateGallerySpaceUI();
+
+        if (!restoreProjectFromBrowser()) {
+            finishOfficialEdit(null);
+            showToast("Could not start a new Official icon project.", "error");
+            return false;
+        }
+
+        resetProjectHistory();
+        renderUnfinishedProjects();
+        updateActiveProjectNameDisplay();
+        ensureOfficialEditorBar();
+        closeProjectPreview();
+        homeScreen?.classList.remove("show");
+        openIconEditor();
+        showToast("New Official icon project started.", "info");
+        return true;
+    }
+
+    function startNewProjectInActiveGallery() {
+        if (activeGallerySpace === "official") {
+            return startNewOfficialProject();
+        }
+        createNewProject();
+        openIconEditor();
+        return true;
+    }
+
     function ensureOfficialEditorBar() {
         let bar = document.getElementById("official-editor-bar");
         if (bar) return bar;
@@ -12784,9 +12856,13 @@ function getSelectedFinishCategories() {
         document.getElementById("official-editor-bar")?.remove();
 
         projectManager = session.managerSnapshot;
-        if (session.previousActiveProjectId &&
-            projectManager.projects.some(project => String(project.id) === String(session.previousActiveProjectId))) {
+        const previousProjectExists = session.previousActiveProjectId &&
+            projectManager.projects.some(project => String(project.id) === String(session.previousActiveProjectId));
+        if (previousProjectExists) {
             projectManager.activeProjectId = session.previousActiveProjectId;
+            restoreProjectFromBrowser();
+        } else if (projectManager.projects.length) {
+            projectManager.activeProjectId = projectManager.projects[0].id;
             restoreProjectFromBrowser();
         }
         resetProjectHistory();
@@ -12814,7 +12890,12 @@ function getSelectedFinishCategories() {
             updateGallerySpaceUI();
             renderHomeProjects();
             renderManagementTable();
-            showProjectPreview(session.sourceProject);
+            if (session.sourceProject) {
+                showProjectPreview(session.sourceProject);
+            } else {
+                selectedHomeProject = null;
+                closeProjectPreview();
+            }
         }
         updateHomeButtonLabel();
     }
@@ -13503,8 +13584,7 @@ function getSelectedFinishCategories() {
     }
 
     managerNewIconBtn?.addEventListener("click", () => {
-        createNewProject();
-        openIconEditor();
+        startNewProjectInActiveGallery();
     });
 
     // Preferences Actions
@@ -13591,7 +13671,7 @@ document.getElementById("add-custom-category")?.addEventListener("click", async 
         finishModal.classList.remove("show");
     });
 
-    finishConfirm?.addEventListener("click", () => {
+    finishConfirm?.addEventListener("click", async () => {
         const name = finishIconName.value.trim();
         if (!name) {
             finishIconName.focus();
@@ -13641,9 +13721,33 @@ if (finishCategoryManuallyChanged) {
         activeProject.status = "finished";
         activeProject.savedAt = new Date().toISOString();
 
-        // Finished work remains in the user's Private Library. Publishing to Official
-        // is a separate privileged action and never happens from the editor.
-        saveProjectManager();
+        if (officialEditSession) {
+            const safeShapes = sanitizeProjectShapesForUse(activeProject.data?.shapes);
+            if (!Array.isArray(activeProject.data?.shapes) ||
+                safeShapes.length !== activeProject.data.shapes.length) {
+                showToast("This icon contains unsupported or unsafe drawing data and cannot be saved to Official.", "error");
+                return;
+            }
+
+            activeProject.data = { ...activeProject.data, shapes: safeShapes };
+            officialEditSession.workingProject = activeProject;
+            try {
+                const saved = await window.IconMakerSupabase.saveOfficialProject(activeProject);
+                finishModal.classList.remove("show");
+                finishOfficialEdit(saved);
+                showToast(`Finished icon "${saved.name || name}" saved to the Official Gallery!`, "success");
+            } catch (error) {
+                console.error("Could not save finished Official icon:", error);
+                showToast(error?.message || "Could not save this icon to the Official Gallery.", "error");
+            }
+            return;
+        }
+
+        // Private editor sessions always remain in the user's Private Gallery.
+        if (saveProjectManager() === false) {
+            showToast("Could not save this icon. Your previous project data was preserved.", "error");
+            return;
+        }
         renderHomeProjects();
         renderUnfinishedProjects();
         renderManagementTable();
@@ -13652,7 +13756,7 @@ if (finishCategoryManuallyChanged) {
         finishModal.classList.remove("show");
         homeScreen.classList.add("show");
         updateHomeButtonLabel();
-        showToast(`Finished icon "${name}" saved to your Private Library!`, "success");
+        showToast(`Finished icon "${name}" saved to your Private Gallery!`, "success");
     });
 
     finishIconName?.addEventListener("keydown", e => {
@@ -13672,13 +13776,12 @@ if (finishCategoryManuallyChanged) {
     homeFinishProjectButton?.addEventListener("click", () => finishProjectButton?.click());
 
     newProjectButton?.addEventListener("click", () => {
-        createNewProject();
+        startNewProjectInActiveGallery();
         fileDropdown?.classList.remove("show");
     });
 
     mobileNewIconButton?.addEventListener("click", () => {
-        createNewProject();
-        openIconEditor();
+        startNewProjectInActiveGallery();
     });
 
     exportProjectJsonBtn?.addEventListener("click", () => {
@@ -13872,11 +13975,10 @@ if (finishCategoryManuallyChanged) {
         renderHomeProjects();
     });
 
-    // Requirement: The homepage Edit button must continue creating a new project and opening the editor.
+    // Create in the Gallery space currently being viewed; never silently cross-save.
     homeEditButton?.addEventListener("click", () => {
         closeProjectPreview();
-        createNewProject();
-        openIconEditor();
+        startNewProjectInActiveGallery();
     });
 
     function renderUnfinishedProjects() {
