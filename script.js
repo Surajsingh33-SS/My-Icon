@@ -767,7 +767,8 @@
         }
     }
 
-    OFFICIAL_GALLERY_PROJECTS = readGalleryStorage(OFFICIAL_GALLERY_STORAGE_KEY, []);
+    // Official Library is server-managed; browser-local copies are not authoritative.
+    OFFICIAL_GALLERY_PROJECTS = [];
 
     function saveOfficialGalleryProjects(allowRecoveryWrite = false) {
         if (officialGalleryRecoveryRequired && !allowRecoveryWrite) {
@@ -2147,13 +2148,23 @@ function getSelectedFinishCategories() {
             console.warn("Project save blocked until the existing saved data is recovered.");
             return false;
         }
-        try {
-            localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projectManager));
-        } catch (error) {
-            setSaveStatus(false);
-            console.error("Could not save projects:", error);
-            showToast("Failed to save to local storage. Previous saved data was kept.", "error");
-            return false;
+        const cloudSession = window.IconMakerSupabase?.getSession?.();
+        if (cloudSession?.user?.id) {
+            try { localStorage.setItem(`iconMakerProjectsCloudCache:${cloudSession.user.id}`, JSON.stringify(projectManager)); }
+            catch (cacheError) { console.warn("Could not update account project cache:", cacheError); }
+            window.IconMakerSupabase.savePrivateProjects(projectManager.projects).catch(error => {
+                console.error("Private cloud sync failed:", error);
+                showToast("Cloud sync failed. Your account cache is preserved.", "error");
+            });
+        } else {
+            try {
+                localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projectManager));
+            } catch (error) {
+                setSaveStatus(false);
+                console.error("Could not save projects:", error);
+                showToast("Failed to save to local storage. Previous saved data was kept.", "error");
+                return false;
+            }
         }
 
         setSaveStatus(true);
@@ -11797,7 +11808,13 @@ function getSelectedFinishCategories() {
     }
 
     function setGallerySpace(space) {
-        activeGallerySpace = space === "official" ? "official" : "private";
+        const requestedSpace = space === "official" ? "official" : "private";
+        if (requestedSpace === "private" && !window.IconMakerSupabase?.getSession?.()) {
+            window.IconMakerSupabase?.openAuthModal?.();
+            showToast("Sign in to access your Private Library.", "info");
+            return;
+        }
+        activeGallerySpace = requestedSpace;
         try {
             localStorage.setItem(GALLERY_SPACE_STORAGE_KEY, activeGallerySpace);
         } catch (error) {
@@ -12705,19 +12722,20 @@ function getSelectedFinishCategories() {
 
     projectDeleteButton?.addEventListener("click", async () => {
         if (!selectedHomeProject) return;
+        if ((selectedHomeProject._gallerySpace || activeGallerySpace) === "official") {
+            showToast("Official icons are read-only. Use Remix to create your own copy.", "info");
+            return;
+        }
         const name = selectedHomeProject.name || "Untitled icon";
 
         const decision = await showAppDialog({ title: "Delete icon?", message: `Are you sure you want to delete "${name}"?`, confirmText: "Delete", danger: true });
         if (!decision.confirmed) return;
 
         const space = selectedHomeProject._gallerySpace || activeGallerySpace;
-        if (space === "official") {
-            OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(p => p.id !== selectedHomeProject.id);
-            saveOfficialGalleryProjects();
-        } else {
-            projectManager.projects = projectManager.projects.filter(p => p.id !== selectedHomeProject.id);
-            saveProjectManager();
-        }
+        if (space === "official") return;
+        projectManager.projects = projectManager.projects.filter(p => p.id !== selectedHomeProject.id);
+        saveProjectManager();
+        window.IconMakerSupabase?.deletePrivateProject?.(selectedHomeProject.id).catch(error => console.error("Cloud delete failed:", error));
         closeProjectPreview();
         renderHomeProjects();
         renderManagementTable();
@@ -12927,8 +12945,11 @@ function getSelectedFinishCategories() {
             const delBtn = document.createElement("button");
             delBtn.type = "button";
             delBtn.className = "btn btn-sm btn-danger";
-            delBtn.textContent = "Delete";
+            delBtn.textContent = isOfficialProject ? "Read only" : "Delete";
+            delBtn.disabled = isOfficialProject;
+            if (isOfficialProject) delBtn.title = "Official Library icons cannot be deleted by users.";
             delBtn.addEventListener("click", async () => {
+                if (isOfficialProject) return;
                 if (isFinished) {
                     if (deleteConfirmModal && deleteTargetProjectName && deleteConfirmBtn && deleteCancelBtn) {
                         deleteTargetProjectName.textContent = project.name || "this icon";
@@ -12938,13 +12959,10 @@ function getSelectedFinishCategories() {
                         deleteConfirmBtn.onclick = () => {
                             deleteConfirmModal.style.display = "none";
                             deleteConfirmModal.classList.remove("show");
-                            if (isOfficialProject) {
-                                OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(p => p.id !== project.id);
-                                saveOfficialGalleryProjects();
-                            } else {
-                                projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
-                            }
+                            if (isOfficialProject) return;
+                            projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
                             saveProjectManager();
+                            window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error => console.error("Cloud delete failed:", error));
                             renderManagementTable();
                             renderHomeProjects();
                             renderUnfinishedProjects();
@@ -12958,13 +12976,10 @@ function getSelectedFinishCategories() {
                     } else {
                         const decision = await showAppDialog({ title: "Delete finished icon?", message: `Permanently delete finished icon "${project.name}"?`, confirmText: "Delete", danger: true });
                         if (decision.confirmed) {
-                            if (isOfficialProject) {
-                                OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(p => p.id !== project.id);
-                                saveOfficialGalleryProjects();
-                            } else {
-                                projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
-                            }
+                            if (isOfficialProject) return;
+                            projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
                             saveProjectManager();
+                            window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error => console.error("Cloud delete failed:", error));
                             renderManagementTable();
                             renderHomeProjects();
                             renderUnfinishedProjects();
@@ -12972,13 +12987,10 @@ function getSelectedFinishCategories() {
                         }
                     }
                 } else {
-                    if (isOfficialProject) {
-                        OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(p => p.id !== project.id);
-                        saveOfficialGalleryProjects();
-                    } else {
-                        projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
-                    }
+                    if (isOfficialProject) return;
+                    projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
                     saveProjectManager();
+                    window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error => console.error("Cloud delete failed:", error));
                     renderManagementTable();
                     renderHomeProjects();
                     renderUnfinishedProjects();
@@ -13938,7 +13950,7 @@ if (finishCategoryManuallyChanged) {
     // 25. APP INITIALIZATION LIFECYCLE
     // ========================================================================
     loadProjectManager();
-    migrateFinishedPrivateProjectsToOfficial();
+    // Do not run the legacy Private-to-Official migration. Existing user projects stay private.
     restoreProjectFromBrowser();
     renderHomeProjects();
     renderUnfinishedProjects();
@@ -13957,6 +13969,75 @@ if (finishCategoryManuallyChanged) {
     resetProjectHistory();
     updateHistoryButtons();
     updateActiveProjectNameDisplay();
+
+
+    // Supabase account bootstrap: preserve guest projects and isolate account-owned caches.
+    let guestProjectManagerSnapshot = null;
+    let activeCloudUserId = null;
+    async function handleSupabaseAuthChanged(session) {
+        const userId = session?.user?.id || null;
+        if (userId && userId !== activeCloudUserId) {
+            if (!guestProjectManagerSnapshot) {
+                try { guestProjectManagerSnapshot = structuredClone(projectManager); }
+                catch (_) { guestProjectManagerSnapshot = { activeProjectId: projectManager.activeProjectId, projects: [...projectManager.projects] }; }
+            }
+            activeCloudUserId = userId;
+            try {
+                const remoteProjects = await window.IconMakerSupabase.fetchPrivateProjects();
+                const cacheRaw = localStorage.getItem(`iconMakerProjectsCloudCache:${userId}`);
+                const cache = cacheRaw ? JSON.parse(cacheRaw) : null;
+                const migrateGuest = localStorage.getItem("iconMakerLegacyCloudMigrationV1") !== "true";
+                const guestProjects = migrateGuest ? (guestProjectManagerSnapshot?.projects || []) : [];
+                const remoteIds = new Set(remoteProjects.map(project => String(project.id)));
+                const combined = new Map();
+                [...(cache?.projects || []), ...remoteProjects, ...guestProjects].forEach(project => {
+                    if (!project || typeof project !== "object" || !project.id) return;
+                    const id = String(project.id);
+                    if (!combined.has(id) || remoteIds.has(id)) combined.set(id, project);
+                });
+                projectManager.projects = [...combined.values()];
+                if (!projectManager.projects.length) projectManager.projects.push(createProject());
+                const preferredId = cache?.activeProjectId || guestProjectManagerSnapshot?.activeProjectId;
+                projectManager.activeProjectId = projectManager.projects.some(p => String(p.id) === String(preferredId))
+                    ? preferredId : (projectManager.projects.find(p => p.status !== "finished") || projectManager.projects[0]).id;
+                saveProjectManager();
+                if (migrateGuest && guestProjects.length) localStorage.setItem("iconMakerLegacyCloudMigrationV1", "true");
+                OFFICIAL_GALLERY_PROJECTS = await window.IconMakerSupabase.fetchOfficialProjects();
+                renderHomeProjects(); renderManagementTable(); renderUnfinishedProjects(); updateProjectCounters();
+                if (activeGallerySpace === "private") setGallerySpace("private");
+                showToast("Private Library synced with your account.", "success");
+            } catch (error) {
+                console.error("Private Library sync failed:", error);
+                showToast("Could not sync your Private Library. Existing browser projects were preserved.", "error");
+            }
+            return;
+        }
+        if (!userId && activeCloudUserId) {
+            activeCloudUserId = null;
+            if (guestProjectManagerSnapshot) {
+                projectManager = structuredClone(guestProjectManagerSnapshot);
+                saveProjectManager();
+                renderHomeProjects(); renderManagementTable(); renderUnfinishedProjects(); updateProjectCounters();
+            }
+            if (activeGallerySpace === "private") {
+                activeGallerySpace = "official";
+                try { localStorage.setItem(GALLERY_SPACE_STORAGE_KEY, "official"); } catch (_) {}
+                updateGallerySpaceUI();
+            }
+        }
+    }
+    if (window.IconMakerSupabase?.available) {
+        window.IconMakerSupabase.initialize({ onAuthChanged: handleSupabaseAuthChanged })
+            .then(async () => {
+                try {
+                    OFFICIAL_GALLERY_PROJECTS = await window.IconMakerSupabase.fetchOfficialProjects();
+                    renderHomeProjects(); renderManagementTable();
+                } catch (error) {
+                    console.error("Official Library load failed:", error);
+                    showToast("Official Library could not load. Check your connection and refresh.", "error");
+                }
+            }).catch(error => console.error("Supabase initialization failed:", error));
+    }
 
     console.log("✦ Icon Maker PRO successfully initialized.");
 })();
