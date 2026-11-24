@@ -15,6 +15,9 @@
     let appHooks = null;
     let initialized = false;
     let authModal = null;
+    // Keep cloud writes ordered so an older autosave cannot finish after and
+    // overwrite a newer Private Library snapshot.
+    let privateSaveQueue = Promise.resolve();
 
     const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -746,28 +749,50 @@
         return { published, alreadyPresent, skipped, total: candidates.length };
     }
 
-    async function fetchPrivateProjects() {
-        if (!client || !currentSession?.user?.id) return [];
+    async function fetchPrivateProjects(expectedUserId = currentSession?.user?.id) {
+        if (!client || !expectedUserId) return [];
+        const userId = String(expectedUserId);
+        if (currentSession?.user?.id !== userId) {
+            throw new Error("The signed-in account changed before Private Library loading began.");
+        }
         const { data, error } = await client.from("private_projects")
-            .select("project_id, project_data, updated_at").eq("user_id", currentSession.user.id);
+            .select("project_id, project_data, updated_at").eq("user_id", userId);
         if (error) throw error;
+        if (currentSession?.user?.id !== userId) {
+            throw new Error("The signed-in account changed while the Private Library was loading.");
+        }
         return (data || []).map(row => {
             const project = row.project_data && typeof row.project_data === "object" ? row.project_data : {};
             return { ...project, id: String(project.id || row.project_id), _cloudUpdatedAt: row.updated_at };
         });
     }
 
-    async function savePrivateProjects(projects) {
-        if (!client || !currentSession?.user?.id) return;
-        const rows = (Array.isArray(projects) ? projects : []).map(project => ({
-            user_id: currentSession.user.id,
+    async function savePrivateProjects(projects, expectedUserId = currentSession?.user?.id) {
+        if (!client || !expectedUserId) return;
+        const userId = String(expectedUserId);
+        if (currentSession?.user?.id !== userId) {
+            throw new Error("The signed-in account changed before Private Library saving began.");
+        }
+        const snapshot = structuredClone(Array.isArray(projects) ? projects : []);
+        const rows = snapshot.map(project => ({
+            user_id: userId,
             project_id: String(project.id),
             project_data: project
         }));
         if (!rows.length) return;
-        const { error } = await client.from("private_projects")
-            .upsert(rows, { onConflict: "user_id,project_id" });
-        if (error) throw error;
+
+        // Serialize snapshots in call order. Supabase upsert is an overwrite,
+        // so concurrent requests could otherwise complete out of order and
+        // restore an older drawing over a newer one.
+        const saveOperation = privateSaveQueue.catch(() => {}).then(async () => {
+            // Never send a queued snapshot under a different signed-in account.
+            if (currentSession?.user?.id !== userId) return;
+            const { error } = await client.from("private_projects")
+                .upsert(rows, { onConflict: "user_id,project_id" });
+            if (error) throw error;
+        });
+        privateSaveQueue = saveOperation;
+        return saveOperation;
     }
 
     async function deletePrivateProject(projectId) {

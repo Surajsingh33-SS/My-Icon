@@ -1,0 +1,1 @@
+grant delete on table public.official_projects to authenticated;

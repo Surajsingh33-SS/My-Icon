@@ -1,4 +1,4 @@
--- Keep publisher policy JWT evaluation cached per statement.
+-- Avoid per-row JWT evaluation in publisher RLS policies.
 begin;
 
 drop policy if exists "Trusted publishers can publish official projects"

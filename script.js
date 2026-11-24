@@ -7,6 +7,74 @@
 
 (function () {
     "use strict";
+    // Treat stored/imported SVG markup as untrusted. Keep a conservative SVG-only
+    // subset for previews; scripts, event handlers, foreign content, external
+    // references, CSS and animation elements are deliberately discarded.
+    function sanitizeSVGPreview(markup) {
+        if (typeof markup !== "string" || markup.length > 200000 ||
+            typeof window.DOMPurify?.sanitize !== "function") return "";
+
+        // DOMPurify handles known SVG/HTML parsing hazards; the app-specific
+        // allowlist below further limits previews to the vector primitives used
+        // by Icon Maker Pro. Keep this fail-closed if the library is unavailable.
+        const sanitizedMarkup = window.DOMPurify.sanitize(markup, {
+            USE_PROFILES: { svg: true },
+            FORBID_TAGS: ["foreignObject", "script", "style", "animate", "animateMotion", "animateTransform", "set"],
+            FORBID_ATTR: ["style"],
+            RETURN_TRUSTED_TYPE: false
+        });
+        const parsed = new DOMParser().parseFromString(sanitizedMarkup, "image/svg+xml");
+        const root = parsed.documentElement;
+        if (!root || root.localName.toLowerCase() !== "svg" ||
+            parsed.querySelector("parsererror")) return "";
+
+        const allowedTags = new Set([
+            "svg", "g", "path", "circle", "ellipse", "rect", "line",
+            "polyline", "polygon", "defs", "clipPath", "mask",
+            "linearGradient", "radialGradient", "stop", "title", "desc"
+        ]);
+        const allowedAttrs = new Set([
+            "xmlns", "viewBox", "width", "height", "preserveAspectRatio",
+            "d", "points", "x", "y", "x1", "y1", "x2", "y2",
+            "cx", "cy", "r", "rx", "ry", "fill", "fill-rule",
+            "fill-opacity", "stroke", "stroke-width", "stroke-linecap",
+            "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray",
+            "stroke-dashoffset", "stroke-opacity", "opacity", "transform",
+            "id", "clip-path", "mask", "gradientUnits", "gradientTransform",
+            "spreadMethod", "offset", "stop-color", "stop-opacity",
+            "fx", "fy"
+        ]);
+        const isSafeAttributeValue = value => {
+            const normalized = String(value || "").trim();
+            if (/javascript:|data:|https?:|\/\//i.test(normalized)) return false;
+            return !normalized.includes("url(") ||
+                /^url\(#[A-Za-z0-9_.:-]+\)$/i.test(normalized);
+        };
+
+        const elements = [...root.querySelectorAll("*")].reverse();
+        for (const element of elements) {
+            if (!allowedTags.has(element.localName)) {
+                element.remove();
+                continue;
+            }
+            for (const attribute of [...element.attributes]) {
+                if (!allowedAttrs.has(attribute.name) ||
+                    /^on/i.test(attribute.name) ||
+                    !isSafeAttributeValue(attribute.value)) {
+                    element.removeAttribute(attribute.name);
+                }
+            }
+        }
+        for (const attribute of [...root.attributes]) {
+            if (!allowedAttrs.has(attribute.name) ||
+                /^on/i.test(attribute.name) ||
+                !isSafeAttributeValue(attribute.value)) {
+                root.removeAttribute(attribute.name);
+            }
+        }
+        return new XMLSerializer().serializeToString(root);
+    }
+
 
     // App-styled replacement for browser alert/confirm/prompt dialogs.
     function showAppDialog({ title = "Icon Maker Pro", message = "", input = false, confirmText = "Continue", cancelText = "Cancel", danger = false } = {}) {
@@ -1248,7 +1316,13 @@
         toast.className = `toast toast-${type}`;
 
         const icon = type === "success" ? "✓" : type === "error" ? "✕" : "✦";
-        toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-message">${message}</span>`;
+        const iconNode = document.createElement("span");
+        const messageNode = document.createElement("span");
+        iconNode.className = "toast-icon";
+        messageNode.className = "toast-message";
+        iconNode.textContent = icon;
+        messageNode.textContent = String(message ?? "");
+        toast.append(iconNode, messageNode);
 
         toastContainer.appendChild(toast);
 
@@ -1807,7 +1881,7 @@ function detectIconCategories(iconName) {
     // Provided metadata is authoritative, followed by manual assignments and keyword fallback.
     function getProjectCategories(project) {
         if (!project) return ["Uncategorized"];
-        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(project.name || "")];
+        const provided = getIconLibraryUserMetadata("private")[normalizeLibraryIconName(project.name || "")];
         if (Array.isArray(provided?.categories) && provided.categories.length)
             return migrateCategoryList(provided.categories);
         if (Array.isArray(project.manualCategories) && project.manualCategories.length)
@@ -2198,7 +2272,7 @@ function getSelectedFinishCategories() {
 
 
     function saveProjectToBrowser() {
-        if (isRestoringProject || projectStorageRecoveryRequired) return false;
+        if (isRestoringProject || (projectStorageRecoveryRequired && !officialEditSession)) return false;
 
         try {
             let activeProject = projectManager.projects.find(p => p.id === projectManager.activeProjectId);
@@ -2326,6 +2400,60 @@ function getSelectedFinishCategories() {
         }
     }
 
+    function sanitizeProjectShapeForUse(data) {
+        if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+
+        const supportedTypes = new Set([
+            "line", "curve", "ellipse-arc", "circle", "ellipse", "rectangle", "path"
+        ]);
+        if (!supportedTypes.has(data.type)) return null;
+
+        const safeShape = structuredClone(data);
+        // Serialized project data must never replace live SVG/DOM references.
+        shapeDOMKeys.forEach(key => delete safeShape[key]);
+
+        // Paint values are inserted into SVG attributes and exported markup.
+        safeShape.color = safeImportedSVGPaint(safeShape.color, "#FFFFFF");
+        safeShape.fill = safeImportedSVGPaint(safeShape.fill, "none");
+
+        if (safeShape.type === "line") {
+            safeShape.cap = ["butt", "round", "square"].includes(safeShape.cap)
+                ? safeShape.cap
+                : "round";
+        }
+
+        if (safeShape.type === "curve" || safeShape.type === "ellipse-arc") {
+            safeShape.sweepFlag = Number(safeShape.sweepFlag) === 0 ? 0 : 1;
+        }
+
+        if (safeShape.type === "path") {
+            if (typeof safeShape.svgPathData === "string") {
+                if (safeShape.svgPathData.length > 200000) return null;
+                try {
+                    // The parser accepts only SVG path commands and finite numbers.
+                    // Rebuild editable handles from parsed data instead of trusting
+                    // imported segment/anchor objects.
+                    const segments = parseSVGPathSegments(safeShape.svgPathData);
+                    if (!segments.length) return null;
+                    safeShape.svgEditableSegments = segments;
+                    safeShape.svgAnchors = buildSVGAnchorMap(segments);
+                } catch (_) {
+                    return null;
+                }
+            } else {
+                delete safeShape.svgEditableSegments;
+                delete safeShape.svgAnchors;
+            }
+        }
+
+        return safeShape;
+    }
+
+    function sanitizeProjectShapesForUse(sourceShapes) {
+        if (!Array.isArray(sourceShapes)) return [];
+        return sourceShapes.map(sanitizeProjectShapeForUse).filter(Boolean);
+    }
+
     function restoreProjectFromBrowser() {
         const activeProject = projectManager.projects.find(p => p.id === projectManager.activeProjectId);
         if (!activeProject || !activeProject.data) return false;
@@ -2352,6 +2480,11 @@ function getSelectedFinishCategories() {
                 throw new Error("Invalid project data schema.");
             }
 
+            const safeProjectShapes = sanitizeProjectShapesForUse(projectData.shapes);
+            if (safeProjectShapes.length !== projectData.shapes.length) {
+                throw new Error("Project contains unsupported or unsafe drawing data.");
+            }
+
             isRestoringProject = true;
 
             // Clean up existing workspace
@@ -2372,7 +2505,7 @@ function getSelectedFinishCategories() {
             selectedShapes = [];
 
             // Reconstruct shape objects and SVG elements
-            projectData.shapes.forEach(data => {
+            safeProjectShapes.forEach(data => {
                 const shape = createShapeFromCopy(data, true);
                 if (shape) {
                     getShapeElements(shape).forEach(el => {
@@ -7727,40 +7860,62 @@ function getSelectedFinishCategories() {
         layerCount.textContent = shapes.length;
 
         if (shapes.length === 0) {
-            layerList.innerHTML = `<p class="empty-layers">No layers yet</p>`;
+            const empty = document.createElement("p");
+            empty.className = "empty-layers";
+            empty.textContent = "No layers yet";
+            layerList.replaceChildren(empty);
             return;
         }
 
-        layerList.innerHTML = [...shapes]
-            .map(shape => {
-                const index = shapes.indexOf(shape);
-                const isSelected = selectedShapes.includes(shape) || selectedShape === shape;
-                const safeName = shape.name || `${shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}`;
+        const fragment = document.createDocumentFragment();
+        [...shapes].reverse().forEach(shape => {
+            const index = shapes.indexOf(shape);
+            const isSelected = selectedShapes.includes(shape) || selectedShape === shape;
+            const type = String(shape.type || "shape");
+            const name = String(shape.name || (type.charAt(0).toUpperCase() + type.slice(1)));
+            const item = document.createElement("div");
+            item.className = "layer-item";
+            if (isSelected) item.classList.add("active");
+            item.dataset.layerIndex = String(index);
 
-                // Bug Fix: When shape.locked is true, show locked.svg!
-                const lockIconSrc = shape.locked ? "assets/icons/locked.svg" : "assets/icons/unlocked.svg";
-                const lockTitle = shape.locked ? "Unlock layer" : "Lock layer";
+            const nameNode = document.createElement("span");
+            nameNode.className = "layer-name";
+            nameNode.title = "Double click to rename";
+            nameNode.textContent = name;
 
-                return `
-                    <div class="layer-item ${isSelected ? "active" : ""}" data-layer-index="${index}">
-                        <span class="layer-name" title="Double click to rename">${safeName}</span>
-                        <span class="layer-type">${shape.type}</span>
-                        <div class="layer-controls">
-                            <button class="layer-move-btn" data-layer-action="up" data-layer-index="${index}" type="button" title="Bring forward" ${index === shapes.length - 1 ? "disabled" : ""}>↑</button>
-                            <button class="layer-move-btn" data-layer-action="down" data-layer-index="${index}" type="button" title="Send backward" ${index === 0 ? "disabled" : ""}>↓</button>
-                            <button class="layer-visibility-btn" data-layer-action="visibility" data-layer-index="${index}" type="button" title="${shape.hidden ? "Show layer" : "Hide layer"}">
-                                ${shape.hidden ? "○" : "●"}
-                            </button>
-                            <button class="layer-lock-btn" data-layer-action="lock" data-layer-index="${index}" type="button" title="${lockTitle}">
-                                <img src="${lockIconSrc}" alt="${shape.locked ? "Locked" : "Unlocked"}">
-                            </button>
-                            <button class="layer-delete-btn" data-layer-action="delete" data-layer-index="${index}" type="button" title="Delete layer">×</button>
-                        </div>
-                    </div>
-                `;
-            })
-            .reverse()
-            .join("");
+            const typeNode = document.createElement("span");
+            typeNode.className = "layer-type";
+            typeNode.textContent = type;
+
+            const controls = document.createElement("div");
+            controls.className = "layer-controls";
+            const addButton = (className, action, title, label, disabled = false) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = className;
+                button.dataset.layerAction = action;
+                button.dataset.layerIndex = String(index);
+                button.title = title;
+                button.textContent = label;
+                button.disabled = disabled;
+                controls.appendChild(button);
+                return button;
+            };
+            addButton("layer-move-btn", "up", "Bring forward", "↑", index === shapes.length - 1);
+            addButton("layer-move-btn", "down", "Send backward", "↓", index === 0);
+            addButton("layer-visibility-btn", "visibility", shape.hidden ? "Show layer" : "Hide layer", shape.hidden ? "○" : "●");
+
+            const lockButton = addButton("layer-lock-btn", "lock", shape.locked ? "Unlock layer" : "Lock layer", "");
+            const lockImage = document.createElement("img");
+            lockImage.src = shape.locked ? "assets/icons/locked.svg" : "assets/icons/unlocked.svg";
+            lockImage.alt = shape.locked ? "Locked" : "Unlocked";
+            lockButton.appendChild(lockImage);
+            addButton("layer-delete-btn", "delete", "Delete layer", "×");
+
+            item.append(nameNode, typeNode, controls);
+            fragment.appendChild(item);
+        });
+        layerList.replaceChildren(fragment);
     }
 
     function reorderShape(index, direction) {
@@ -7937,7 +8092,13 @@ function getSelectedFinishCategories() {
             propertiesSelection.textContent = shape.name || shape.type;
         }
 
-        const strokeWidth = shape.type === "line" ? shape.width : shape.strokeWidth;
+        const rawStrokeWidth = shape.type === "line" ? shape.width : shape.strokeWidth;
+        const strokeWidth = Number.isFinite(Number(rawStrokeWidth))
+            ? Math.max(0.1, Math.min(5, Number(rawStrokeWidth)))
+            : 2;
+        const safeStrokeColor = /^#[0-9a-f]{6}$/i.test(String(shape.color || ""))
+            ? String(shape.color)
+            : "#ffffff";
         const isFillable =
             shape.type === "circle" ||
             shape.type === "ellipse" ||
@@ -7949,7 +8110,7 @@ function getSelectedFinishCategories() {
                 <h4>Stroke</h4>
                 <div class="property-field">
                     <span>Color</span>
-                    <input type="color" data-style="stroke-color" value="${shape.color || "#ffffff"}">
+                    <input type="color" data-style="stroke-color" value="${safeStrokeColor}">
                 </div>
                 <div class="property-field">
                     <span>Width</span>
@@ -7960,7 +8121,10 @@ function getSelectedFinishCategories() {
 
         if (isFillable) {
             const fillEnabled = shape.fill !== "none";
-            const fillColor = fillEnabled ? shape.fill : (shape.fillColor || "#ffffff");
+            const rawFillColor = fillEnabled ? shape.fill : shape.fillColor;
+            const fillColor = /^#[0-9a-f]{6}$/i.test(String(rawFillColor || ""))
+                ? String(rawFillColor)
+                : "#ffffff";
 
             html += `
                 <div class="property-group">
@@ -9537,6 +9701,18 @@ function getSelectedFinishCategories() {
 
         return fallback;
     }
+    function safeImportedSVGPaint(value, fallback) {
+        const paint = String(value || "").trim();
+        if (paint === "none") return "none";
+        if (/^#[0-9a-f]{3,8}$/i.test(paint) ||
+            /^[a-z]{1,24}$/i.test(paint) ||
+            /^rgba?\([0-9.% ,/+-]+\)$/i.test(paint) ||
+            /^hsla?\([0-9.% ,/+-]+\)$/i.test(paint)) {
+            return paint;
+        }
+        return fallback;
+    }
+
     // Bug Fix: Enhanced SVG Source Parser that accepts arbitrary paths and large arcs
     function readSVGSource() {
         const parser = new DOMParser();
@@ -9577,6 +9753,12 @@ function getSelectedFinishCategories() {
 
                 if (fill === "currentColor") fill = "#FFFFFF";
             }
+
+            // Paint attributes are copied into live editor SVG elements below.
+            // Reject CSS functions and arbitrary values such as url(...) so imported
+            // markup cannot attach external resources or unexpected paint servers.
+            stroke = safeImportedSVGPaint(stroke, "#FFFFFF");
+            fill = safeImportedSVGPaint(fill, "none");
 
             if (tag === "line") {
                 parsed.push({
@@ -10301,8 +10483,14 @@ function getSelectedFinishCategories() {
         const galleryColor = globalIconColor?.value ||
             (document.body.classList.contains("light-theme") ? "#000000" : "#ffffff");
 
+        const safeExportShapes = sanitizeProjectShapesForUse(activeProject.data.shapes);
+        if (safeExportShapes.length !== activeProject.data.shapes.length) {
+            showToast("This icon contains unsupported or unsafe drawing data and cannot be exported.", "error");
+            return;
+        }
+
         const svgString = generateSVGFromShapes(
-            activeProject.data.shapes,
+            safeExportShapes,
             activeExportColor,
             exportFromHome && activeExportColor === "original"
                 ? galleryColor
@@ -10391,7 +10579,7 @@ function getSelectedFinishCategories() {
         const metadataKey = name.replace(/\.[a-z0-9]+$/i, "").replace(/[\s_]+/g, "-");
         const categories = getProjectCategories(project);
         const savedTerms = Array.isArray(project.searchTerms) ? project.searchTerms : [];
-        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(name)] || {};
+        const provided = getIconLibraryUserMetadata("private")[normalizeLibraryIconName(name)] || {};
         const metadataTerms = iconSearchMetadata?.[metadataKey]?.ai?.searchTerms;
         const baseTerms = [name, ...categories];
         const providedTerms = [
@@ -10445,6 +10633,7 @@ function getSelectedFinishCategories() {
     let iconLibraryMetadataModal = null;
     let iconLibrarySavedOnly = true;
     const ICON_LIBRARY_USER_METADATA_KEY = "iconMakerUserIconMetadata";
+    const ICON_LIBRARY_OFFICIAL_METADATA_KEY = "iconMakerOfficialIconMetadata";
 
     function normalizeLibraryIconName(value) {
         return String(value || "")
@@ -10537,11 +10726,23 @@ function getSelectedFinishCategories() {
     }
 
 
-    function getIconLibraryUserMetadata() {
+    function getIconLibraryUserMetadata(source = (iconLibrarySavedOnly ? "private" : "official")) {
+        const storageKey = source === "official" ? ICON_LIBRARY_OFFICIAL_METADATA_KEY : ICON_LIBRARY_USER_METADATA_KEY;
         try {
-            const value = JSON.parse(localStorage.getItem(ICON_LIBRARY_USER_METADATA_KEY) || "{}");
+            const value = JSON.parse(localStorage.getItem(storageKey) || "{}");
             return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-        } catch (error) { console.warn("Could not load provided icon metadata:", error); return {}; }
+        } catch (error) {
+            console.warn("Could not load provided icon metadata:", error);
+            return {};
+        }
+    }
+
+    function getIconLibraryProjectNames(source) {
+        const projects = source === "official"
+            ? (Array.isArray(OFFICIAL_GALLERY_PROJECTS) ? OFFICIAL_GALLERY_PROJECTS : [])
+            : (Array.isArray(projectManager?.projects) ? projectManager.projects : []);
+        return new Set(projects.filter(project => project?.status === "finished")
+            .map(project => normalizeLibraryIconName(project?.name)).filter(Boolean));
     }
 
     function findDuplicateTopLevelMetadataNames(source) {
@@ -10716,7 +10917,7 @@ function getSelectedFinishCategories() {
             overlay.className = "icon-library-metadata-overlay";
             overlay.innerHTML = '<section class="icon-library-metadata-modal" role="dialog" aria-modal="true" aria-labelledby="icon-library-metadata-title">' +
                 '<header><div><h3 id="icon-library-metadata-title">Provide metadata</h3><p>Supply detailed icon information in bulk. You can provide any fields you have.</p></div><button type="button" class="icon-library-metadata-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12" /></svg></button></header>' +
-                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [], "svg": "..." } }</code><span>SVG is visual reference only and never changes the saved drawing. Choose Merge or Replace when applying. List fields must be arrays of strings. The older brace format is still supported.</span></div>' +
+                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [], "svg": "..." } }</code><span class="icon-library-metadata-scope"></span><span>SVG is visual reference only and never changes the saved drawing. Metadata is always merged: supplied fields are updated, omitted fields are kept, and unlisted icons remain unchanged. List fields must be arrays of strings. Replace is unavailable here. The older brace format is still supported.</span></div>' +
                 '<textarea class="icon-library-metadata-input" spellcheck="false" aria-label="Bulk icon metadata" placeholder="{&#10;  &quot;settings&quot;: {&#10;    &quot;categories&quot;: [&quot;Tools&quot;, &quot;Productivity&quot;],&#10;    &quot;description&quot;: &quot;A gear icon for app settings.&quot;,&#10;    &quot;meaning&quot;: &quot;Configuration and preferences.&quot;,&#10;    &quot;tags&quot;: [&quot;gear&quot;, &quot;cog&quot;],&#10;    &quot;aliases&quot;: [&quot;cog&quot;, &quot;gear&quot;],&#10;    &quot;searchTerms&quot;: [&quot;preferences&quot;, &quot;configuration&quot;],&#10;    &quot;useCases&quot;: [&quot;Application settings&quot;],&#10;    &quot;relatedConcepts&quot;: [&quot;sliders&quot;, &quot;wrench&quot;]&#10;  }&#10;}"></textarea>' +
                 '<div class="icon-library-metadata-feedback" aria-live="polite"></div><footer><button type="button" class="btn btn-secondary icon-library-metadata-cancel">Cancel</button><button type="button" class="btn btn-primary icon-library-metadata-save">Apply metadata</button></footer></section>';
             document.body.appendChild(overlay);
@@ -10724,7 +10925,7 @@ function getSelectedFinishCategories() {
             overlay.querySelector(".icon-library-metadata-close").addEventListener("click", close);
             overlay.querySelector(".icon-library-metadata-cancel").addEventListener("click", close);
             overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
-            overlay.querySelector(".icon-library-metadata-save").addEventListener("click", async () => {
+            overlay.querySelector(".icon-library-metadata-save").addEventListener("click", () => {
                 const feedback = overlay.querySelector(".icon-library-metadata-feedback");
                 const parsed = parseIconLibraryUserMetadata(overlay.querySelector(".icon-library-metadata-input").value);
                 if (!parsed.entries.length) {
@@ -10733,18 +10934,31 @@ function getSelectedFinishCategories() {
                     return;
                 }
 
-                // OK = Replace; Cancel = Merge. Unlisted icons remain unchanged.
-                const choice = await showAppDialog({ title: "Apply metadata", message: "Replace overwrites supplied metadata for listed icons. Merge updates supplied fields and keeps omitted fields. Unlisted icons remain unchanged.", confirmText: "Replace", cancelText: "Merge" });
-                const replace = choice.confirmed;
-                const saved = getIconLibraryUserMetadata();
+                // Scope merges to icons that exist in the selected library(s).
+                const privateNames = getIconLibraryProjectNames("private");
+                const officialNames = getIconLibraryProjectNames("official");
+                const privateMetadata = getIconLibraryUserMetadata("private");
+                const officialMetadata = getIconLibraryUserMetadata("official");
+                const applyMerge = (target, entry) => {
+                    const key = normalizeLibraryIconName(entry.name);
+                    target[key] = { ...(target[key] || {}), ...entry, name: entry.name };
+                };
+
                 parsed.entries.forEach(entry => {
                     const key = normalizeLibraryIconName(entry.name);
-                    const cleanEntry = { ...entry, name: entry.name };
-                    saved[key] = replace ? cleanEntry : { ...(saved[key] || {}), ...cleanEntry };
+                    if (iconLibrarySavedOnly) {
+                        if (privateNames.has(key)) applyMerge(privateMetadata, entry);
+                        return;
+                    }
+                    if (officialNames.has(key)) applyMerge(officialMetadata, entry);
+                    if (privateNames.has(key)) applyMerge(privateMetadata, entry);
                 });
 
                 try {
-                    localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(saved));
+                    localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(privateMetadata));
+                    if (!iconLibrarySavedOnly) {
+                        localStorage.setItem(ICON_LIBRARY_OFFICIAL_METADATA_KEY, JSON.stringify(officialMetadata));
+                    }
                     invalidateIconLibraryIndex();
                     renderIconLibrary();
                     renderHomeProjects();
@@ -10752,11 +10966,11 @@ function getSelectedFinishCategories() {
                         feedback.className = "icon-library-metadata-feedback error";
                         feedback.textContent = "Applied " + parsed.entries.length + " valid entr" +
                             (parsed.entries.length === 1 ? "y. " : "ies. ") +
-                            "using " + (replace ? "Replace" : "Merge") + ". Skipped invalid entries: " + parsed.errors.join(" ");
+                            "using Merge. Skipped invalid entries: " + parsed.errors.join(" ");
                     } else {
                         feedback.className = "icon-library-metadata-feedback success";
                         feedback.textContent = "Applied metadata to " + parsed.entries.length +
-                            " icon(s) using " + (replace ? "Replace." : "Merge.");
+                            " icon(s) using Merge.";
                         window.setTimeout(close, 900);
                     }
                 } catch (error) {
@@ -10765,6 +10979,18 @@ function getSelectedFinishCategories() {
                 }
             });
             iconLibraryMetadataModal = overlay;
+        }
+        const scope = iconLibraryMetadataModal.querySelector(".icon-library-metadata-scope");
+        if (scope) {
+            scope.textContent = iconLibrarySavedOnly
+                ? "Private Icons selected: Merge updates only matching icons in your Private Library. Official metadata is never changed."
+                : "Official Icons selected: Merge updates matching Official icons and also matching Private icons when the same icon exists in both. Official-only icons receive Official metadata only. Replace is disabled.";
+        }
+        const scope = iconLibraryMetadataModal.querySelector(".icon-library-metadata-scope");
+        if (scope) {
+            scope.textContent = iconLibrarySavedOnly
+                ? "Private Icons selected: Merge updates only matching icons in your Private Library. Official metadata is never changed."
+                : "Official Icons selected: Merge updates matching Official icons and also matching Private icons when the same icon exists in both. Official-only icons receive Official metadata only. Replace is disabled.";
         }
         iconLibraryMetadataModal.classList.add("open");
         iconLibraryMetadataModal.querySelector(".icon-library-metadata-input").focus();
@@ -10869,7 +11095,7 @@ function getSelectedFinishCategories() {
         const preview = document.createElement("div");
         preview.className = "icon-library-detail-preview";
         if (project?.thumbnail) {
-            preview.innerHTML = project.thumbnail;
+            preview.innerHTML = sanitizeSVGPreview(project.thumbnail) || "";
             const svg = preview.querySelector("svg");
             if (svg) {
                 svg.removeAttribute("width");
@@ -11174,6 +11400,15 @@ function getSelectedFinishCategories() {
         [iconLibrarySelectionCount, document.getElementById("gallery-selection-count")].forEach(label => {
             if (label) label.textContent = count.toLocaleString() + (count === 1 ? " icon selected" : " icons selected");
         });
+        const canDeleteSelection = count > 0 && [...selectedIconLibraryNames].every(key => {
+            const project = getMultiSelectedProject(key);
+            if (!project) return false;
+            const space = project._gallerySpace ||
+                (key.startsWith("library:") ? (iconLibrarySavedOnly ? "private" : "official") : activeGallerySpace);
+            return space !== "official" || isCurrentUserOfficialPublisher();
+        });
+        [document.getElementById("icon-library-multi-delete"), document.getElementById("gallery-multi-delete")]
+            .forEach(button => { if (button) button.hidden = count === 0 || !canDeleteSelection; });
         iconLibraryResultsList?.querySelectorAll(".icon-library-result").forEach(row => {
             const selected = selectedIconLibraryNames.has("library:" + row.dataset.iconName);
             row.classList.toggle("multi-selected", selected);
@@ -11185,6 +11420,101 @@ function getSelectedFinishCategories() {
             card.setAttribute("aria-selected", String(selected));
         });
     }
+    function getMultiSelectedProject(selectionKey) {
+        if (!selectionKey) return null;
+        const isProject = selectionKey.startsWith("project:");
+        const value = selectionKey.slice(selectionKey.indexOf(":") + 1);
+        if (isProject) {
+            return getAllGalleryProjects().find(project => String(project.id) === value) ||
+                projectManager.projects.find(project => String(project.id) === value) ||
+                OFFICIAL_GALLERY_PROJECTS.find(project => String(project.id) === value) || null;
+        }
+        return getIconLibraryProjectMap().get(normalizeLibraryIconName(value)) || null;
+    }
+
+    async function deleteSelectedIcons() {
+        const selectionKeys = [...selectedIconLibraryNames];
+        if (!selectionKeys.length) return;
+        const selected = selectionKeys.map(key => ({ key, project: getMultiSelectedProject(key) }));
+        if (selected.some(item => !item.project)) {
+            showToast("One or more selected icons are no longer available. Refresh the selection and try again.", "error");
+            return;
+        }
+        const officialItems = selected.filter(({ project, key }) =>
+            (project._gallerySpace || (key.startsWith("library:") ? (iconLibrarySavedOnly ? "private" : "official") : activeGallerySpace)) === "official"
+        );
+        if (officialItems.length && !isCurrentUserOfficialPublisher()) {
+            showToast("Only an authorized Official Publisher can delete Official icons.", "error");
+            return;
+        }
+        const privateItems = selected.filter(item => !officialItems.includes(item));
+        const officialCount = officialItems.length;
+        const message = [
+            "Permanently delete " + selected.length + (selected.length === 1 ? " selected icon?" : " selected icons?"),
+            privateItems.length ? privateItems.length + " Private icon(s) will be removed from your library." : "",
+            officialCount ? officialCount + " Official icon(s) will be removed from the shared library for every user." : "",
+            "This action cannot be undone."
+        ].filter(Boolean).join("\n\n");
+        const decision = await showAppDialog({
+            title: "Delete selected icons?",
+            message,
+            confirmText: "Delete " + selected.length + (selected.length === 1 ? " icon" : " icons"),
+            danger: true
+        });
+        if (!decision.confirmed) return;
+
+        const failed = [];
+        let deletedPrivate = 0;
+        let deletedOfficial = 0;
+        for (const { project } of privateItems) {
+            try {
+                projectManager.projects = projectManager.projects.filter(item => String(item.id) !== String(project.id));
+                const cloudDelete = window.IconMakerSupabase?.deletePrivateProject?.(project.id);
+                cloudDelete?.catch?.(error => console.error("Private cloud delete failed:", error));
+                deletedPrivate++;
+            } catch (error) {
+                failed.push(project.name || "Private icon");
+            }
+        }
+        if (deletedPrivate) saveProjectManager();
+
+        for (const { project } of officialItems) {
+            try {
+                if (!window.IconMakerSupabase?.deleteOfficialProject) {
+                    throw new Error("Official Library deletion is unavailable.");
+                }
+                await window.IconMakerSupabase.deleteOfficialProject(project.id);
+                OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(item =>
+                    String(item.id) !== String(project.id)
+                );
+                deletedOfficial++;
+            } catch (error) {
+                console.error("Official Library delete failed:", error);
+                failed.push(project.name || "Official icon");
+            }
+        }
+
+        if (selectedHomeProject && selectionKeys.some(key =>
+            key.startsWith("project:") && key.slice(8) === String(selectedHomeProject.id)
+        )) closeProjectPreview();
+
+        clearIconLibraryMultiSelection();
+        renderHomeProjects();
+        renderManagementTable();
+        renderUnfinishedProjects();
+        updateProjectCounters();
+
+        const deletedCount = deletedPrivate + deletedOfficial;
+        if (failed.length) {
+            showToast("Deleted " + deletedCount + " icon(s); " + failed.length + " could not be deleted.", "error");
+        } else {
+            showToast("Deleted " + deletedCount + " selected icon(s).", "success");
+        }
+    }
+
+    document.getElementById("icon-library-multi-delete")?.addEventListener("click", deleteSelectedIcons);
+    document.getElementById("gallery-multi-delete")?.addEventListener("click", deleteSelectedIcons);
+
     function clearIconLibraryMultiSelection() {
         selectedIconLibraryNames.clear();
         updateIconLibraryMultiSelectionUI();
@@ -11320,9 +11650,9 @@ function getSelectedFinishCategories() {
             ? projectManager.projects.find(item => String(item.id) === value)
             : getIconLibraryProjectMap().get(normalizeLibraryIconName(value));
         const name = project?.name || value;
-        const svg = String(project?.thumbnail || "").trim();
         if (!project) throw new Error("This icon is no longer available in the selected collection: " + name + ".");
-        if (!svg) throw new Error("No saved SVG is available for " + name + ".");
+        const svg = sanitizeSVGPreview(String(project.thumbnail || "").trim());
+        if (!svg) throw new Error("No safe saved SVG is available for " + name + ".");
         const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
         const root = parsed.documentElement;
         if (!root || root.localName !== "svg" || parsed.querySelector("parsererror")) throw new Error("Invalid SVG for " + name);
@@ -11609,7 +11939,10 @@ function getSelectedFinishCategories() {
 
             if (Array.isArray(item.project?.data?.shapes) && item.project.data.shapes.length) {
                 const svgReference = compactSVGForMetadata(
-                    generateSVGFromShapes(item.project.data.shapes, "original")
+                    generateSVGFromShapes(
+                    sanitizeProjectShapesForUse(item.project.data.shapes),
+                    "original"
+                )
                 );
                 if (svgReference) metadata.svg = svgReference;
             }
@@ -11814,6 +12147,18 @@ function getSelectedFinishCategories() {
             gallerySpaceToggle.setAttribute("title", label);
             gallerySpaceToggle.setAttribute("aria-label", label);
         }
+        if (homeEditButton) {
+            const canCreateOfficial = !!window.IconMakerSupabase?.isOfficialPublisher?.();
+            const showCreateButton = !isOfficial || canCreateOfficial;
+            homeEditButton.hidden = !showCreateButton;
+            homeEditButton.setAttribute("aria-hidden", String(!showCreateButton));
+            homeEditButton.disabled = !showCreateButton;
+            const buttonLabel = homeEditButton.querySelector("span");
+            if (buttonLabel) buttonLabel.textContent = isOfficial ? "＋ New Official Icon" : "＋ New Private Icon";
+            homeEditButton.title = isOfficial
+                ? "Create a new icon in the Official Gallery"
+                : "Create a new icon in your Private Gallery";
+        }
         const toggleIcon = document.getElementById("gallery-space-toggle");
         if (toggleIcon) toggleIcon.style.transform = isOfficial ? "rotate(180deg)" : "";
     }
@@ -11880,7 +12225,13 @@ function getSelectedFinishCategories() {
                 const item = document.createElement("button");
                 item.type = "button";
                 item.className = `cat-list-pill ${selectedCategoryFilter === cat ? "active" : ""}`;
-                item.innerHTML = `<span class="cat-pill-name">${cat}</span><span class="cat-pill-count">${categoryCounts[cat]}</span>`;
+                const nameNode = document.createElement("span");
+                const countNode = document.createElement("span");
+                nameNode.className = "cat-pill-name";
+                countNode.className = "cat-pill-count";
+                nameNode.textContent = String(cat);
+                countNode.textContent = String(categoryCounts[cat]);
+                item.append(nameNode, countNode);
                 item.addEventListener("click", () => {
                     selectedCategoryFilter = selectedCategoryFilter === cat ? null : cat;
                     renderHomeProjects();
@@ -11956,7 +12307,10 @@ function getSelectedFinishCategories() {
                 : activeGallerySpace === "official"
                     ? "No icons have been published to the Official Gallery yet."
                     : "No finished projects yet.";
-            homeProjectGrid.innerHTML = `<p class="home-no-results">${msg}</p>`;
+            const emptyMessage = document.createElement("p");
+            emptyMessage.className = "home-no-results";
+            emptyMessage.textContent = msg;
+            homeProjectGrid.replaceChildren(emptyMessage);
             updateProjectCounters();
             return;
         }
@@ -12029,7 +12383,7 @@ function getSelectedFinishCategories() {
             preview.className = "home-project-preview";
 
             if (project.thumbnail) {
-                preview.innerHTML = project.thumbnail;
+                preview.innerHTML = sanitizeSVGPreview(project.thumbnail) || "";
             } else {
                 preview.textContent = "✦";
             }
@@ -12157,13 +12511,13 @@ function getSelectedFinishCategories() {
 
                     const header = document.createElement("div");
                     header.className = "gallery-category-header";
-                    header.innerHTML = `
-                <span class="cat-header-title">${catName}</span>
-                <span class="cat-header-count">
-                    ${grouped[catName].length}
-                    ${grouped[catName].length === 1 ? "icon" : "icons"}
-                </span>
-            `;
+                    const title = document.createElement("span");
+                    title.className = "cat-header-title";
+                    title.textContent = catName;
+                    const count = document.createElement("span");
+                    count.className = "cat-header-count";
+                    count.textContent = `${grouped[catName].length} ${grouped[catName].length === 1 ? "icon" : "icons"}`;
+                    header.append(title, count);
 
                     const cardsGrid = document.createElement("div");
                     cardsGrid.className = "gallery-category-cards";
@@ -12278,7 +12632,8 @@ function getSelectedFinishCategories() {
 
         const stroke = strokeW ?? (Number(globalStrokeWidth?.value) || 2);
 
-        let svg = project.thumbnail;
+        let svg = sanitizeSVGPreview(project.thumbnail);
+        if (!svg) return "";
 
         svg = svg.replace(
             /(stroke|fill)="(?!none)[^"]*"/g,
@@ -12529,7 +12884,86 @@ function getSelectedFinishCategories() {
         return !!window.IconMakerSupabase?.isOfficialPublisher?.();
     }
 
+    function startNewOfficialProject() {
+        if (!isCurrentUserOfficialPublisher()) {
+            showToast("Only an authorized Official Publisher can create Official icons. Switch to Private Gallery to create a private icon.", "error");
+            return false;
+        }
+        if (!window.IconMakerSupabase?.getSession?.()) {
+            window.IconMakerSupabase?.openAuthModal?.();
+            showToast("Sign in with an Official Publisher account to create an Official icon.", "info");
+            return false;
+        }
+        if (officialEditSession) {
+            showToast("Finish or cancel the current Official editor session first.", "info");
+            return false;
+        }
+        if (saveProjectToBrowser() === false) {
+            showToast("Could not save your current project before opening the Official editor.", "error");
+            return false;
+        }
+
+        const managerSnapshot = structuredClone(projectManager);
+        const workingProject = createProject({
+            version: PROJECT_FORMAT_VERSION,
+            savedAt: new Date().toISOString(),
+            selectedShapeIndex: -1,
+            settings: {
+                showCoordinates: false,
+                showGridHighlight: false,
+                pathStyle: "straight"
+            },
+            shapes: []
+        });
+
+        projectManager.projects.push(workingProject);
+        projectManager.activeProjectId = workingProject.id;
+        officialEditSession = {
+            mode: "create",
+            sourceProject: null,
+            managerSnapshot,
+            previousActiveProjectId: managerSnapshot.activeProjectId,
+            workingProject
+        };
+
+        activeGallerySpace = "official";
+        try { localStorage.setItem(GALLERY_SPACE_STORAGE_KEY, "official"); } catch (_) {}
+        updateGallerySpaceUI();
+
+        if (!restoreProjectFromBrowser()) {
+            finishOfficialEdit(null);
+            showToast("Could not start a new Official icon project.", "error");
+            return false;
+        }
+
+        resetProjectHistory();
+        renderUnfinishedProjects();
+        updateActiveProjectNameDisplay();
+        ensureOfficialEditorBar();
+        closeProjectPreview();
+        homeScreen?.classList.remove("show");
+        openIconEditor();
+        showToast("New Official icon project started.", "info");
+        return true;
+    }
+
+    function startNewProjectInActiveGallery() {
+        if (activeGallerySpace === "official") {
+            return startNewOfficialProject();
+        }
+        createNewProject();
+        openIconEditor();
+        return true;
+    }
+
     function ensureOfficialEditorBar() {
+        // New Official icons use the editor's existing Finish button. Do not
+        // show a separate floating creation banner or a redundant Cancel action.
+        if (officialEditSession?.mode === "create") {
+            document.getElementById("official-editor-bar")?.remove();
+            return null;
+        }
+
         let bar = document.getElementById("official-editor-bar");
         if (bar) return bar;
 
@@ -12540,19 +12974,12 @@ function getSelectedFinishCategories() {
             <span class="official-editor-bar-label">Editing Official icon</span>
             <span class="official-editor-bar-hint">Changes are a draft until you save them</span>
             <div class="official-editor-bar-actions">
-                <button type="button" data-official-cancel>Cancel</button>
                 <button type="button" data-official-save>Save to Official</button>
             </div>`;
         document.body.appendChild(bar);
 
-        bar.querySelector("[data-official-cancel]")?.addEventListener("click", () => {
-            if (!officialEditSession) return;
-            if (!window.confirm("Discard your unsaved Official icon changes?")) return;
-            finishOfficialEdit(null);
-            showToast("Official edit cancelled. The published icon was not changed.", "info");
-        });
         bar.querySelector("[data-official-save]")?.addEventListener("click", async event => {
-            if (!officialEditSession) return;
+            if (!officialEditSession || officialEditSession.mode === "create") return;
             const button = event.currentTarget;
             button.disabled = true;
             const oldLabel = button.textContent;
@@ -12583,9 +13010,13 @@ function getSelectedFinishCategories() {
         document.getElementById("official-editor-bar")?.remove();
 
         projectManager = session.managerSnapshot;
-        if (session.previousActiveProjectId &&
-            projectManager.projects.some(project => String(project.id) === String(session.previousActiveProjectId))) {
+        const previousProjectExists = session.previousActiveProjectId &&
+            projectManager.projects.some(project => String(project.id) === String(session.previousActiveProjectId));
+        if (previousProjectExists) {
             projectManager.activeProjectId = session.previousActiveProjectId;
+            restoreProjectFromBrowser();
+        } else if (projectManager.projects.length) {
+            projectManager.activeProjectId = projectManager.projects[0].id;
             restoreProjectFromBrowser();
         }
         resetProjectHistory();
@@ -12613,7 +13044,12 @@ function getSelectedFinishCategories() {
             updateGallerySpaceUI();
             renderHomeProjects();
             renderManagementTable();
-            showProjectPreview(session.sourceProject);
+            if (session.sourceProject) {
+                showProjectPreview(session.sourceProject);
+            } else {
+                selectedHomeProject = null;
+                closeProjectPreview();
+            }
         }
         updateHomeButtonLabel();
     }
@@ -12684,8 +13120,24 @@ function getSelectedFinishCategories() {
         });
         if (!confirmed.confirmed) return;
 
+        if (!Array.isArray(project.data.shapes)) {
+            showToast("This icon has no valid editable drawing data and cannot be published.", "error");
+            return;
+        }
+
+        const safePublishShapes = sanitizeProjectShapesForUse(project.data.shapes);
+        if (safePublishShapes.length !== project.data.shapes.length) {
+            showToast("This icon contains unsupported or unsafe drawing data and cannot be published.", "error");
+            return;
+        }
+
+        const safeProject = {
+            ...project,
+            data: { ...project.data, shapes: safePublishShapes }
+        };
+
         try {
-            const published = await window.IconMakerSupabase.saveOfficialProject(project);
+            const published = await window.IconMakerSupabase.saveOfficialProject(safeProject);
             showToast(`"${published.name || project.name || "Icon"}" is now in the Official Library.`, "success");
             setGallerySpace("official");
             showProjectPreview(published);
@@ -13024,10 +13476,11 @@ function getSelectedFinishCategories() {
             card.className = "related-project-card";
             card.type = "button";
 
-            if (item.thumbnail) {
+            const safeThumbnail = sanitizeSVGPreview(item.thumbnail);
+            if (safeThumbnail) {
                 const img = document.createElement("img");
-                img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(item.thumbnail)}`;
-                img.alt = item.name;
+                img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(safeThumbnail)}`;
+                img.alt = item.name || "Related icon";
                 card.appendChild(img);
             }
             const span = document.createElement("span");
@@ -13112,7 +13565,9 @@ function getSelectedFinishCategories() {
         Object.keys(homeViewSections).forEach(name => {
             const section = homeViewSections[name];
             if (!section) return;
-            section.style.display = name === viewName ? "flex" : "none";
+            const isActiveView = name === viewName;
+            section.style.display = isActiveView ? "flex" : "none";
+            section.classList.toggle("active", isActiveView);
         });
 
         if (viewName === "projects") {
@@ -13158,7 +13613,7 @@ function getSelectedFinishCategories() {
             const preview = document.createElement("div");
             preview.className = "management-card-preview";
             if (project.thumbnail) {
-                preview.innerHTML = project.thumbnail;
+                preview.innerHTML = sanitizeSVGPreview(project.thumbnail) || "";
             } else {
                 preview.textContent = "✦";
             }
@@ -13285,8 +13740,7 @@ function getSelectedFinishCategories() {
     }
 
     managerNewIconBtn?.addEventListener("click", () => {
-        createNewProject();
-        openIconEditor();
+        startNewProjectInActiveGallery();
     });
 
     // Preferences Actions
@@ -13373,7 +13827,7 @@ document.getElementById("add-custom-category")?.addEventListener("click", async 
         finishModal.classList.remove("show");
     });
 
-    finishConfirm?.addEventListener("click", () => {
+    finishConfirm?.addEventListener("click", async () => {
         const name = finishIconName.value.trim();
         if (!name) {
             finishIconName.focus();
@@ -13423,9 +13877,33 @@ if (finishCategoryManuallyChanged) {
         activeProject.status = "finished";
         activeProject.savedAt = new Date().toISOString();
 
-        // Finished work remains in the user's Private Library. Publishing to Official
-        // is a separate privileged action and never happens from the editor.
-        saveProjectManager();
+        if (officialEditSession) {
+            const safeShapes = sanitizeProjectShapesForUse(activeProject.data?.shapes);
+            if (!Array.isArray(activeProject.data?.shapes) ||
+                safeShapes.length !== activeProject.data.shapes.length) {
+                showToast("This icon contains unsupported or unsafe drawing data and cannot be saved to Official.", "error");
+                return;
+            }
+
+            activeProject.data = { ...activeProject.data, shapes: safeShapes };
+            officialEditSession.workingProject = activeProject;
+            try {
+                const saved = await window.IconMakerSupabase.saveOfficialProject(activeProject);
+                finishModal.classList.remove("show");
+                finishOfficialEdit(saved);
+                showToast(`Finished icon "${saved.name || name}" saved to the Official Gallery!`, "success");
+            } catch (error) {
+                console.error("Could not save finished Official icon:", error);
+                showToast(error?.message || "Could not save this icon to the Official Gallery.", "error");
+            }
+            return;
+        }
+
+        // Private editor sessions always remain in the user's Private Gallery.
+        if (saveProjectManager() === false) {
+            showToast("Could not save this icon. Your previous project data was preserved.", "error");
+            return;
+        }
         renderHomeProjects();
         renderUnfinishedProjects();
         renderManagementTable();
@@ -13434,7 +13912,7 @@ if (finishCategoryManuallyChanged) {
         finishModal.classList.remove("show");
         homeScreen.classList.add("show");
         updateHomeButtonLabel();
-        showToast(`Finished icon "${name}" saved to your Private Library!`, "success");
+        showToast(`Finished icon "${name}" saved to your Private Gallery!`, "success");
     });
 
     finishIconName?.addEventListener("keydown", e => {
@@ -13445,8 +13923,13 @@ if (finishCategoryManuallyChanged) {
     // 22. MENU, TOPBAR, FILE IMPORT & BACKUP
     // ========================================================================
     saveProjectButton?.addEventListener("click", () => {
-        saveProjectToBrowser();
-        showToast("Project saved", "success");
+        if (officialEditSession) {
+            document.querySelector("#official-editor-bar [data-official-save]")?.click();
+            return;
+        }
+        if (saveProjectToBrowser() !== false) {
+            showToast("Project saved", "success");
+        }
     });
 
     // Reuse the existing editor actions from the home-page topbar.
@@ -13454,13 +13937,12 @@ if (finishCategoryManuallyChanged) {
     homeFinishProjectButton?.addEventListener("click", () => finishProjectButton?.click());
 
     newProjectButton?.addEventListener("click", () => {
-        createNewProject();
+        startNewProjectInActiveGallery();
         fileDropdown?.classList.remove("show");
     });
 
     mobileNewIconButton?.addEventListener("click", () => {
-        createNewProject();
-        openIconEditor();
+        startNewProjectInActiveGallery();
     });
 
     exportProjectJsonBtn?.addEventListener("click", () => {
@@ -13654,11 +14136,10 @@ if (finishCategoryManuallyChanged) {
         renderHomeProjects();
     });
 
-    // Requirement: The homepage Edit button must continue creating a new project and opening the editor.
+    // Create in the Gallery space currently being viewed; never silently cross-save.
     homeEditButton?.addEventListener("click", () => {
         closeProjectPreview();
-        createNewProject();
-        openIconEditor();
+        startNewProjectInActiveGallery();
     });
 
     function renderUnfinishedProjects() {
@@ -14201,36 +14682,74 @@ if (finishCategoryManuallyChanged) {
     // Supabase account bootstrap: preserve guest projects and isolate account-owned caches.
     let guestProjectManagerSnapshot = null;
     let activeCloudUserId = null;
+    let cloudAuthSyncToken = 0;
     async function handleSupabaseAuthChanged(session) {
         const userId = session?.user?.id || null;
         if (userId && userId !== activeCloudUserId) {
+            const syncToken = ++cloudAuthSyncToken;
+            const isCurrentSync = () =>
+                syncToken === cloudAuthSyncToken &&
+                activeCloudUserId === userId &&
+                window.IconMakerSupabase?.getSession?.()?.user?.id === userId;
             if (!guestProjectManagerSnapshot) {
                 try { guestProjectManagerSnapshot = structuredClone(projectManager); }
                 catch (_) { guestProjectManagerSnapshot = { activeProjectId: projectManager.activeProjectId, projects: [...projectManager.projects] }; }
             }
             activeCloudUserId = userId;
             try {
-                const remoteProjects = await window.IconMakerSupabase.fetchPrivateProjects();
+                const remoteProjects = await window.IconMakerSupabase.fetchPrivateProjects(userId);
+                // Auth can change while the network request is pending. Never let
+                // an older account's response replace the newly active account's
+                // in-memory projects or be written into that account's cloud rows.
+                if (!isCurrentSync()) return;
                 const cacheRaw = localStorage.getItem(`iconMakerProjectsCloudCache:${userId}`);
                 const cache = cacheRaw ? JSON.parse(cacheRaw) : null;
                 const migrateGuest = localStorage.getItem("iconMakerLegacyCloudMigrationV1") !== "true";
                 const guestProjects = migrateGuest ? (guestProjectManagerSnapshot?.projects || []) : [];
-                const remoteIds = new Set(remoteProjects.map(project => String(project.id)));
+                // A cloud row is not automatically newer than the browser cache.
+                // Autosaves can still be in flight when the account is reopened, so
+                // choose the newest project payload by its own savedAt timestamp.
+                const getProjectFreshness = project => {
+                    // savedAt belongs to the project payload and tracks the
+                    // actual editor save. A later database updated_at can merely
+                    // mean an older snapshot was uploaded later, so use it only
+                    // when the payload has no save timestamp.
+                    const projectTimestamp = Date.parse(
+                        project?.savedAt || project?.data?.savedAt || ""
+                    );
+                    if (Number.isFinite(projectTimestamp)) return projectTimestamp;
+                    const cloudTimestamp = Date.parse(project?._cloudUpdatedAt || "");
+                    return Number.isFinite(cloudTimestamp) ? cloudTimestamp : 0;
+                };
                 const combined = new Map();
-                [...(cache?.projects || []), ...remoteProjects, ...guestProjects].forEach(project => {
+                const candidates = [
+                    ...guestProjects.map(project => ({ project, source: "guest" })),
+                    ...(cache?.projects || []).map(project => ({ project, source: "cache" })),
+                    ...remoteProjects.map(project => ({ project, source: "remote" }))
+                ];
+                candidates.forEach(({ project, source }) => {
                     if (!project || typeof project !== "object" || !project.id) return;
                     const id = String(project.id);
-                    if (!combined.has(id) || remoteIds.has(id)) combined.set(id, project);
+                    const previous = combined.get(id);
+                    const nextTime = getProjectFreshness(project);
+                    const previousTime = previous ? getProjectFreshness(previous.project) : -1;
+                    if (!previous || nextTime > previousTime ||
+                        (nextTime === previousTime && source === "remote")) {
+                        combined.set(id, { project, source });
+                    }
                 });
-                projectManager.projects = [...combined.values()];
+                projectManager.projects = [...combined.values()].map(entry => entry.project);
                 if (!projectManager.projects.length) projectManager.projects.push(createProject());
                 const preferredId = cache?.activeProjectId || guestProjectManagerSnapshot?.activeProjectId;
                 projectManager.activeProjectId = projectManager.projects.some(p => String(p.id) === String(preferredId))
                     ? preferredId : (projectManager.projects.find(p => p.status !== "finished") || projectManager.projects[0]).id;
                 saveProjectManager();
-                await window.IconMakerSupabase.savePrivateProjects(projectManager.projects);
+                await window.IconMakerSupabase.savePrivateProjects(projectManager.projects, userId);
+                if (!isCurrentSync()) return;
                 if (migrateGuest && guestProjects.length) localStorage.setItem("iconMakerLegacyCloudMigrationV1", "true");
-                OFFICIAL_GALLERY_PROJECTS = await window.IconMakerSupabase.fetchOfficialProjects();
+                const officialProjects = await window.IconMakerSupabase.fetchOfficialProjects();
+                if (!isCurrentSync()) return;
+                OFFICIAL_GALLERY_PROJECTS = officialProjects;
                 renderHomeProjects(); renderManagementTable(); renderUnfinishedProjects(); updateProjectCounters();
                 if (restorePrivateSpaceAfterAuth) {
                     restorePrivateSpaceAfterAuth = false;
@@ -14238,12 +14757,15 @@ if (finishCategoryManuallyChanged) {
                 }
                 showToast("Private Library synced with your account.", "success");
             } catch (error) {
+                if (!isCurrentSync()) return;
                 console.error("Private Library sync failed:", error);
                 showToast("Could not sync your Private Library. Existing browser projects were preserved.", "error");
             }
             return;
         }
         if (!userId && activeCloudUserId) {
+            // Invalidate any account bootstrap still waiting on a network response.
+            cloudAuthSyncToken++;
             activeCloudUserId = null;
             if (guestProjectManagerSnapshot) {
                 projectManager = structuredClone(guestProjectManagerSnapshot);
