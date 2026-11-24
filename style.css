@@ -9406,20 +9406,24 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
 }
 
 
-/* Preferences owns its vertical scroll area so every settings card remains reachable. */
+/* Preferences scrolls inside its own view, while the home shell stays fixed. */
 .home-main:has(#home-view-settings.active) {
     min-height: 0;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
+    overflow: hidden !important;
 }
 
 #home-view-settings.active {
-    flex: 0 0 auto;
-    height: auto;
-    min-height: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 #home-view-settings.active .settings-grid {
+    flex: 0 0 auto;
     min-height: 0;
     padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
