@@ -11362,13 +11362,13 @@ function getSelectedFinishCategories() {
         [iconLibrarySelectionCount, document.getElementById("gallery-selection-count")].forEach(label => {
             if (label) label.textContent = count.toLocaleString() + (count === 1 ? " icon selected" : " icons selected");
         });
-        const selectedProjects = [...selectedIconLibraryNames].map(getMultiSelectedProject).filter(Boolean);
-        const canDeleteSelection = selectedProjects.length === count &&
-            selectedProjects.every(project =>
-                (project._gallerySpace || (selectedIconLibraryNames.values().next().value || "").startsWith("library:")
-                    ? (iconLibrarySavedOnly ? "private" : "official")
-                    : activeGallerySpace) !== "official" || isCurrentUserOfficialPublisher()
-            );
+        const canDeleteSelection = count > 0 && [...selectedIconLibraryNames].every(key => {
+            const project = getMultiSelectedProject(key);
+            if (!project) return false;
+            const space = project._gallerySpace ||
+                (key.startsWith("library:") ? (iconLibrarySavedOnly ? "private" : "official") : activeGallerySpace);
+            return space !== "official" || isCurrentUserOfficialPublisher();
+        });
         [document.getElementById("icon-library-multi-delete"), document.getElementById("gallery-multi-delete")]
             .forEach(button => { if (button) button.hidden = count === 0 || !canDeleteSelection; });
         iconLibraryResultsList?.querySelectorAll(".icon-library-result").forEach(row => {
@@ -11431,9 +11431,8 @@ function getSelectedFinishCategories() {
         for (const { project } of privateItems) {
             try {
                 projectManager.projects = projectManager.projects.filter(item => String(item.id) !== String(project.id));
-                window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error =>
-                    console.error("Private cloud delete failed:", error)
-                );
+                const cloudDelete = window.IconMakerSupabase?.deletePrivateProject?.(project.id);
+                cloudDelete?.catch?.(error => console.error("Private cloud delete failed:", error));
                 deletedPrivate++;
             } catch (error) {
                 failed.push(project.name || "Private icon");
