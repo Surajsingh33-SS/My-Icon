@@ -1897,6 +1897,41 @@ function getSelectedFinishCategories() {
         return { added, skippedDuplicateNames, skippedDuplicateIds };
     }
 
+    // Official backup data is restored only into Official Gallery. It never
+    // enters the Private project manager or changes the active editing project.
+    function mergeImportedOfficialProjects(importedProjects) {
+        const seenNames = new Set(OFFICIAL_GALLERY_PROJECTS
+            .filter(project => project?.status === "finished")
+            .map(project => normalizeProjectName(project.name)).filter(Boolean));
+        const seenIds = new Set(OFFICIAL_GALLERY_PROJECTS.map(project => String(project?.id || "")).filter(Boolean));
+        const added = [];
+        let skippedDuplicateNames = 0;
+        let skippedDuplicateIds = 0;
+
+        (Array.isArray(importedProjects) ? importedProjects : []).forEach(project => {
+            if (!project || typeof project !== "object" || Array.isArray(project) || project.status !== "finished") return;
+            if (project.id && seenIds.has(String(project.id))) {
+                skippedDuplicateIds++;
+                return;
+            }
+            const name = normalizeProjectName(project.name);
+            if (!name || seenNames.has(name)) {
+                skippedDuplicateNames++;
+                return;
+            }
+            const imported = { ...project };
+            if (!imported.id) imported.id = crypto.randomUUID();
+            delete imported._gallerySpace;
+            seenIds.add(String(imported.id));
+            seenNames.add(name);
+            OFFICIAL_GALLERY_PROJECTS.push(imported);
+            added.push(imported);
+        });
+
+        if (added.length) saveOfficialGalleryProjects();
+        return { added, skippedDuplicateNames, skippedDuplicateIds };
+    }
+
 
     function loadProjectManager() {
         try {
@@ -2111,7 +2146,8 @@ function getSelectedFinishCategories() {
             const exportData = {
                 exportedAt: new Date().toISOString(),
                 version: PROJECT_FORMAT_VERSION,
-                projectManager: projectManager
+                projectManager: projectManager,
+                officialGalleryProjects: OFFICIAL_GALLERY_PROJECTS
             };
 
             const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -13063,27 +13099,38 @@ if (finishCategoryManuallyChanged) {
                 const parsed = JSON.parse(e.target.result);
                 let importedProjects = [];
                 let requestedActiveId = null;
+                let importedOfficialProjects = [];
 
                 if (parsed.projectManager && Array.isArray(parsed.projectManager.projects)) {
                     importedProjects = parsed.projectManager.projects;
                     requestedActiveId = parsed.projectManager.activeProjectId || null;
+                    importedOfficialProjects = Array.isArray(parsed.officialGalleryProjects)
+                        ? parsed.officialGalleryProjects
+                        : [];
                 } else if (Array.isArray(parsed.projects)) {
                     importedProjects = parsed.projects;
                     requestedActiveId = parsed.activeProjectId || null;
+                    importedOfficialProjects = Array.isArray(parsed.officialGalleryProjects)
+                        ? parsed.officialGalleryProjects
+                        : [];
                 } else if (parsed.shapes && parsed.version) {
                     importedProjects = [createProject(parsed)];
                 } else {
                     throw new Error("Unrecognized project file format.");
                 }
 
-                // Merge rather than replace: current projects are preserved.
+                // Merge each collection into its matching space; never mix sources.
                 saveProjectToBrowser();
-                const result = mergeImportedProjects(importedProjects, requestedActiveId);
+                const privateResult = mergeImportedProjects(importedProjects, requestedActiveId);
+                const officialResult = mergeImportedOfficialProjects(importedOfficialProjects);
+                const totalAdded = privateResult.added.length + officialResult.added.length;
 
-                if (!result.added.length) {
+                if (!totalAdded) {
+                    const skippedNames = privateResult.skippedDuplicateNames + officialResult.skippedDuplicateNames;
+                    const skippedIds = privateResult.skippedDuplicateIds + officialResult.skippedDuplicateIds;
                     const reasons = [];
-                    if (result.skippedDuplicateNames) reasons.push(result.skippedDuplicateNames + " duplicate icon name(s)");
-                    if (result.skippedDuplicateIds) reasons.push(result.skippedDuplicateIds + " already-imported project(s)");
+                    if (skippedNames) reasons.push(skippedNames + " duplicate icon name(s)");
+                    if (skippedIds) reasons.push(skippedIds + " already-imported project(s)");
                     showToast(reasons.length
                         ? "Nothing imported: " + reasons.join(" and ") + " were skipped."
                         : "No valid new projects were found in this backup.", "error");
@@ -13096,9 +13143,10 @@ if (finishCategoryManuallyChanged) {
                 renderUnfinishedProjects();
                 renderManagementTable();
 
-                const skipped = result.skippedDuplicateNames + result.skippedDuplicateIds;
+                const skipped = privateResult.skippedDuplicateNames + privateResult.skippedDuplicateIds
+                    + officialResult.skippedDuplicateNames + officialResult.skippedDuplicateIds;
                 showToast(
-                    "Imported " + result.added.length + " project(s) without replacing existing icons." +
+                    "Imported " + totalAdded + " project(s) into their original Gallery spaces." +
                     (skipped ? " Skipped " + skipped + " duplicate(s)." : ""),
                     "success"
                 );
