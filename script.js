@@ -742,9 +742,11 @@
     function saveOfficialGalleryProjects() {
         try {
             localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, JSON.stringify(OFFICIAL_GALLERY_PROJECTS));
+            return true;
         } catch (error) {
             console.error("Could not save Official Gallery:", error);
-            showToast("Failed to save Official Gallery icons", "error");
+            showToast("Failed to save Official Gallery icons. Previous saved data was kept.", "error");
+            return false;
         }
     }
 
@@ -1960,8 +1962,8 @@ function getSelectedFinishCategories() {
             added.push(imported);
         });
 
-        if (added.length) saveOfficialGalleryProjects();
-        return { added, skippedDuplicateNames, skippedDuplicateIds };
+        const saved = added.length ? saveOfficialGalleryProjects() : true;
+        return { added, skippedDuplicateNames, skippedDuplicateIds, saved };
     }
 
 
@@ -13185,43 +13187,80 @@ if (finishCategoryManuallyChanged) {
                     throw new Error("Unrecognized project file format.");
                 }
 
-                // Merge each collection into its matching space; never mix sources.
-                saveProjectToBrowser();
-                const privateResult = mergeImportedProjects(importedProjects, requestedActiveId);
-                const officialResult = mergeImportedOfficialProjects(importedOfficialProjects);
-                const totalAdded = privateResult.added.length + officialResult.added.length;
-
-                if (!totalAdded) {
-                    const skippedNames = privateResult.skippedDuplicateNames + officialResult.skippedDuplicateNames;
-                    const skippedIds = privateResult.skippedDuplicateIds + officialResult.skippedDuplicateIds;
-                    const reasons = [];
-                    if (skippedNames) reasons.push(skippedNames + " duplicate icon name(s)");
-                    if (skippedIds) reasons.push(skippedIds + " already-imported project(s)");
-                    showToast(reasons.length
-                        ? "Nothing imported: " + reasons.join(" and ") + " were skipped."
-                        : "No valid new projects were found in this backup.", "error");
+                if (projectStorageRecoveryRequired) {
+                    showToast("Import blocked until the existing saved projects are recovered.", "error");
                     return;
                 }
 
-                saveProjectManager();
-                restoreProjectFromBrowser();
-                renderHomeProjects();
-                renderUnfinishedProjects();
-                renderManagementTable();
+                // Save the current editor state first. The imported collections are
+                // then staged and committed together, with both storage values snapshotted.
+                if (saveProjectToBrowser() === false) {
+                    showToast("Import cancelled because the current project could not be saved.", "error");
+                    return;
+                }
 
-                const skipped = privateResult.skippedDuplicateNames + privateResult.skippedDuplicateIds
-                    + officialResult.skippedDuplicateNames + officialResult.skippedDuplicateIds;
-                showToast(
-                    "Imported " + totalAdded + " project(s) into their original Gallery spaces." +
-                    (skipped ? " Skipped " + skipped + " duplicate(s)." : ""),
-                    "success"
-                );
-            } catch (err) {
-                showToast(`Could not import file: ${err.message}`, "error");
+                const previousManager = structuredClone(projectManager);
+                const previousOfficialProjects = structuredClone(OFFICIAL_GALLERY_PROJECTS);
+                const previousPrivateStorage = localStorage.getItem(PROJECTS_STORAGE_KEY);
+                const previousOfficialStorage = localStorage.getItem(OFFICIAL_GALLERY_STORAGE_KEY);
+
+                try {
+                    const privateResult = mergeImportedProjects(importedProjects, requestedActiveId);
+                    const officialResult = mergeImportedOfficialProjects(importedOfficialProjects);
+                    const totalAdded = privateResult.added.length + officialResult.added.length;
+
+                    if (!totalAdded) {
+                        const skippedNames = privateResult.skippedDuplicateNames + officialResult.skippedDuplicateNames;
+                        const skippedIds = privateResult.skippedDuplicateIds + officialResult.skippedDuplicateIds;
+                        const reasons = [];
+                        if (skippedNames) reasons.push(skippedNames + " duplicate icon name(s)");
+                        if (skippedIds) reasons.push(skippedIds + " already-imported project(s)");
+                        showToast(reasons.length
+                            ? "Nothing imported: " + reasons.join(" and ") + " were skipped."
+                            : "No valid new projects were found in this backup.", "error");
+                        return;
+                    }
+
+                    const privateSaved = privateResult.added.length ? saveProjectManager() : true;
+                    if (!privateSaved || !officialResult.saved) {
+                        throw new Error("One or more Gallery collections could not be saved.");
+                    }
+
+                    restoreProjectFromBrowser();
+                    renderHomeProjects();
+                    renderUnfinishedProjects();
+                    renderManagementTable();
+
+                    const skipped = privateResult.skippedDuplicateNames + privateResult.skippedDuplicateIds
+                        + officialResult.skippedDuplicateNames + officialResult.skippedDuplicateIds;
+                    showToast(
+                        "Imported " + totalAdded + " project(s) into their original Gallery spaces." +
+                        (skipped ? " Skipped " + skipped + " duplicate(s)." : ""),
+                        "success"
+                    );
+                } catch (importError) {
+                    projectManager = previousManager;
+                    OFFICIAL_GALLERY_PROJECTS = previousOfficialProjects;
+                    try {
+                        if (previousPrivateStorage === null) localStorage.removeItem(PROJECTS_STORAGE_KEY);
+                        else localStorage.setItem(PROJECTS_STORAGE_KEY, previousPrivateStorage);
+                        if (previousOfficialStorage === null) localStorage.removeItem(OFFICIAL_GALLERY_STORAGE_KEY);
+                        else localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficialStorage);
+                    } catch (rollbackError) {
+                        projectStorageRecoveryRequired = true;
+                        console.error("Backup import rollback failed; further project writes are blocked:", rollbackError);
+                    }
+                    console.error("Backup import was rolled back:", importError);
+                    showToast("Import failed. Your previous Gallery data was restored.", "error");
+                }
+            } catch (error) {
+                console.error("Import failed:", error);
+                showToast("Invalid or unreadable project backup", "error");
+            } finally {
+                event.target.value = "";
             }
         };
         reader.readAsText(file);
-        event.target.value = "";
     });
 
     fileMenuButton?.addEventListener("click", e => {
