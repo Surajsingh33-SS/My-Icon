@@ -722,10 +722,10 @@
     let officialGalleryRecoveryRequired = false;
     const GALLERY_RECENT_STORAGE_KEY = "iconMakerGalleryRecent";
     let activeGallerySpace = "official";
+    let restorePrivateSpaceAfterAuth = false;
     try {
-        activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "private"
-            ? "private"
-            : "official";
+        restorePrivateSpaceAfterAuth = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "private";
+        activeGallerySpace = "official";
     } catch (storageError) {
         console.warn("Could not read the selected Gallery space; using Official temporarily:", storageError);
     }
@@ -14001,10 +14001,14 @@ if (finishCategoryManuallyChanged) {
                 projectManager.activeProjectId = projectManager.projects.some(p => String(p.id) === String(preferredId))
                     ? preferredId : (projectManager.projects.find(p => p.status !== "finished") || projectManager.projects[0]).id;
                 saveProjectManager();
+                await window.IconMakerSupabase.savePrivateProjects(projectManager.projects);
                 if (migrateGuest && guestProjects.length) localStorage.setItem("iconMakerLegacyCloudMigrationV1", "true");
                 OFFICIAL_GALLERY_PROJECTS = await window.IconMakerSupabase.fetchOfficialProjects();
                 renderHomeProjects(); renderManagementTable(); renderUnfinishedProjects(); updateProjectCounters();
-                if (activeGallerySpace === "private") setGallerySpace("private");
+                if (restorePrivateSpaceAfterAuth) {
+                    restorePrivateSpaceAfterAuth = false;
+                    setGallerySpace("private");
+                }
                 showToast("Private Library synced with your account.", "success");
             } catch (error) {
                 console.error("Private Library sync failed:", error);
