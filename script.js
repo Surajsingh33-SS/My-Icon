@@ -10824,7 +10824,10 @@ function getSelectedFinishCategories() {
 
     function parseIconLibraryUserMetadata(input) {
         const source = String(input || "").trim();
-        const knownIcons = new Map(getIconLibraryEntries().map(([name]) => [normalizeLibraryIconName(name), name]));
+        const knownIcons = new Map();
+        [...getIconLibraryProjectNames("private"), ...getIconLibraryProjectNames("official")].forEach(key => {
+            if (!knownIcons.has(key)) knownIcons.set(key, key);
+        });
         const knownCategories = new Map(getAllIconCategories().map(value => [value.toLowerCase(), value]));
         const entries = [], errors = [];
         const listFields = ["categories", "tags", "aliases", "searchTerms", "useCases", "relatedConcepts"];
@@ -10917,7 +10920,7 @@ function getSelectedFinishCategories() {
             overlay.className = "icon-library-metadata-overlay";
             overlay.innerHTML = '<section class="icon-library-metadata-modal" role="dialog" aria-modal="true" aria-labelledby="icon-library-metadata-title">' +
                 '<header><div><h3 id="icon-library-metadata-title">Provide metadata</h3><p>Supply detailed icon information in bulk. You can provide any fields you have.</p></div><button type="button" class="icon-library-metadata-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12" /></svg></button></header>' +
-                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [], "svg": "..." } }</code><span class="icon-library-metadata-scope"></span><span>SVG is visual reference only and never changes the saved drawing. Metadata is always merged: supplied fields are updated, omitted fields are kept, and unlisted icons remain unchanged. List fields must be arrays of strings. Replace is unavailable here. The older brace format is still supported.</span></div>' +
+                '<div class="icon-library-metadata-format"><strong>JSON format</strong><code>{ "icon-name": { "categories": [], "description": "", "meaning": "", "tags": [], "aliases": [], "searchTerms": [], "useCases": [], "relatedConcepts": [], "svg": "..." } }</code><span class="icon-library-metadata-scope"></span><span>SVG is visual reference only and never changes the saved drawing. Merge updates supplied fields and keeps omitted fields. Replace clears existing provided metadata for each listed icon before applying the supplied fields. Unlisted icons are never changed. List fields must be arrays of strings. The older brace format is still supported.</span></div>' +
                 '<textarea class="icon-library-metadata-input" spellcheck="false" aria-label="Bulk icon metadata" placeholder="{&#10;  &quot;settings&quot;: {&#10;    &quot;categories&quot;: [&quot;Tools&quot;, &quot;Productivity&quot;],&#10;    &quot;description&quot;: &quot;A gear icon for app settings.&quot;,&#10;    &quot;meaning&quot;: &quot;Configuration and preferences.&quot;,&#10;    &quot;tags&quot;: [&quot;gear&quot;, &quot;cog&quot;],&#10;    &quot;aliases&quot;: [&quot;cog&quot;, &quot;gear&quot;],&#10;    &quot;searchTerms&quot;: [&quot;preferences&quot;, &quot;configuration&quot;],&#10;    &quot;useCases&quot;: [&quot;Application settings&quot;],&#10;    &quot;relatedConcepts&quot;: [&quot;sliders&quot;, &quot;wrench&quot;]&#10;  }&#10;}"></textarea>' +
                 '<div class="icon-library-metadata-feedback" aria-live="polite"></div><footer><button type="button" class="btn btn-secondary icon-library-metadata-cancel">Cancel</button><button type="button" class="btn btn-primary icon-library-metadata-save">Apply metadata</button></footer></section>';
             document.body.appendChild(overlay);
@@ -10925,7 +10928,8 @@ function getSelectedFinishCategories() {
             overlay.querySelector(".icon-library-metadata-close").addEventListener("click", close);
             overlay.querySelector(".icon-library-metadata-cancel").addEventListener("click", close);
             overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
-            overlay.querySelector(".icon-library-metadata-save").addEventListener("click", () => {
+
+            const applyMetadata = mode => {
                 const feedback = overlay.querySelector(".icon-library-metadata-feedback");
                 const parsed = parseIconLibraryUserMetadata(overlay.querySelector(".icon-library-metadata-input").value);
                 if (!parsed.entries.length) {
@@ -10934,31 +10938,43 @@ function getSelectedFinishCategories() {
                     return;
                 }
 
-                // Scope merges to icons that exist in the selected library(s).
+                const isAdmin = !!window.IconMakerSupabase?.isOfficialPublisher?.();
+                const isPrivate = iconLibrarySavedOnly;
+                if (mode === "replace" && !isPrivate && !isAdmin) {
+                    feedback.className = "icon-library-metadata-feedback error";
+                    feedback.textContent = "Replace is available for Official Icons only to Admins.";
+                    return;
+                }
+
                 const privateNames = getIconLibraryProjectNames("private");
                 const officialNames = getIconLibraryProjectNames("official");
                 const privateMetadata = getIconLibraryUserMetadata("private");
                 const officialMetadata = getIconLibraryUserMetadata("official");
-                const applyMerge = (target, entry) => {
+                const applyEntry = (target, entry, replace) => {
                     const key = normalizeLibraryIconName(entry.name);
-                    target[key] = { ...(target[key] || {}), ...entry, name: entry.name };
+                    target[key] = { ...(replace ? {} : (target[key] || {})), ...entry, name: entry.name };
                 };
 
                 parsed.entries.forEach(entry => {
                     const key = normalizeLibraryIconName(entry.name);
-                    if (iconLibrarySavedOnly) {
-                        if (privateNames.has(key)) applyMerge(privateMetadata, entry);
+                    if (isPrivate) {
+                        if (privateNames.has(key)) applyEntry(privateMetadata, entry, mode === "replace");
                         return;
                     }
-                    if (officialNames.has(key)) applyMerge(officialMetadata, entry);
-                    if (privateNames.has(key)) applyMerge(privateMetadata, entry);
+
+                    // Official mode: Merge is intentionally one-way (Official -> Private).
+                    // Replace is Admin-only and touches Official metadata only.
+                    if (mode === "replace") {
+                        if (isAdmin && officialNames.has(key)) applyEntry(officialMetadata, entry, true);
+                        return;
+                    }
+                    if (officialNames.has(key)) applyEntry(officialMetadata, entry, false);
+                    if (privateNames.has(key)) applyEntry(privateMetadata, entry, false);
                 });
 
                 try {
                     localStorage.setItem(ICON_LIBRARY_USER_METADATA_KEY, JSON.stringify(privateMetadata));
-                    if (!iconLibrarySavedOnly) {
-                        localStorage.setItem(ICON_LIBRARY_OFFICIAL_METADATA_KEY, JSON.stringify(officialMetadata));
-                    }
+                    if (!isPrivate) localStorage.setItem(ICON_LIBRARY_OFFICIAL_METADATA_KEY, JSON.stringify(officialMetadata));
                     invalidateIconLibraryIndex();
                     renderIconLibrary();
                     renderHomeProjects();
@@ -10966,25 +10982,51 @@ function getSelectedFinishCategories() {
                         feedback.className = "icon-library-metadata-feedback error";
                         feedback.textContent = "Applied " + parsed.entries.length + " valid entr" +
                             (parsed.entries.length === 1 ? "y. " : "ies. ") +
-                            "using Merge. Skipped invalid entries: " + parsed.errors.join(" ");
+                            "using " + (mode === "replace" ? "Replace" : "Merge") + ". Skipped invalid entries: " + parsed.errors.join(" ");
                     } else {
                         feedback.className = "icon-library-metadata-feedback success";
                         feedback.textContent = "Applied metadata to " + parsed.entries.length +
-                            " icon(s) using Merge.";
+                            " icon(s) using " + (mode === "replace" ? "Replace" : "Merge") + ".";
                         window.setTimeout(close, 900);
                     }
                 } catch (error) {
                     feedback.className = "icon-library-metadata-feedback error";
                     feedback.textContent = "Could not save metadata in this browser. Check available storage and try again.";
                 }
+            };
+
+            overlay.querySelector(".icon-library-metadata-save").addEventListener("click", () => {
+                const isAdmin = !!window.IconMakerSupabase?.isOfficialPublisher?.();
+                const isPrivate = iconLibrarySavedOnly;
+                const choice = document.createElement("div");
+                choice.className = "app-dialog-overlay icon-library-metadata-choice";
+                choice.innerHTML = '<section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="metadata-choice-title">' +
+                    '<div class="app-dialog-header"><h3 id="metadata-choice-title">Choose metadata action</h3></div>' +
+                    '<p>' + (isPrivate
+                        ? 'Choose how to apply metadata to matching Private icons.'
+                        : isAdmin
+                            ? 'Merge updates matching Official and Private metadata. Replace affects matching Official metadata only.'
+                            : 'Merge updates matching Official metadata and matching Private metadata. Replace is available only in Private Icons mode.') +
+                    '</p><div class="app-dialog-actions"><button type="button" class="btn btn-secondary metadata-choice-cancel">Cancel</button>' +
+                    (isPrivate || isAdmin ? '<button type="button" class="btn btn-secondary metadata-choice-replace">Replace</button>' : '') +
+                    '<button type="button" class="btn btn-primary metadata-choice-merge">Merge</button></div></section>';
+                document.body.appendChild(choice);
+                const dismiss = () => choice.remove();
+                choice.querySelector(".metadata-choice-cancel").addEventListener("click", dismiss);
+                choice.addEventListener("click", event => { if (event.target === choice) dismiss(); });
+                choice.querySelector(".metadata-choice-merge").addEventListener("click", () => { dismiss(); applyMetadata("merge"); });
+                choice.querySelector(".metadata-choice-replace")?.addEventListener("click", () => { dismiss(); applyMetadata("replace"); });
             });
             iconLibraryMetadataModal = overlay;
         }
+        const isAdmin = !!window.IconMakerSupabase?.isOfficialPublisher?.();
         const scope = iconLibraryMetadataModal.querySelector(".icon-library-metadata-scope");
         if (scope) {
             scope.textContent = iconLibrarySavedOnly
-                ? "Private Icons selected: Merge updates only matching icons in your Private Library. Official metadata is never changed."
-                : "Official Icons selected: Merge updates matching Official icons and also matching Private icons when the same icon exists in both. Official-only icons receive Official metadata only. Replace is disabled.";
+                ? "Private Icons selected: Merge and Replace update only matching Private icons. Official metadata is never changed."
+                : isAdmin
+                    ? "Official Icons selected (Admin): Merge updates matching Official and Private icons. Replace updates matching Official icons only."
+                    : "Official Icons selected: Merge updates matching Official and Private icons. Replace is unavailable to non-admin users.";
         }
         iconLibraryMetadataModal.classList.add("open");
         iconLibraryMetadataModal.querySelector(".icon-library-metadata-input").focus();
