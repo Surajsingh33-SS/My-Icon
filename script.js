@@ -11968,7 +11968,10 @@ function getSelectedFinishCategories() {
                 : activeGallerySpace === "official"
                     ? "No icons have been published to the Official Gallery yet."
                     : "No finished projects yet.";
-            homeProjectGrid.innerHTML = `<p class="home-no-results">${msg}</p>`;
+            const emptyMessage = document.createElement("p");
+            emptyMessage.className = "home-no-results";
+            emptyMessage.textContent = msg;
+            homeProjectGrid.replaceChildren(emptyMessage);
             updateProjectCounters();
             return;
         }
