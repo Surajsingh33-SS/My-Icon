@@ -1105,6 +1105,7 @@
     let selectedCategoryFilter = null;
     let selectedHomeProject = null;
     let projectToDelete = null;
+    let officialEditSession = null;
 
     let artboardSize = 24; // 24 | 32
     let liveSymmetryH = false;
@@ -2136,6 +2137,23 @@ function getSelectedFinishCategories() {
 
 
     function saveProjectManager(allowRecoveryWrite = false) {
+        // Official editing uses a temporary in-memory project. Never send that
+        // working copy to the user's Private Library or local project manager.
+        if (officialEditSession) {
+            const working = projectManager.projects.find(project =>
+                String(project.id) === String(officialEditSession.workingProject.id)
+            );
+            if (working) {
+                working.data = getProjectData();
+                working.savedAt = new Date().toISOString();
+                if (working.status === "finished") {
+                    working.thumbnail = generateSVG(working.finishStrokeColor === "white" ? "white" : "original");
+                }
+                officialEditSession.workingProject = working;
+            }
+            setSaveStatus(true);
+            return true;
+        }
         if (projectStorageRecoveryRequired && !allowRecoveryWrite) {
             setSaveStatus(false);
             console.warn("Project save blocked until the existing saved data is recovered.");
@@ -12507,6 +12525,176 @@ function getSelectedFinishCategories() {
         return { button, panel };
     }
 
+    function isCurrentUserOfficialPublisher() {
+        return !!window.IconMakerSupabase?.isOfficialPublisher?.();
+    }
+
+    function ensureOfficialEditorBar() {
+        let bar = document.getElementById("official-editor-bar");
+        if (bar) return bar;
+
+        bar = document.createElement("div");
+        bar.id = "official-editor-bar";
+        bar.className = "official-editor-bar";
+        bar.innerHTML = `
+            <span class="official-editor-bar-label">Editing Official icon</span>
+            <span class="official-editor-bar-hint">Changes are a draft until you save them</span>
+            <div class="official-editor-bar-actions">
+                <button type="button" data-official-cancel>Cancel</button>
+                <button type="button" data-official-save>Save to Official</button>
+            </div>`;
+        document.body.appendChild(bar);
+
+        bar.querySelector("[data-official-cancel]")?.addEventListener("click", () => {
+            if (!officialEditSession) return;
+            if (!window.confirm("Discard your unsaved Official icon changes?")) return;
+            finishOfficialEdit(null);
+            showToast("Official edit cancelled. The published icon was not changed.", "info");
+        });
+        bar.querySelector("[data-official-save]")?.addEventListener("click", async event => {
+            if (!officialEditSession) return;
+            const button = event.currentTarget;
+            button.disabled = true;
+            const oldLabel = button.textContent;
+            button.textContent = "Saving…";
+            try {
+                const working = officialEditSession.workingProject;
+                working.data = getProjectData();
+                working.savedAt = new Date().toISOString();
+                working.thumbnail = generateSVG(working.finishStrokeColor === "white" ? "white" : "original");
+                const saved = await window.IconMakerSupabase.saveOfficialProject(working);
+                finishOfficialEdit(saved);
+                showToast(`"${saved.name || "Official icon"}" updated in the Official Library.`, "success");
+            } catch (error) {
+                console.error("Could not save Official icon:", error);
+                showToast(error?.message || "Could not save this Official icon.", "error");
+            } finally {
+                button.disabled = false;
+                button.textContent = oldLabel;
+            }
+        });
+        return bar;
+    }
+
+    function finishOfficialEdit(savedProject) {
+        const session = officialEditSession;
+        if (!session) return;
+        officialEditSession = null;
+        document.getElementById("official-editor-bar")?.remove();
+
+        projectManager = session.managerSnapshot;
+        if (session.previousActiveProjectId &&
+            projectManager.projects.some(project => String(project.id) === String(session.previousActiveProjectId))) {
+            projectManager.activeProjectId = session.previousActiveProjectId;
+            restoreProjectFromBrowser();
+        }
+        resetProjectHistory();
+        renderUnfinishedProjects();
+        updateActiveProjectNameDisplay();
+
+        if (savedProject) {
+            const updated = { ...savedProject, _gallerySpace: "official", _officialSource: "cloud" };
+            OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(project =>
+                String(project.id) !== String(updated.id)
+            );
+            OFFICIAL_GALLERY_PROJECTS.unshift(updated);
+            selectedHomeProject = null;
+            homeScreen?.classList.add("show");
+            activeGallerySpace = "official";
+            try { localStorage.setItem(GALLERY_SPACE_STORAGE_KEY, "official"); } catch (_) {}
+            updateGallerySpaceUI();
+            renderHomeProjects();
+            renderManagementTable();
+            showProjectPreview(updated);
+        } else {
+            homeScreen?.classList.add("show");
+            activeGallerySpace = "official";
+            try { localStorage.setItem(GALLERY_SPACE_STORAGE_KEY, "official"); } catch (_) {}
+            updateGallerySpaceUI();
+            renderHomeProjects();
+            renderManagementTable();
+            showProjectPreview(session.sourceProject);
+        }
+        updateHomeButtonLabel();
+    }
+
+    function startOfficialEdit(project) {
+        if (!isCurrentUserOfficialPublisher()) {
+            showToast("Only an authorized Official Publisher can edit Official icons.", "error");
+            return;
+        }
+        if (!window.IconMakerSupabase?.getSession?.()) {
+            window.IconMakerSupabase?.openAuthModal?.();
+            return;
+        }
+        if (!project?.data || !project.id) {
+            showToast("This Official icon does not contain editable project data.", "error");
+            return;
+        }
+        if (officialEditSession) {
+            showToast("Finish or cancel the current Official edit first.", "info");
+            return;
+        }
+
+        saveProjectToBrowser();
+        const managerSnapshot = structuredClone(projectManager);
+        const workingProject = structuredClone(project);
+        delete workingProject._gallerySpace;
+        delete workingProject._officialSource;
+        delete workingProject._cloudUpdatedAt;
+        projectManager.projects = projectManager.projects.filter(item =>
+            String(item.id) !== String(workingProject.id)
+        );
+        projectManager.projects.push(workingProject);
+        const previousActiveProjectId = managerSnapshot.activeProjectId;
+        projectManager.activeProjectId = workingProject.id;
+        officialEditSession = {
+            sourceProject: structuredClone(project),
+            managerSnapshot,
+            previousActiveProjectId,
+            workingProject
+        };
+
+        if (!restoreProjectFromBrowser()) {
+            finishOfficialEdit(null);
+            showToast("Could not load this Official icon into the editor.", "error");
+            return;
+        }
+        resetProjectHistory();
+        updateActiveProjectNameDisplay();
+        ensureOfficialEditorBar();
+        closeProjectPreview();
+        openIconEditor();
+        showToast(`Editing Official icon: ${project.name || "Untitled"}`, "info");
+    }
+
+    async function publishPrivateProjectToOfficial(project) {
+        if (!isCurrentUserOfficialPublisher()) {
+            showToast("Only an authorized Official Publisher can publish to the Official Library.", "error");
+            return;
+        }
+        if (!project?.id || !project.data || project.status !== "finished") {
+            showToast("Only finished icons with saved project data can be published.", "error");
+            return;
+        }
+        const confirmed = await showAppDialog({
+            title: "Publish to Official Library?",
+            message: `"${project.name || "Untitled icon"}" will become visible to everyone as a read-only Official icon. You can update it later as a publisher.`,
+            confirmText: "Publish icon"
+        });
+        if (!confirmed.confirmed) return;
+
+        try {
+            const published = await window.IconMakerSupabase.saveOfficialProject(project);
+            showToast(`"${published.name || project.name || "Icon"}" is now in the Official Library.`, "success");
+            setGallerySpace("official");
+            showProjectPreview(published);
+        } catch (error) {
+            console.error("Official publish failed:", error);
+            showToast(error?.message || "Could not publish this icon.", "error");
+        }
+    }
+
     function showProjectPreview(project) {
         if (!project || !projectDetails) return;
 
@@ -12533,12 +12721,36 @@ function getSelectedFinishCategories() {
 
         if (projectName) projectName.textContent = project.name || "Untitled icon";
         const isOfficialProject = (project._gallerySpace || activeGallerySpace) === "official";
+        const canPublishOfficial = isCurrentUserOfficialPublisher();
         if (projectEditButton) {
-            projectEditButton.disabled = isOfficialProject;
-            projectEditButton.textContent = isOfficialProject ? "Read only" : "Edit";
-            projectEditButton.title = isOfficialProject
-                ? "Official icons cannot be edited directly. Use Remix to create a Private copy."
-                : "Edit this Private icon";
+            const canEdit = !isOfficialProject || canPublishOfficial;
+            projectEditButton.disabled = !canEdit;
+            projectEditButton.textContent = canEdit
+                ? (isOfficialProject ? "Edit Official" : "Edit")
+                : "Read only";
+            projectEditButton.title = !canEdit
+                ? "Official icons are read-only. Use Remix to create a Private copy."
+                : (isOfficialProject ? "Edit this published Official icon" : "Edit this Private icon");
+            projectEditButton.setAttribute("aria-label", projectEditButton.textContent);
+        }
+        let publishButton = document.getElementById("project-publish-official-button");
+        if (!publishButton && projectEditButton?.parentElement) {
+            publishButton = document.createElement("button");
+            publishButton.type = "button";
+            publishButton.id = "project-publish-official-button";
+            publishButton.className = "project-publish-official-button";
+            publishButton.textContent = "Publish to Official";
+            publishButton.addEventListener("click", () => {
+                if (selectedHomeProject) publishPrivateProjectToOfficial(selectedHomeProject);
+            });
+            projectEditButton.insertAdjacentElement("afterend", publishButton);
+        }
+        if (publishButton) {
+            publishButton.hidden = !canPublishOfficial || isOfficialProject;
+            publishButton.disabled = project.status !== "finished" || !project.data;
+            publishButton.title = publishButton.disabled
+                ? "Only finished icons with saved project data can be published."
+                : "Publish this icon to the shared Official Library";
         }
         renderProjectCategoryBadges(project);
         ensureProjectCategoryEditor();
@@ -12651,7 +12863,11 @@ function getSelectedFinishCategories() {
     projectEditButton?.addEventListener("click", () => {
         if (!selectedHomeProject) return;
         if ((selectedHomeProject._gallerySpace || activeGallerySpace) === "official") {
-            showToast("Official icons are read-only. Use Remix to create a Private copy.", "info");
+            if (!isCurrentUserOfficialPublisher()) {
+                showToast("Official icons are read-only. Use Remix to create a Private copy.", "info");
+                return;
+            }
+            startOfficialEdit(selectedHomeProject);
             return;
         }
         const id = selectedHomeProject.id;
@@ -12929,10 +13145,14 @@ function getSelectedFinishCategories() {
             const editBtn = document.createElement("button");
             editBtn.type = "button";
             editBtn.className = "btn btn-sm btn-secondary";
-            editBtn.textContent = isOfficialProject ? "Read only" : "Edit";
-            editBtn.disabled = isOfficialProject;
-            if (isOfficialProject) {
-                editBtn.title = "Official icons cannot be edited from the Private editor.";
+            const canEditProject = !isOfficialProject || isCurrentUserOfficialPublisher();
+            editBtn.textContent = canEditProject ? (isOfficialProject ? "Edit Official" : "Edit") : "Read only";
+            editBtn.disabled = !canEditProject;
+            if (!canEditProject) {
+                editBtn.title = "Official icons are read-only for regular accounts.";
+            } else if (isOfficialProject) {
+                editBtn.title = "Edit this published Official icon";
+                editBtn.addEventListener("click", () => startOfficialEdit(project));
             } else {
                 editBtn.addEventListener("click", () => {
                     const success = switchProject(project.id);
