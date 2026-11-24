@@ -1248,7 +1248,13 @@
         toast.className = `toast toast-${type}`;
 
         const icon = type === "success" ? "✓" : type === "error" ? "✕" : "✦";
-        toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-message">${message}</span>`;
+        const iconNode = document.createElement("span");
+        const messageNode = document.createElement("span");
+        iconNode.className = "toast-icon";
+        messageNode.className = "toast-message";
+        iconNode.textContent = icon;
+        messageNode.textContent = String(message ?? "");
+        toast.append(iconNode, messageNode);
 
         toastContainer.appendChild(toast);
 
@@ -11880,7 +11886,13 @@ function getSelectedFinishCategories() {
                 const item = document.createElement("button");
                 item.type = "button";
                 item.className = `cat-list-pill ${selectedCategoryFilter === cat ? "active" : ""}`;
-                item.innerHTML = `<span class="cat-pill-name">${cat}</span><span class="cat-pill-count">${categoryCounts[cat]}</span>`;
+                const nameNode = document.createElement("span");
+                const countNode = document.createElement("span");
+                nameNode.className = "cat-pill-name";
+                countNode.className = "cat-pill-count";
+                nameNode.textContent = String(cat);
+                countNode.textContent = String(categoryCounts[cat]);
+                item.append(nameNode, countNode);
                 item.addEventListener("click", () => {
                     selectedCategoryFilter = selectedCategoryFilter === cat ? null : cat;
                     renderHomeProjects();
