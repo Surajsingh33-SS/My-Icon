@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
     const secretKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || (secretEnv ? JSON.parse(secretEnv).default : undefined);
     const publishableEnv = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
     const publishableKey = publishableEnv ? JSON.parse(publishableEnv).default : Deno.env.get("SUPABASE_ANON_KEY");
-    if (!url || !secretKey || !publishableKey) throw new RequestError("Supabase server configuration is incomplete.");
+    if (!url || !secretKey || !publishableKey) throw new Error("Supabase server configuration is incomplete.");
 
     const authorization = req.headers.get("Authorization") || "";
     const token = authorization.replace(/^Bearer\s+/i, "");
@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
     const { data: ownerRow, error: ownerError } = await admin
       .from("markora_owner_registry").select("owner_id").eq("singleton", true).maybeSingle();
     if (ownerError) throw ownerError;
-    if (!ownerRow?.owner_id) throw new RequestError("Markora owner registry is not configured.");
+    if (!ownerRow?.owner_id) throw new Error("Markora owner registry is not configured.");
     const isOwner = ownerRow.owner_id === user.id;
 
     const requireOwner = () => {
