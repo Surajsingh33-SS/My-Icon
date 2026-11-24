@@ -9406,20 +9406,22 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
 }
 
 
-/* Preferences scrolls inside its own view, while the home shell stays fixed. */
+/* Preferences uses the main home viewport as its single scroll container.
+   Avoid a nested scroll area here: it can behave inconsistently when the
+   browser viewport changes (for example, when DevTools is opened/closed). */
 .home-main:has(#home-view-settings.active) {
     min-height: 0;
-    overflow: hidden !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 #home-view-settings.active {
-    flex: 1 1 0;
-    min-height: 0;
-    height: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
+    flex: 0 0 auto;
+    min-height: 100%;
+    height: auto;
+    overflow: visible;
 }
 
 #home-view-settings.active .settings-grid {
