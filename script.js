@@ -11415,6 +11415,10 @@ function getSelectedFinishCategories() {
         const isOfficial = activeGallerySpace === "official";
         // Both spaces use the exact same Gallery interface; only the data source changes.
         if (galleryContent) galleryContent.dataset.gallerySpace = activeGallerySpace;
+        const gallerySpaceLabel = document.getElementById("gallery-space-label");
+        if (gallerySpaceLabel) {
+            gallerySpaceLabel.textContent = isOfficial ? "Gallery (Official)" : "Gallery (Private)";
+        }
         if (gallerySpaceToggle) {
             const label = isOfficial
                 ? "Switch to Private Space"
