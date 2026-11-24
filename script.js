@@ -767,8 +767,11 @@
         }
     }
 
-    // Official Library is server-managed; browser-local copies are not authoritative.
-    OFFICIAL_GALLERY_PROJECTS = [];
+    // Restore previously published browser-local icons before cloud loading.
+    // Cloud records are merged afterward, so an empty backend cannot blank this library.
+    OFFICIAL_GALLERY_PROJECTS = readGalleryStorage(OFFICIAL_GALLERY_STORAGE_KEY, [])
+        .filter(project => project && typeof project === "object" && !Array.isArray(project))
+        .map(project => ({ ...project, _gallerySpace: "official" }));
 
     function saveOfficialGalleryProjects() {
         console.warn("Official Library is read-only. Browser-side changes are not published.");
