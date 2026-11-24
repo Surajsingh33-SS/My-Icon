@@ -8989,3 +8989,9 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
 .iconmaker-auth-footnote span{color:var(--accent-color,var(--accent,#ff0077));font-size:13px}
 @media(max-width:640px){.iconmaker-auth-modal{padding:12px}.iconmaker-auth-dialog{display:block;width:min(100%,440px);min-height:0;max-height:calc(100dvh - 24px);overflow:auto;border-radius:18px}.iconmaker-auth-brand-panel{display:none}.iconmaker-auth-content{padding:55px 26px 28px}.iconmaker-auth-close{right:12px;top:12px}}
 @media(max-width:380px){.iconmaker-auth-content{padding-right:20px;padding-left:20px}.iconmaker-auth-dialog h2{font-size:22px}}
+
+/* One-time migration control for verified Official Publishers only. */
+.iconmaker-official-migrate-button{display:block;width:100%;margin:0 0 10px;padding:9px 11px;border:1px solid color-mix(in srgb,var(--accent-color,var(--accent,#ff0077)) 42%,var(--border-color,transparent));border-radius:9px;background:color-mix(in srgb,var(--accent-color,var(--accent,#ff0077)) 9%,transparent);color:var(--text-color,inherit);font:inherit;font-size:10px;font-weight:700;text-align:left;cursor:pointer;transition:background .18s,border-color .18s}
+.iconmaker-official-migrate-button:hover{background:color-mix(in srgb,var(--accent-color,var(--accent,#ff0077)) 15%,transparent);border-color:var(--accent-color,var(--accent,#ff0077))}
+.iconmaker-official-migrate-button:disabled{opacity:.6;cursor:wait}
+.iconmaker-official-migrate-button[hidden]{display:none}
