@@ -7789,40 +7789,62 @@ function getSelectedFinishCategories() {
         layerCount.textContent = shapes.length;
 
         if (shapes.length === 0) {
-            layerList.innerHTML = `<p class="empty-layers">No layers yet</p>`;
+            const empty = document.createElement("p");
+            empty.className = "empty-layers";
+            empty.textContent = "No layers yet";
+            layerList.replaceChildren(empty);
             return;
         }
 
-        layerList.innerHTML = [...shapes]
-            .map(shape => {
-                const index = shapes.indexOf(shape);
-                const isSelected = selectedShapes.includes(shape) || selectedShape === shape;
-                const safeName = shape.name || `${shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}`;
+        const fragment = document.createDocumentFragment();
+        [...shapes].reverse().forEach(shape => {
+            const index = shapes.indexOf(shape);
+            const isSelected = selectedShapes.includes(shape) || selectedShape === shape;
+            const type = String(shape.type || "shape");
+            const name = String(shape.name || (type.charAt(0).toUpperCase() + type.slice(1)));
+            const item = document.createElement("div");
+            item.className = "layer-item";
+            if (isSelected) item.classList.add("active");
+            item.dataset.layerIndex = String(index);
 
-                // Bug Fix: When shape.locked is true, show locked.svg!
-                const lockIconSrc = shape.locked ? "assets/icons/locked.svg" : "assets/icons/unlocked.svg";
-                const lockTitle = shape.locked ? "Unlock layer" : "Lock layer";
+            const nameNode = document.createElement("span");
+            nameNode.className = "layer-name";
+            nameNode.title = "Double click to rename";
+            nameNode.textContent = name;
 
-                return `
-                    <div class="layer-item ${isSelected ? "active" : ""}" data-layer-index="${index}">
-                        <span class="layer-name" title="Double click to rename">${safeName}</span>
-                        <span class="layer-type">${shape.type}</span>
-                        <div class="layer-controls">
-                            <button class="layer-move-btn" data-layer-action="up" data-layer-index="${index}" type="button" title="Bring forward" ${index === shapes.length - 1 ? "disabled" : ""}>↑</button>
-                            <button class="layer-move-btn" data-layer-action="down" data-layer-index="${index}" type="button" title="Send backward" ${index === 0 ? "disabled" : ""}>↓</button>
-                            <button class="layer-visibility-btn" data-layer-action="visibility" data-layer-index="${index}" type="button" title="${shape.hidden ? "Show layer" : "Hide layer"}">
-                                ${shape.hidden ? "○" : "●"}
-                            </button>
-                            <button class="layer-lock-btn" data-layer-action="lock" data-layer-index="${index}" type="button" title="${lockTitle}">
-                                <img src="${lockIconSrc}" alt="${shape.locked ? "Locked" : "Unlocked"}">
-                            </button>
-                            <button class="layer-delete-btn" data-layer-action="delete" data-layer-index="${index}" type="button" title="Delete layer">×</button>
-                        </div>
-                    </div>
-                `;
-            })
-            .reverse()
-            .join("");
+            const typeNode = document.createElement("span");
+            typeNode.className = "layer-type";
+            typeNode.textContent = type;
+
+            const controls = document.createElement("div");
+            controls.className = "layer-controls";
+            const addButton = (className, action, title, label, disabled = false) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = className;
+                button.dataset.layerAction = action;
+                button.dataset.layerIndex = String(index);
+                button.title = title;
+                button.textContent = label;
+                button.disabled = disabled;
+                controls.appendChild(button);
+                return button;
+            };
+            addButton("layer-move-btn", "up", "Bring forward", "↑", index === shapes.length - 1);
+            addButton("layer-move-btn", "down", "Send backward", "↓", index === 0);
+            addButton("layer-visibility-btn", "visibility", shape.hidden ? "Show layer" : "Hide layer", shape.hidden ? "○" : "●");
+
+            const lockButton = addButton("layer-lock-btn", "lock", shape.locked ? "Unlock layer" : "Lock layer", "");
+            const lockImage = document.createElement("img");
+            lockImage.src = shape.locked ? "assets/icons/locked.svg" : "assets/icons/unlocked.svg";
+            lockImage.alt = shape.locked ? "Locked" : "Unlocked";
+            lockButton.appendChild(lockImage);
+            addButton("layer-delete-btn", "delete", "Delete layer", "×");
+
+            item.append(nameNode, typeNode, controls);
+            fragment.appendChild(item);
+        });
+        layerList.replaceChildren(fragment);
     }
 
     function reorderShape(index, direction) {
@@ -12228,13 +12250,13 @@ function getSelectedFinishCategories() {
 
                     const header = document.createElement("div");
                     header.className = "gallery-category-header";
-                    header.innerHTML = `
-                <span class="cat-header-title">${catName}</span>
-                <span class="cat-header-count">
-                    ${grouped[catName].length}
-                    ${grouped[catName].length === 1 ? "icon" : "icons"}
-                </span>
-            `;
+                    const title = document.createElement("span");
+                    title.className = "cat-header-title";
+                    title.textContent = catName;
+                    const count = document.createElement("span");
+                    count.className = "cat-header-count";
+                    count.textContent = `${grouped[catName].length} ${grouped[catName].length === 1 ? "icon" : "icons"}`;
+                    header.append(title, count);
 
                     const cardsGrid = document.createElement("div");
                     cardsGrid.className = "gallery-category-cards";
