@@ -191,6 +191,14 @@
                             <polyline points="9 22 9 12 15 12 15 22" />
                         </svg>
                         <span>Gallery</span>
+                        <span class="gallery-space-toggle" id="gallery-space-toggle-wrap" role="button" tabindex="0">
+                            <svg id="gallery-space-toggle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="16.033" y1="5.006" x2="20.033" y2="9.006"/>
+                                <line x1="20.033" y1="9.006" x2="4.033" y2="9.006"/>
+                                <line x1="3.967" y1="15.061" x2="19.967" y2="15.061"/>
+                                <line x1="7.967" y1="19.061" x2="3.967" y2="15.061"/>
+                            </svg>
+                        </span>
                     </button>
 
                     <button class="sidebar-option" data-home-view="icon-library">
@@ -311,6 +319,8 @@
         <main class="home-main">
             <!-- VIEW: GALLERY -->
             <div id="home-view-gallery" class="home-view-section active">
+                <div id="private-gallery-content">
+
 
                 <!-- HOME NAVBAR -->
                 <header class="home-navbar">
@@ -429,6 +439,17 @@
 
                 </section>
 
+
+                </div>
+
+                <section id="official-gallery-content" class="official-gallery-content" hidden>
+                    <div class="official-gallery-empty">
+                        <div class="official-gallery-mark" aria-hidden="true">✦</div>
+                        <h2>Official Gallery</h2>
+                        <p>Explore icons published by the Icon Maker Pro creator.</p>
+                        <span class="official-gallery-status">No published icons yet</span>
+                    </div>
+                </section>
             </div>
 
             <!-- VIEW: ICON LIBRARY -->
