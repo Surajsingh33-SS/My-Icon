@@ -12722,6 +12722,12 @@ function getSelectedFinishCategories() {
         if (projectName) projectName.textContent = project.name || "Untitled icon";
         const isOfficialProject = (project._gallerySpace || activeGallerySpace) === "official";
         const canPublishOfficial = isCurrentUserOfficialPublisher();
+        if (projectDeleteButton) {
+            projectDeleteButton.hidden = isOfficialProject && !canPublishOfficial;
+            projectDeleteButton.title = isOfficialProject
+                ? "Delete this Official icon"
+                : "Delete this Private icon";
+        }
         if (projectEditButton) {
             const canEdit = !isOfficialProject || canPublishOfficial;
             projectEditButton.disabled = !canEdit;
@@ -12934,19 +12940,51 @@ function getSelectedFinishCategories() {
         showToast(`Remixed as "${remixName}"`, "success");
     });
 
+    async function deleteOfficialProjectFromLibrary(project) {
+        if (!project || !isCurrentUserOfficialPublisher()) return;
+        const name = project.name || "Untitled icon";
+        const decision = await showAppDialog({
+            title: "Delete Official icon?",
+            message: `Permanently delete "${name}" from the shared Official Library? This affects every user.`,
+            confirmText: "Delete",
+            danger: true
+        });
+        if (!decision.confirmed) return;
+
+        try {
+            if (!window.IconMakerSupabase?.deleteOfficialProject) {
+                throw new Error("Official Library deletion is unavailable. Refresh and try again.");
+            }
+            await window.IconMakerSupabase.deleteOfficialProject(project.id);
+            OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(item =>
+                String(item.id) !== String(project.id)
+            );
+            if (selectedHomeProject && String(selectedHomeProject.id) === String(project.id)) {
+                closeProjectPreview();
+            }
+            renderHomeProjects();
+            renderManagementTable();
+            updateProjectCounters();
+            showToast(`Deleted "${name}" from the Official Library.`, "success");
+        } catch (error) {
+            console.error("Official Library delete failed:", error);
+            showToast(error?.message || "Could not delete this Official icon.", "error");
+        }
+    }
+
     projectDeleteButton?.addEventListener("click", async () => {
         if (!selectedHomeProject) return;
-        if ((selectedHomeProject._gallerySpace || activeGallerySpace) === "official") {
-            showToast("Official icons are read-only. Use Remix to create your own copy.", "info");
+        const space = selectedHomeProject._gallerySpace || activeGallerySpace;
+        if (space === "official") {
+            if (!isCurrentUserOfficialPublisher()) return;
+            await deleteOfficialProjectFromLibrary(selectedHomeProject);
             return;
         }
-        const name = selectedHomeProject.name || "Untitled icon";
 
+        const name = selectedHomeProject.name || "Untitled icon";
         const decision = await showAppDialog({ title: "Delete icon?", message: `Are you sure you want to delete "${name}"?`, confirmText: "Delete", danger: true });
         if (!decision.confirmed) return;
 
-        const space = selectedHomeProject._gallerySpace || activeGallerySpace;
-        if (space === "official") return;
         projectManager.projects = projectManager.projects.filter(p => p.id !== selectedHomeProject.id);
         saveProjectManager();
         window.IconMakerSupabase?.deletePrivateProject?.(selectedHomeProject.id).catch(error => console.error("Cloud delete failed:", error));
@@ -13160,64 +13198,65 @@ function getSelectedFinishCategories() {
                 });
             }
 
-            const delBtn = document.createElement("button");
-            delBtn.type = "button";
-            delBtn.className = "btn btn-sm btn-danger";
-            delBtn.textContent = isOfficialProject ? "Read only" : "Delete";
-            delBtn.disabled = isOfficialProject;
-            if (isOfficialProject) delBtn.title = "Official Library icons cannot be deleted by users.";
-            delBtn.addEventListener("click", async () => {
-                if (isOfficialProject) return;
-                if (isFinished) {
-                    if (deleteConfirmModal && deleteTargetProjectName && deleteConfirmBtn && deleteCancelBtn) {
-                        deleteTargetProjectName.textContent = project.name || "this icon";
-                        deleteConfirmModal.style.display = "flex";
-                        deleteConfirmModal.classList.add("show");
-
-                        deleteConfirmBtn.onclick = () => {
-                            deleteConfirmModal.style.display = "none";
-                            deleteConfirmModal.classList.remove("show");
-                            if (isOfficialProject) return;
-                            projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
-                            saveProjectManager();
-                            window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error => console.error("Cloud delete failed:", error));
-                            renderManagementTable();
-                            renderHomeProjects();
-                            renderUnfinishedProjects();
-                            showToast(`Deleted "${project.name}"`, "info");
-                        };
-
-                        deleteCancelBtn.onclick = () => {
-                            deleteConfirmModal.style.display = "none";
-                            deleteConfirmModal.classList.remove("show");
-                        };
-                    } else {
-                        const decision = await showAppDialog({ title: "Delete finished icon?", message: `Permanently delete finished icon "${project.name}"?`, confirmText: "Delete", danger: true });
-                        if (decision.confirmed) {
-                            if (isOfficialProject) return;
-                            projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
-                            saveProjectManager();
-                            window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error => console.error("Cloud delete failed:", error));
-                            renderManagementTable();
-                            renderHomeProjects();
-                            renderUnfinishedProjects();
-                            showToast(`Deleted "${project.name}"`, "info");
-                        }
+            const canDeleteProject = !isOfficialProject || isCurrentUserOfficialPublisher();
+            if (canDeleteProject) {
+                const delBtn = document.createElement("button");
+                delBtn.type = "button";
+                delBtn.className = "btn btn-sm btn-danger";
+                delBtn.textContent = "Delete";
+                delBtn.addEventListener("click", async () => {
+                    if (isOfficialProject) {
+                        await deleteOfficialProjectFromLibrary(project);
+                        return;
                     }
-                } else {
-                    if (isOfficialProject) return;
-                    projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
-                    saveProjectManager();
-                    window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error => console.error("Cloud delete failed:", error));
-                    renderManagementTable();
-                    renderHomeProjects();
-                    renderUnfinishedProjects();
-                    showToast("Draft deleted", "info");
-                }
-            });
+                    if (isFinished) {
+                        if (deleteConfirmModal && deleteTargetProjectName && deleteConfirmBtn && deleteCancelBtn) {
+                            deleteTargetProjectName.textContent = project.name || "this icon";
+                            deleteConfirmModal.style.display = "flex";
+                            deleteConfirmModal.classList.add("show");
+
+                            deleteConfirmBtn.onclick = () => {
+                                deleteConfirmModal.style.display = "none";
+                                deleteConfirmModal.classList.remove("show");
+                                projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                                saveProjectManager();
+                                window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error => console.error("Cloud delete failed:", error));
+                                renderManagementTable();
+                                renderHomeProjects();
+                                renderUnfinishedProjects();
+                                showToast(`Deleted "${project.name}"`, "info");
+                            };
+
+                            deleteCancelBtn.onclick = () => {
+                                deleteConfirmModal.style.display = "none";
+                                deleteConfirmModal.classList.remove("show");
+                            };
+                        } else {
+                            const decision = await showAppDialog({ title: "Delete finished icon?", message: `Permanently delete finished icon "${project.name}"?`, confirmText: "Delete", danger: true });
+                            if (decision.confirmed) {
+                                projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                                saveProjectManager();
+                                window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error => console.error("Cloud delete failed:", error));
+                                renderManagementTable();
+                                renderHomeProjects();
+                                renderUnfinishedProjects();
+                                showToast(`Deleted "${project.name}"`, "info");
+                            }
+                        }
+                    } else {
+                        projectManager.projects = projectManager.projects.filter(p => p.id !== project.id);
+                        saveProjectManager();
+                        window.IconMakerSupabase?.deletePrivateProject?.(project.id).catch(error => console.error("Cloud delete failed:", error));
+                        renderManagementTable();
+                        renderHomeProjects();
+                        renderUnfinishedProjects();
+                        showToast("Draft deleted", "info");
+                    }
+                });
+                actions.appendChild(delBtn);
+            }
 
             actions.appendChild(editBtn);
-            actions.appendChild(delBtn);
 
             card.appendChild(preview);
             card.appendChild(info);
