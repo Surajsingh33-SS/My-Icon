@@ -12453,6 +12453,10 @@ function getSelectedFinishCategories() {
 
     projectEditButton?.addEventListener("click", () => {
         if (!selectedHomeProject) return;
+        if ((selectedHomeProject._gallerySpace || activeGallerySpace) === "official") {
+            showToast("Official icons are read-only. Use Remix to create a Private copy.", "info");
+            return;
+        }
         const id = selectedHomeProject.id;
         const success = switchProject(id);
         if (success) {
@@ -12470,7 +12474,9 @@ function getSelectedFinishCategories() {
         ) {
             saveProjectToBrowser();
         }
-        const sourceProject = projectManager.projects.find(p => p.id === selectedHomeProject.id);
+        // Remix from the selected space's actual project object. Official
+        // projects are not required to exist in the Private project manager.
+        const sourceProject = selectedHomeProject;
         if (!sourceProject?.data) {
             showToast("Original icon data missing", "error");
             return;
@@ -12517,10 +12523,18 @@ function getSelectedFinishCategories() {
         const decision = await showAppDialog({ title: "Delete icon?", message: `Are you sure you want to delete "${name}"?`, confirmText: "Delete", danger: true });
         if (!decision.confirmed) return;
 
-        projectManager.projects = projectManager.projects.filter(p => p.id !== selectedHomeProject.id);
-        saveProjectManager();
+        const space = selectedHomeProject._gallerySpace || activeGallerySpace;
+        if (space === "official") {
+            OFFICIAL_GALLERY_PROJECTS = OFFICIAL_GALLERY_PROJECTS.filter(p => p.id !== selectedHomeProject.id);
+            saveOfficialGalleryProjects();
+        } else {
+            projectManager.projects = projectManager.projects.filter(p => p.id !== selectedHomeProject.id);
+            saveProjectManager();
+        }
         closeProjectPreview();
         renderHomeProjects();
+        renderManagementTable();
+        updateProjectCounters();
         showToast(`Deleted "${name}"`, "info");
     });
 
@@ -12531,7 +12545,10 @@ function getSelectedFinishCategories() {
         relatedProjectGrid.innerHTML = "";
 
         const terms = getProjectSearchTerms(project).map(t => t.toLowerCase());
-        const related = projectManager.projects.filter(p => {
+        const relatedSource = (project._gallerySpace || activeGallerySpace) === "official"
+            ? OFFICIAL_GALLERY_PROJECTS
+            : projectManager.projects;
+        const related = relatedSource.filter(p => {
             if (p.status !== "finished" || p.id === project.id) return false;
             const pTerms = getProjectSearchTerms(p).map(t => t.toLowerCase());
             return terms.some(t => pTerms.includes(t) || (p.name && p.name.toLowerCase().includes(t)));
