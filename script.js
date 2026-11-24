@@ -710,12 +710,14 @@
 
     // Project Manager Views
     const gallerySpaceToggle = document.getElementById("gallery-space-toggle-wrap");
-    const privateGalleryContent = document.getElementById("private-gallery-content");
-    const officialGalleryContent = document.getElementById("official-gallery-content");
+    const galleryContent = document.getElementById("gallery-content");
     const GALLERY_SPACE_STORAGE_KEY = "iconMakerGallerySpace";
-    let activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "official"
-        ? "official"
-        : "private";
+    // Official icons will be loaded from the shared published collection in the next step.
+    // Keep the collection separate from each visitor's local projects.
+    const OFFICIAL_GALLERY_PROJECTS = [];
+    let activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "private"
+        ? "private"
+        : "official";
 
     const sidebarOptions = document.querySelectorAll(".sidebar-option");
     const iconLibrarySearchInput = document.getElementById("icon-library-search-input");
@@ -1851,8 +1853,11 @@ function getSelectedFinishCategories() {
     }
 
     function updateProjectCounters() {
-        const finishedCount = projectManager.projects.filter(p => p.status === "finished").length;
-        const favCount = projectManager.projects.filter(p => p.status === "finished" && p.favorite).length;
+        const sourceProjects = activeGallerySpace === "official"
+            ? OFFICIAL_GALLERY_PROJECTS
+            : projectManager.projects;
+        const finishedCount = sourceProjects.filter(p => p.status === "finished").length;
+        const favCount = sourceProjects.filter(p => p.status === "finished" && p.favorite).length;
 
         if (tabCountAll) tabCountAll.textContent = finishedCount;
         if (tabCountFav) tabCountFav.textContent = favCount;
@@ -11408,11 +11413,8 @@ function getSelectedFinishCategories() {
 
     function updateGallerySpaceUI() {
         const isOfficial = activeGallerySpace === "official";
-        if (privateGalleryContent) privateGalleryContent.hidden = isOfficial;
-        if (officialGalleryContent) {
-            officialGalleryContent.hidden = !isOfficial;
-            officialGalleryContent.style.display = isOfficial ? "flex" : "none";
-        }
+        // Both spaces use the exact same Gallery interface; only the data source changes.
+        if (galleryContent) galleryContent.dataset.gallerySpace = activeGallerySpace;
         if (gallerySpaceToggle) {
             const label = isOfficial
                 ? "Switch to Private Space"
@@ -11432,15 +11434,11 @@ function getSelectedFinishCategories() {
             console.warn("Could not save gallery space preference:", error);
         }
         updateGallerySpaceUI();
-        if (activeGallerySpace === "private") renderHomeProjects();
-        else updateIconLibraryMultiSelectionUI();
+        renderHomeProjects();
+        updateIconLibraryMultiSelectionUI();
     }
 
     function renderHomeProjects() {
-        if (activeGallerySpace === "official") {
-            updateGallerySpaceUI();
-            return;
-        }
         if (!homeProjectGrid) return;
         homeProjectGrid.innerHTML = "";
         const isCategoryRows =
@@ -11448,7 +11446,10 @@ function getSelectedFinishCategories() {
 
         homeProjectGrid.classList.toggle("categories-layout", isCategoryRows);
 
-        const allFinished = projectManager.projects.filter(p => p.status === "finished");
+        const sourceProjects = activeGallerySpace === "official"
+            ? OFFICIAL_GALLERY_PROJECTS
+            : projectManager.projects;
+        const allFinished = sourceProjects.filter(p => p.status === "finished");
         let finished = [...allFinished];
 
         // Filter by Tab
@@ -11545,7 +11546,11 @@ function getSelectedFinishCategories() {
         homeProjectGrid.classList.toggle("list-view", homeViewMode === "list");
 
         if (finished.length === 0) {
-            const msg = query ? `No icons matching "${query}"` : "No icons found in this view.";
+            const msg = query
+                ? `No icons matching "${query}"`
+                : activeGallerySpace === "official"
+                    ? "No icons have been published to the Official Gallery yet."
+                    : "No finished projects yet.";
             homeProjectGrid.innerHTML = `<p class="home-no-results">${msg}</p>`;
             updateProjectCounters();
             return;
