@@ -9630,6 +9630,18 @@ function getSelectedFinishCategories() {
 
         return fallback;
     }
+    function safeImportedSVGPaint(value, fallback) {
+        const paint = String(value || "").trim();
+        if (paint === "none") return "none";
+        if (/^#[0-9a-f]{3,8}$/i.test(paint) ||
+            /^[a-z]{1,24}$/i.test(paint) ||
+            /^rgba?\([0-9.% ,/+-]+\)$/i.test(paint) ||
+            /^hsla?\([0-9.% ,/+-]+\)$/i.test(paint)) {
+            return paint;
+        }
+        return fallback;
+    }
+
     // Bug Fix: Enhanced SVG Source Parser that accepts arbitrary paths and large arcs
     function readSVGSource() {
         const parser = new DOMParser();
@@ -9670,6 +9682,12 @@ function getSelectedFinishCategories() {
 
                 if (fill === "currentColor") fill = "#FFFFFF";
             }
+
+            // Paint attributes are copied into live editor SVG elements below.
+            // Reject CSS functions and arbitrary values such as url(...) so imported
+            // markup cannot attach external resources or unexpected paint servers.
+            stroke = safeImportedSVGPaint(stroke, "#FFFFFF");
+            fill = safeImportedSVGPaint(fill, "none");
 
             if (tag === "line") {
                 parsed.push({
