@@ -14547,14 +14547,35 @@ if (finishCategoryManuallyChanged) {
                 const cache = cacheRaw ? JSON.parse(cacheRaw) : null;
                 const migrateGuest = localStorage.getItem("iconMakerLegacyCloudMigrationV1") !== "true";
                 const guestProjects = migrateGuest ? (guestProjectManagerSnapshot?.projects || []) : [];
-                const remoteIds = new Set(remoteProjects.map(project => String(project.id)));
+                // A cloud row is not automatically newer than the browser cache.
+                // Autosaves can still be in flight when the account is reopened, so
+                // choose the newest project payload by its own savedAt timestamp.
+                const getProjectFreshness = project => {
+                    const timestamps = [
+                        project?.savedAt,
+                        project?.data?.savedAt,
+                        project?._cloudUpdatedAt
+                    ].map(value => Date.parse(value || "")).filter(Number.isFinite);
+                    return timestamps.length ? Math.max(...timestamps) : 0;
+                };
                 const combined = new Map();
-                [...(cache?.projects || []), ...remoteProjects, ...guestProjects].forEach(project => {
+                const candidates = [
+                    ...guestProjects.map(project => ({ project, source: "guest" })),
+                    ...(cache?.projects || []).map(project => ({ project, source: "cache" })),
+                    ...remoteProjects.map(project => ({ project, source: "remote" }))
+                ];
+                candidates.forEach(({ project, source }) => {
                     if (!project || typeof project !== "object" || !project.id) return;
                     const id = String(project.id);
-                    if (!combined.has(id) || remoteIds.has(id)) combined.set(id, project);
+                    const previous = combined.get(id);
+                    const nextTime = getProjectFreshness(project);
+                    const previousTime = previous ? getProjectFreshness(previous.project) : -1;
+                    if (!previous || nextTime > previousTime ||
+                        (nextTime === previousTime && source === "remote")) {
+                        combined.set(id, { project, source });
+                    }
                 });
-                projectManager.projects = [...combined.values()];
+                projectManager.projects = [...combined.values()].map(entry => entry.project);
                 if (!projectManager.projects.length) projectManager.projects.push(createProject());
                 const preferredId = cache?.activeProjectId || guestProjectManagerSnapshot?.activeProjectId;
                 projectManager.activeProjectId = projectManager.projects.some(p => String(p.id) === String(preferredId))
