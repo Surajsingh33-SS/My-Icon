@@ -13423,7 +13423,9 @@ function getSelectedFinishCategories() {
         Object.keys(homeViewSections).forEach(name => {
             const section = homeViewSections[name];
             if (!section) return;
-            section.style.display = name === viewName ? "flex" : "none";
+            const isActiveView = name === viewName;
+            section.style.display = isActiveView ? "flex" : "none";
+            section.classList.toggle("active", isActiveView);
         });
 
         if (viewName === "projects") {
