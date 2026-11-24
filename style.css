@@ -9404,3 +9404,22 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
     overflow-y: auto;
     overscroll-behavior: contain;
 }
+
+
+/* Preferences owns its vertical scroll area so every settings card remains reachable. */
+.home-main:has(#home-view-settings.active) {
+    min-height: 0;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+#home-view-settings.active {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 100%;
+}
+
+#home-view-settings.active .settings-grid {
+    min-height: 0;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
