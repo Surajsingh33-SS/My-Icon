@@ -1476,7 +1476,7 @@ html:not(.touch-hover-disabled) .home-project-card:hover .home-card-tooltip{
 /* On wider gallery layouts, let the icon name overlap the tile's bottom edge. */
 @media (min-width: 761px) {
     .home-card-tooltip {
-        top: calc(100% - 12px);
+        top: calc(100% - 6px);
         bottom: auto;
         transform: translateX(-50%) translateY(4px);
     }
