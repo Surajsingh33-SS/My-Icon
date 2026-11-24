@@ -738,7 +738,14 @@
         try {
             const raw = localStorage.getItem(key);
             const value = JSON.parse(raw || "null");
-            if (Array.isArray(value)) return value;
+            if (Array.isArray(value)) {
+                if (key === OFFICIAL_GALLERY_STORAGE_KEY && value.some(project =>
+                    !project || typeof project !== "object" || Array.isArray(project)
+                )) {
+                    throw new Error("Official Gallery storage contains an invalid project record.");
+                }
+                return value;
+            }
             if (key === OFFICIAL_GALLERY_STORAGE_KEY && raw !== null) {
                 throw new Error("Official Gallery storage does not contain a project array.");
             }
@@ -13242,11 +13249,21 @@ if (finishCategoryManuallyChanged) {
                     requestedActiveId = parsed.projectManager.activeProjectId || null;
                     hasOfficialBackupData = Array.isArray(parsed.officialGalleryProjects);
                     importedOfficialProjects = hasOfficialBackupData ? parsed.officialGalleryProjects : [];
+                    if (hasOfficialBackupData && importedOfficialProjects.some(project =>
+                        !project || typeof project !== "object" || Array.isArray(project) || project.status !== "finished"
+                    )) {
+                        throw new Error("Official Gallery backup contains an invalid project record.");
+                    }
                 } else if (Array.isArray(parsed.projects)) {
                     importedProjects = parsed.projects;
                     requestedActiveId = parsed.activeProjectId || null;
                     hasOfficialBackupData = Array.isArray(parsed.officialGalleryProjects);
                     importedOfficialProjects = hasOfficialBackupData ? parsed.officialGalleryProjects : [];
+                    if (hasOfficialBackupData && importedOfficialProjects.some(project =>
+                        !project || typeof project !== "object" || Array.isArray(project) || project.status !== "finished"
+                    )) {
+                        throw new Error("Official Gallery backup contains an invalid project record.");
+                    }
                 } else if (parsed.shapes && parsed.version) {
                     importedProjects = [createProject(parsed)];
                 } else {
