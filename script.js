@@ -10986,12 +10986,6 @@ function getSelectedFinishCategories() {
                 ? "Private Icons selected: Merge updates only matching icons in your Private Library. Official metadata is never changed."
                 : "Official Icons selected: Merge updates matching Official icons and also matching Private icons when the same icon exists in both. Official-only icons receive Official metadata only. Replace is disabled.";
         }
-        const scope = iconLibraryMetadataModal.querySelector(".icon-library-metadata-scope");
-        if (scope) {
-            scope.textContent = iconLibrarySavedOnly
-                ? "Private Icons selected: Merge updates only matching icons in your Private Library. Official metadata is never changed."
-                : "Official Icons selected: Merge updates matching Official icons and also matching Private icons when the same icon exists in both. Official-only icons receive Official metadata only. Replace is disabled.";
-        }
         iconLibraryMetadataModal.classList.add("open");
         iconLibraryMetadataModal.querySelector(".icon-library-metadata-input").focus();
     }
