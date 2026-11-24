@@ -206,18 +206,173 @@
         return data || {};
     }
 
+    let publisherPortalEntry = null;
+    let publisherPortalPage = "home";
+    let publisherPortalStatus = null;
+    let publisherAuditEvents = [];
+
     function ensurePublisherPortal() {
         if (publisherPortal?.isConnected) return publisherPortal;
-        const settingsGrid = document.querySelector("#home-view-settings .settings-grid");
-        if (!settingsGrid) return null;
-        publisherPortal = document.createElement("section");
-        publisherPortal.id = "markora-publisher-portal";
-        publisherPortal.className = "settings-card markora-publisher-portal";
-        publisherPortal.setAttribute("aria-live", "polite");
-        settingsGrid.appendChild(publisherPortal);
-        publisherPortal.addEventListener("click", handlePublisherPortalClick);
-        publisherPortal.addEventListener("submit", handlePublisherPortalSubmit);
+        const settingsView = document.getElementById("home-view-settings");
+        const settingsGrid = settingsView?.querySelector(".settings-grid");
+        if (!settingsView || !settingsGrid) return null;
+
+        publisherPortalEntry = document.getElementById("markora-publisher-entry");
+        if (!publisherPortalEntry) {
+            publisherPortalEntry = document.createElement("section");
+            publisherPortalEntry.id = "markora-publisher-entry";
+            publisherPortalEntry.className = "settings-card markora-publisher-entry";
+            settingsGrid.appendChild(publisherPortalEntry);
+            publisherPortalEntry.addEventListener("click", handlePublisherPortalEntryClick);
+        }
+
+        let page = document.getElementById("markora-publisher-page");
+        if (!page) {
+            page = document.createElement("section");
+            page.id = "markora-publisher-page";
+            page.className = "markora-admin-page";
+            page.hidden = true;
+            page.innerHTML = `
+                <div class="markora-admin-page-header">
+                    <button type="button" class="btn btn-secondary markora-admin-back" data-portal-back>← Preferences</button>
+                    <div><span class="markora-portal-kicker">MARKORA CONTROL CENTER</span><h2 id="markora-admin-page-title">Authority</h2><p id="markora-admin-page-description" class="management-subtitle"></p></div>
+                </div>
+                <div id="markora-publisher-portal" class="markora-admin-page-content" aria-live="polite"></div>`;
+            settingsView.appendChild(page);
+            page.addEventListener("click", event => {
+                if (event.target.closest("[data-portal-back]")) closePublisherPortalPage();
+            });
+        }
+        publisherPortal = page.querySelector("#markora-publisher-portal");
+        if (!publisherPortal.dataset.handlersAttached) {
+            publisherPortal.addEventListener("click", handlePublisherPortalClick);
+            publisherPortal.addEventListener("submit", handlePublisherPortalSubmit);
+            publisherPortal.addEventListener("input", handlePublisherAuditFilter);
+            publisherPortal.addEventListener("change", handlePublisherAuditFilter);
+            publisherPortal.dataset.handlersAttached = "true";
+        }
         return publisherPortal;
+    }
+
+    function renderPublisherPortalEntry(status) {
+        const root = ensurePublisherPortal();
+        if (!root || !publisherPortalEntry) return;
+        const isOwner = !!status?.isOwner;
+        const isSignedIn = !!currentSession?.user?.id;
+        publisherPortalEntry.innerHTML = `
+            <div class="markora-entry-heading"><span class="markora-portal-kicker">MARKORA ACCESS</span><span class="markora-entry-icon">⌘</span></div>
+            <h3>Authority</h3>
+            <p class="management-subtitle">${isOwner ? "Manage Semi-Publishers, invitations, submissions and ownership." : isSignedIn ? "Manage your contributor access and submissions." : "Sign in to redeem a Semi-Publisher invitation or manage access."}</p>
+            <button type="button" class="btn btn-secondary" data-portal-page="authority">Open Authority <span aria-hidden="true">→</span></button>
+            ${isOwner ? `<div class="markora-entry-divider"></div><h3>Security Activity</h3><p class="management-subtitle">Review the complete administrative and account activity history.</p><button type="button" class="btn btn-secondary" data-portal-page="security">View activity history <span aria-hidden="true">→</span></button>` : ""}
+        `;
+    }
+
+    function handlePublisherPortalEntryClick(event) {
+        const button = event.target.closest("[data-portal-page]");
+        if (!button) return;
+        openPublisherPortalPage(button.dataset.portalPage);
+    }
+
+    function closePublisherPortalPage() {
+        const page = document.getElementById("markora-publisher-page");
+        const settingsView = document.getElementById("home-view-settings");
+        if (page) page.hidden = true;
+        settingsView?.querySelector(".management-header")?.removeAttribute("hidden");
+        const grid = settingsView?.querySelector(".settings-grid");
+        if (grid) grid.hidden = false;
+        publisherPortalPage = "home";
+    }
+
+    async function openPublisherPortalPage(pageName) {
+        const root = ensurePublisherPortal();
+        const page = document.getElementById("markora-publisher-page");
+        const settingsView = document.getElementById("home-view-settings");
+        const grid = settingsView?.querySelector(".settings-grid");
+        if (!root || !page || !grid) return;
+        publisherPortalPage = pageName === "security" ? "security" : "authority";
+        grid.hidden = true;
+        settingsView.querySelector(".management-header")?.setAttribute("hidden", "");
+        page.hidden = false;
+        await renderPublisherPortalPage();
+    }
+
+    async function renderPublisherPortalPage() {
+        const root = ensurePublisherPortal();
+        const title = document.getElementById("markora-admin-page-title");
+        const description = document.getElementById("markora-admin-page-description");
+        if (!root) return;
+        if (publisherPortalPage === "security") {
+            title.textContent = "Security Activity";
+            description.textContent = "A chronological record of important account, access and publishing events.";
+            root.innerHTML = '<p class="management-subtitle">Loading activity history…</p>';
+            try {
+                const result = await callPublisherControl("list_audit");
+                publisherAuditEvents = result.events || [];
+                renderPublisherAuditEvents();
+            } catch (error) {
+                root.innerHTML = `<p class="markora-portal-empty">${escapeHTML(error?.message || "Could not load security activity.")}</p>`;
+            }
+            return;
+        }
+        title.textContent = "Authority";
+        description.textContent = publisherPortalStatus?.isOwner
+            ? "Manage Markora ownership, Semi-Publishers, invitations and Official submissions."
+            : "Manage your Markora contributor access and submissions.";
+        if (!currentSession?.user?.id) {
+            renderPublisherPortalMessage("Authority", "Sign in to redeem an invitation or manage publishing access.");
+            return;
+        }
+        root.innerHTML = '<p class="management-subtitle">Loading authority settings…</p>';
+        try {
+            const status = await callPublisherControl("get_status");
+            publisherPortalStatus = status;
+            if (status.isOwner) {
+                const [contributorsResult, pendingResult] = await Promise.all([
+                    callPublisherControl("list_contributors"),
+                    callPublisherControl("list_pending_submissions")
+                ]);
+                renderOwnerPublisherPortal(contributorsResult.contributors || [], pendingResult.submissions || []);
+            } else if (status.role === "semi_publisher") {
+                const [projects, submissionsResult] = await Promise.all([
+                    fetchPrivateProjects(),
+                    callPublisherControl("list_my_submissions")
+                ]);
+                publisherPortalProjects = (projects || []).filter(project => project?.status === "finished");
+                renderContributorPublisherPortal(submissionsResult.submissions || []);
+            } else {
+                renderRegularPublisherPortal();
+            }
+        } catch (error) {
+            renderPublisherPortalMessage("Authority", error?.message || "Could not load authority settings. Refresh and try again.");
+        }
+    }
+
+    function renderPublisherAuditEvents() {
+        const root = ensurePublisherPortal();
+        if (!root) return;
+        const query = (root.querySelector("#markora-audit-search")?.value || "").trim().toLowerCase();
+        const type = root.querySelector("#markora-audit-type")?.value || "all";
+        const filtered = publisherAuditEvents.filter(item => {
+            const action = String(item.action || "").toLowerCase();
+            const details = JSON.stringify(item.details || {}).toLowerCase();
+            const matchesType = type === "all" || action.includes(type);
+            return matchesType && (!query || action.includes(query) || details.includes(query) || String(item.actor_user_id || "").toLowerCase().includes(query));
+        });
+        const rows = filtered.map(item => {
+            const details = item.details && Object.keys(item.details).length
+                ? `<p class="markora-audit-details">${escapeHTML(Object.entries(item.details).map(([key, value]) => `${key.replaceAll("_", " ")}: ${typeof value === "object" ? JSON.stringify(value) : value}`).join(" · "))}</p>`
+                : "";
+            return `<article class="markora-audit-event"><div class="markora-audit-event-icon">◈</div><div class="markora-audit-event-main"><strong>${escapeHTML(String(item.action || "Activity").replaceAll("_", " "))}</strong>${details}<span>${escapeHTML(item.actor_user_id ? "Account " + item.actor_user_id : "System event")}</span></div><time>${escapeHTML(new Date(item.created_at).toLocaleString())}</time></article>`;
+        }).join("");
+        const list = root.querySelector("#markora-audit-results");
+        if (list) list.innerHTML = rows || '<p class="markora-portal-empty">No activity matches these filters.</p>';
+        const count = root.querySelector("#markora-audit-count");
+        if (count) count.textContent = `${filtered.length} of ${publisherAuditEvents.length} events`;
+    }
+
+    function handlePublisherAuditFilter(event) {
+        if (event.target.matches("#markora-audit-search, #markora-audit-type")) renderPublisherAuditEvents();
     }
 
     function renderPublisherPortalMessage(title, message) {
@@ -230,37 +385,22 @@
         const root = ensurePublisherPortal();
         if (!root) return;
         if (!currentSession?.user?.id) {
-            renderPublisherPortalMessage("Publisher & Ownership", "Sign in to redeem a contributor invitation or manage publishing access.");
+            publisherPortalStatus = null;
+            renderPublisherPortalEntry(null);
+            if (publisherPortalPage !== "home") renderPublisherPortalPage();
             return;
         }
-        renderPublisherPortalMessage("Publisher & Ownership", "Checking your Markora permissions…");
         try {
-            const status = await callPublisherControl("get_status");
-            if (status.isOwner) {
-                const [contributorsResult, pendingResult, auditResult] = await Promise.all([
-                    callPublisherControl("list_contributors"),
-                    callPublisherControl("list_pending_submissions"),
-                    callPublisherControl("list_audit")
-                ]);
-                renderOwnerPublisherPortal(contributorsResult.contributors || [], pendingResult.submissions || [], auditResult.events || []);
-                return;
-            }
-            if (status.role === "semi_publisher") {
-                const [projects, submissionsResult] = await Promise.all([
-                    fetchPrivateProjects(),
-                    callPublisherControl("list_my_submissions")
-                ]);
-                publisherPortalProjects = (projects || []).filter(project => project?.status === "finished");
-                renderContributorPublisherPortal(submissionsResult.submissions || []);
-                return;
-            }
-            renderRegularPublisherPortal();
+            publisherPortalStatus = await callPublisherControl("get_status");
+            renderPublisherPortalEntry(publisherPortalStatus);
+            if (publisherPortalPage !== "home") await renderPublisherPortalPage();
         } catch (error) {
-            renderPublisherPortalMessage("Publisher & Ownership", error?.message || "Could not load publisher settings. Refresh and try again.");
+            renderPublisherPortalEntry(null);
+            if (publisherPortalPage !== "home") renderPublisherPortalMessage("Authority", error?.message || "Could not load publisher settings. Refresh and try again.");
         }
     }
 
-    function renderOwnerPublisherPortal(contributors, submissions, events) {
+    function renderOwnerPublisherPortal(contributors, submissions) {
         const root = ensurePublisherPortal();
         if (!root) return;
         const contributorRows = contributors.length ? contributors.map(item => `
@@ -273,15 +413,11 @@
                 <div class="markora-portal-row-main"><strong>${escapeHTML(item.name)}</strong><span>${escapeHTML(item.email)} · ${escapeHTML(item.projectId)}</span><span>Submitted ${new Date(item.createdAt).toLocaleString()}</span></div>
                 <div class="markora-portal-row-actions"><button type="button" class="btn btn-primary btn-small" data-portal-action="review-submission" data-decision="approved" data-submission-id="${escapeHTML(item.id)}">Approve</button><button type="button" class="btn btn-danger btn-small" data-portal-action="review-submission" data-decision="rejected" data-submission-id="${escapeHTML(item.id)}">Reject</button></div>
             </div>`).join("") : '<p class="markora-portal-empty">No submissions are waiting for review.</p>';
-        const auditRows = events.slice(0, 8).map(item => `
-            <div class="markora-portal-audit-row"><span>${escapeHTML(item.action.replaceAll("_", " "))}</span><time>${new Date(item.created_at).toLocaleString()}</time></div>
-        `).join("");
         root.innerHTML = `
             <div class="markora-portal-heading"><div><span class="markora-portal-kicker">SOLE AUTHORITY</span><h3>Markora Super Admin</h3><p class="management-subtitle">Your account is the only account that can publish, edit or remove Official icons and appoint contributors.</p></div><span class="markora-portal-role">OWNER</span></div>
             <div class="markora-portal-section"><div class="markora-portal-section-heading"><div><h4>Semi-Publishers</h4><p>Invitation codes work once and expire after 7 days.</p></div><button type="button" class="btn btn-primary" data-portal-action="create-invite">Generate invitation code</button></div><div id="markora-invite-output" class="markora-portal-code-output" hidden></div><div class="markora-portal-list">${contributorRows}</div></div>
             <div class="markora-portal-section"><div class="markora-portal-section-heading"><div><h4>Pending Official submissions</h4><p>Only your approval can add an icon to the Official Library.</p></div></div><div class="markora-portal-list">${submissionRows}</div></div>
             <div class="markora-portal-section"><h4>Transfer Super Admin ownership</h4><p>Enter the recipient's verified Markora account email. You authorize the transfer by generating the code; the recipient must also accept it while signed in. The code expires after 24 hours.</p><form class="markora-portal-form" data-portal-form="create-transfer"><input type="email" name="email" placeholder="Recipient account email" required><input type="password" name="password" autocomplete="current-password" placeholder="Confirm your current password" required><button type="submit" class="btn btn-secondary">Authorize transfer</button></form><div id="markora-transfer-output" class="markora-portal-code-output" hidden></div><button type="button" class="btn btn-danger btn-small" data-portal-action="cancel-transfer">Cancel pending transfer codes</button></div>
-            <div class="markora-portal-section"><h4>Recent security activity</h4><div class="markora-portal-audit-list">${auditRows || '<p class="markora-portal-empty">No activity recorded yet.</p>'}</div></div>
         `;
     }
 
