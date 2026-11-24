@@ -305,7 +305,20 @@
         if (publisherPortalPage === "security") {
             title.textContent = "Security Activity";
             description.textContent = "A chronological record of important account, access and publishing events.";
-            root.innerHTML = '<p class="management-subtitle">Loading activity history…</p>';
+            root.innerHTML = `
+                <div class="markora-audit-toolbar">
+                    <input id="markora-audit-search" type="search" placeholder="Search activity…" aria-label="Search security activity">
+                    <select id="markora-audit-type" aria-label="Filter activity type">
+                        <option value="all">All activity</option>
+                        <option value="invite">Invitations</option>
+                        <option value="contributor">Contributor access</option>
+                        <option value="submission">Submissions</option>
+                        <option value="transfer">Ownership transfers</option>
+                        <option value="owner">Ownership changes</option>
+                    </select>
+                    <span id="markora-audit-count" class="markora-audit-count">Loading history…</span>
+                </div>
+                <div id="markora-audit-results" class="markora-audit-results"><p class="management-subtitle">Loading activity history…</p></div>`;
             try {
                 const result = await callPublisherControl("list_audit");
                 publisherAuditEvents = result.events || [];
