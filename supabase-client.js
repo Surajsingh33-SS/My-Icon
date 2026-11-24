@@ -749,20 +749,30 @@
         return { published, alreadyPresent, skipped, total: candidates.length };
     }
 
-    async function fetchPrivateProjects() {
-        if (!client || !currentSession?.user?.id) return [];
+    async function fetchPrivateProjects(expectedUserId = currentSession?.user?.id) {
+        if (!client || !expectedUserId) return [];
+        const userId = String(expectedUserId);
+        if (currentSession?.user?.id !== userId) {
+            throw new Error("The signed-in account changed before Private Library loading began.");
+        }
         const { data, error } = await client.from("private_projects")
-            .select("project_id, project_data, updated_at").eq("user_id", currentSession.user.id);
+            .select("project_id, project_data, updated_at").eq("user_id", userId);
         if (error) throw error;
+        if (currentSession?.user?.id !== userId) {
+            throw new Error("The signed-in account changed while the Private Library was loading.");
+        }
         return (data || []).map(row => {
             const project = row.project_data && typeof row.project_data === "object" ? row.project_data : {};
             return { ...project, id: String(project.id || row.project_id), _cloudUpdatedAt: row.updated_at };
         });
     }
 
-    async function savePrivateProjects(projects) {
-        if (!client || !currentSession?.user?.id) return;
-        const userId = currentSession.user.id;
+    async function savePrivateProjects(projects, expectedUserId = currentSession?.user?.id) {
+        if (!client || !expectedUserId) return;
+        const userId = String(expectedUserId);
+        if (currentSession?.user?.id !== userId) {
+            throw new Error("The signed-in account changed before Private Library saving began.");
+        }
         const snapshot = structuredClone(Array.isArray(projects) ? projects : []);
         const rows = snapshot.map(project => ({
             user_id: userId,
