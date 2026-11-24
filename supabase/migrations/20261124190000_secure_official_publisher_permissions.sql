@@ -11,7 +11,7 @@ on public.official_projects
 for insert
 to authenticated
 with check (
-    coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'official_publisher'
+    coalesce((select auth.jwt()) -> 'app_metadata' ->> 'role', '') = 'official_publisher'
 );
 
 drop policy if exists "Trusted publishers can update official projects"
@@ -21,10 +21,10 @@ on public.official_projects
 for update
 to authenticated
 using (
-    coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'official_publisher'
+    coalesce((select auth.jwt()) -> 'app_metadata' ->> 'role', '') = 'official_publisher'
 )
 with check (
-    coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'official_publisher'
+    coalesce((select auth.jwt()) -> 'app_metadata' ->> 'role', '') = 'official_publisher'
 );
 
 -- Deliberately do not grant DELETE or TRUNCATE to browser roles.
