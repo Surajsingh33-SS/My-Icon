@@ -207,6 +207,7 @@
     }
 
     let publisherPortalEntry = null;
+    let publisherSecurityEntry = null;
     let publisherPortalPage = "home";
     let publisherPortalStatus = null;
     let publisherAuditEvents = [];
@@ -227,6 +228,15 @@
             publisherPortalEntry.className = "settings-card markora-publisher-entry";
             settingsGrid.appendChild(publisherPortalEntry);
             publisherPortalEntry.addEventListener("click", handlePublisherPortalEntryClick);
+        }
+
+        publisherSecurityEntry = document.getElementById("markora-security-entry");
+        if (!publisherSecurityEntry) {
+            publisherSecurityEntry = document.createElement("section");
+            publisherSecurityEntry.id = "markora-security-entry";
+            publisherSecurityEntry.className = "settings-card markora-security-entry";
+            settingsGrid.appendChild(publisherSecurityEntry);
+            publisherSecurityEntry.addEventListener("click", handlePublisherPortalEntryClick);
         }
 
         let page = document.getElementById("markora-publisher-page");
@@ -258,24 +268,23 @@
     }
 
     function renderPublisherPortalEntry(status) {
-        const root = ensurePublisherPortal();
-        if (!root || !publisherPortalEntry) return;
+        ensurePublisherPortal();
+        if (!publisherPortalEntry || !publisherSecurityEntry) return;
         const isOwner = !!status?.isOwner;
         const isSignedIn = !!currentSession?.user?.id;
+
         publisherPortalEntry.innerHTML = `
-            <section class="settings-card markora-admin-entry-card">
-                <div class="markora-entry-heading"><span class="markora-portal-kicker">MARKORA ACCESS</span><span class="markora-entry-icon">⌘</span></div>
-                <h3>Authority</h3>
-                <p class="management-subtitle">${isOwner ? "Manage Semi-Publishers, invitations, submissions and ownership." : isSignedIn ? "Manage your contributor access and submissions." : "Sign in to redeem a Semi-Publisher invitation or manage access."}</p>
-                <button type="button" class="btn btn-secondary" data-portal-page="authority">Open Authority <span aria-hidden="true">→</span></button>
-            </section>
-            ${isOwner ? `
-                <section class="settings-card markora-admin-entry-card markora-security-entry-card">
-                    <div class="markora-entry-heading"><span class="markora-portal-kicker">MARKORA HISTORY</span><span class="markora-entry-icon">◷</span></div>
-                    <h3>Security Activity</h3>
-                    <p class="management-subtitle">Review the administrative and account activity history.</p>
-                    <button type="button" class="btn btn-secondary" data-portal-page="security">View activity history <span aria-hidden="true">→</span></button>
-                </section>` : ""}
+            <div class="markora-entry-heading"><span class="markora-portal-kicker">MARKORA ACCESS</span><span class="markora-entry-icon">⌘</span></div>
+            <h3>Authority</h3>
+            <p class="management-subtitle">${isOwner ? "Manage Semi-Publishers, invitations, submissions and ownership." : isSignedIn ? "Manage your contributor access and submissions." : "Sign in to redeem a Semi-Publisher invitation or manage access."}</p>
+            <button type="button" class="btn btn-secondary" data-portal-page="authority">Open Authority <span aria-hidden="true">→</span></button>
+        `;
+        publisherSecurityEntry.hidden = !isOwner;
+        publisherSecurityEntry.innerHTML = `
+            <div class="markora-entry-heading"><span class="markora-portal-kicker">MARKORA HISTORY</span><span class="markora-entry-icon">◷</span></div>
+            <h3>Security Activity</h3>
+            <p class="management-subtitle">Review the administrative and account activity history.</p>
+            <button type="button" class="btn btn-secondary" data-portal-page="security">View activity history <span aria-hidden="true">→</span></button>
         `;
     }
 
