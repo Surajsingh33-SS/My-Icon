@@ -709,6 +709,14 @@
     const snapToggleButton = document.getElementById("snap-toggle-button");
 
     // Project Manager Views
+    const gallerySpaceToggle = document.getElementById("gallery-space-toggle-wrap");
+    const privateGalleryContent = document.getElementById("private-gallery-content");
+    const officialGalleryContent = document.getElementById("official-gallery-content");
+    const GALLERY_SPACE_STORAGE_KEY = "iconMakerGallerySpace";
+    let activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "official"
+        ? "official"
+        : "private";
+
     const sidebarOptions = document.querySelectorAll(".sidebar-option");
     const iconLibrarySearchInput = document.getElementById("icon-library-search-input");
     const iconLibrarySavedToggleButton = document.getElementById("icon-library-saved-toggle");
@@ -11398,7 +11406,41 @@ function getSelectedFinishCategories() {
     syncTabletGalleryMenuPlacement();
     window.addEventListener("resize", syncTabletGalleryMenuPlacement);
 
+    function updateGallerySpaceUI() {
+        const isOfficial = activeGallerySpace === "official";
+        if (privateGalleryContent) privateGalleryContent.hidden = isOfficial;
+        if (officialGalleryContent) {
+            officialGalleryContent.hidden = !isOfficial;
+            officialGalleryContent.style.display = isOfficial ? "flex" : "none";
+        }
+        if (gallerySpaceToggle) {
+            const label = isOfficial
+                ? "Switch to Private Space"
+                : "Switch to Official Gallery";
+            gallerySpaceToggle.setAttribute("title", label);
+            gallerySpaceToggle.setAttribute("aria-label", label);
+        }
+        const toggleIcon = document.getElementById("gallery-space-toggle");
+        if (toggleIcon) toggleIcon.style.transform = isOfficial ? "rotate(180deg)" : "";
+    }
+
+    function setGallerySpace(space) {
+        activeGallerySpace = space === "official" ? "official" : "private";
+        try {
+            localStorage.setItem(GALLERY_SPACE_STORAGE_KEY, activeGallerySpace);
+        } catch (error) {
+            console.warn("Could not save gallery space preference:", error);
+        }
+        updateGallerySpaceUI();
+        if (activeGallerySpace === "private") renderHomeProjects();
+        else updateIconLibraryMultiSelectionUI();
+    }
+
     function renderHomeProjects() {
+        if (activeGallerySpace === "official") {
+            updateGallerySpaceUI();
+            return;
+        }
         if (!homeProjectGrid) return;
         homeProjectGrid.innerHTML = "";
         const isCategoryRows =
@@ -12374,7 +12416,20 @@ function getSelectedFinishCategories() {
     // 20. SIDEBAR NAVIGATION: GALLERY, ALL PROJECTS, PREFERENCES
     // ========================================================================
     function switchHomeView(viewName) {
-        sidebarOptions.forEach(opt => {
+        gallerySpaceToggle?.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        setGallerySpace(activeGallerySpace === "private" ? "official" : "private");
+    });
+
+    gallerySpaceToggle?.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        event.stopPropagation();
+        setGallerySpace(activeGallerySpace === "private" ? "official" : "private");
+    });
+
+    sidebarOptions.forEach(opt => {
             opt.classList.toggle("active", opt.dataset.homeView === viewName);
         });
 
@@ -12403,6 +12458,8 @@ function getSelectedFinishCategories() {
             }
         });
     });
+
+    updateGallerySpaceUI();
 
     function renderManagementTable() {
         const finished = projectManager.projects.filter(p => p.status === "finished");
