@@ -237,6 +237,8 @@
     const SVG_NS = "http://www.w3.org/2000/svg";
     const PROJECT_STORAGE_KEY = "iconMakerProject"; // Legacy key
     const PROJECTS_STORAGE_KEY = "iconMakerProjects";
+    const PROJECTS_RECOVERY_STORAGE_KEY = "iconMakerProjectsRecovery";
+    const LEGACY_PROJECT_RECOVERY_STORAGE_KEY = "iconMakerProjectRecovery";
     const THEME_STORAGE_KEY = "iconMakerTheme";
     const ACCENT_STORAGE_KEY = "iconMakerAccent";
     const VIEW_MODE_STORAGE_KEY = "iconMakerViewMode";
@@ -752,8 +754,18 @@
     const PRIVATE_TO_OFFICIAL_MIGRATION_KEY = "iconMakerPrivateToOfficialMigrationV1";
 
     function migrateFinishedPrivateProjectsToOfficial() {
-        if (localStorage.getItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY) === "true") {
-            return { moved: 0, conflicts: 0 };
+        if (projectStorageRecoveryRequired) {
+            console.warn("Gallery migration skipped because project storage needs recovery.");
+            return { moved: 0, conflicts: 0, skipped: true };
+        }
+
+        try {
+            if (localStorage.getItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY) === "true") {
+                return { moved: 0, conflicts: 0 };
+            }
+        } catch (error) {
+            console.error("Could not read the Gallery migration marker:", error);
+            return { moved: 0, conflicts: 0, skipped: true };
         }
 
         const privateProjects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
@@ -763,87 +775,101 @@
         const officialNames = new Set(official.map(project =>
             normalizeProjectName(project?.name)
         ).filter(Boolean));
-
-        const movedIds = new Set();
+        const privateIdsSeen = new Set();
+        const movedProjectRefs = new Set();
         const movedProjects = [];
         let conflicts = 0;
 
         finished.forEach(project => {
-            const id = String(project?.id || "");
+            const originalId = String(project?.id || "");
             const name = normalizeProjectName(project?.name);
-            if ((id && officialIds.has(id)) || (name && officialNames.has(name))) {
+
+            if ((originalId && (privateIdsSeen.has(originalId) || officialIds.has(originalId))) ||
+                (name && officialNames.has(name)) || !name) {
                 conflicts++;
+                if (originalId) privateIdsSeen.add(originalId);
                 return;
             }
+
             const copy = { ...project };
+            if (!originalId) copy.id = crypto.randomUUID();
             delete copy._gallerySpace;
             movedProjects.push(copy);
-            if (id) { officialIds.add(id); movedIds.add(id); }
-            if (name) officialNames.add(name);
+            movedProjectRefs.add(project);
+            if (originalId) privateIdsSeen.add(originalId);
+            officialIds.add(String(copy.id));
+            officialNames.add(name);
         });
 
-        if (!movedProjects.length && !conflicts) {
-            localStorage.setItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, "true");
-            return { moved: 0, conflicts: 0 };
-        }
-
         if (!movedProjects.length) {
-            console.warn("Private-to-Official migration paused: all finished projects have name or ID conflicts.", conflicts);
+            if (!conflicts) {
+                try { localStorage.setItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, "true"); }
+                catch (error) { console.error("Could not save Gallery migration marker:", error); }
+            } else {
+                console.warn("Gallery migration left conflicting or incomplete projects in Private.", conflicts);
+            }
             return { moved: 0, conflicts };
         }
 
-        const previousOfficial = localStorage.getItem(OFFICIAL_GALLERY_STORAGE_KEY);
         const nextOfficial = [...official, ...movedProjects];
-        const nextPrivate = privateProjects.filter(project => !movedIds.has(String(project?.id || "")));
+        const nextPrivate = privateProjects.filter(project => !movedProjectRefs.has(project));
+        const activeProjectBeforeMigration = privateProjects.find(
+            project => String(project?.id || "") === String(projectManager.activeProjectId || "")
+        );
+        const nextManager = { ...projectManager, projects: nextPrivate };
 
-        // If the active project was moved, select a remaining Private draft.
-        if (movedIds.has(String(projectManager.activeProjectId || ""))) {
+        if (activeProjectBeforeMigration && movedProjectRefs.has(activeProjectBeforeMigration)) {
             let nextDraft = nextPrivate.find(project => project?.status !== "finished");
             if (!nextDraft) {
                 nextDraft = createProject();
                 nextPrivate.push(nextDraft);
             }
-            projectManager.activeProjectId = nextDraft.id;
+            nextManager.activeProjectId = nextDraft.id;
         }
 
+        let previousOfficial = null;
+        let previousPrivate = null;
+        let previousMarker = null;
         try {
-            localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, JSON.stringify(nextOfficial));
-            localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify({
-                ...projectManager,
-                projects: nextPrivate
-            }));
-            OFFICIAL_GALLERY_PROJECTS = nextOfficial;
-            projectManager.projects = nextPrivate;
+            previousOfficial = localStorage.getItem(OFFICIAL_GALLERY_STORAGE_KEY);
+            previousPrivate = localStorage.getItem(PROJECTS_STORAGE_KEY);
+            previousMarker = localStorage.getItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY);
 
-            // Keep recent activity attached to the same icons after their move.
+            localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, JSON.stringify(nextOfficial));
+            localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(nextManager));
+            if (!conflicts) localStorage.setItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, "true");
+
+            OFFICIAL_GALLERY_PROJECTS = nextOfficial;
+            projectManager = nextManager;
+
             let recentChanged = false;
             galleryRecentItems = galleryRecentItems.map(item => {
-                if (item?.space !== "private" || !movedIds.has(String(item.id || ""))) return item;
+                if (item?.space !== "private" ||
+                    !movedProjects.some(project => String(project.id) === String(item.id))) return item;
                 recentChanged = true;
                 return { ...item, key: `official:${String(item.id)}`, space: "official" };
             });
             if (recentChanged) saveGalleryActivity();
 
-            if (!conflicts) {
-                localStorage.setItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, "true");
-            } else {
-                console.warn("Some finished Private projects were kept in Private because Official already contains a project with the same name or ID.", conflicts);
-            }
             console.info(`Gallery migration: moved ${movedProjects.length} finished project(s); ${conflicts} conflict(s) left in Private.`);
             return { moved: movedProjects.length, conflicts };
         } catch (error) {
-            // Roll back the Official write if saving Private failed.
+            const restoreStorageValue = (key, value) => {
+                if (value === null) localStorage.removeItem(key);
+                else localStorage.setItem(key, value);
+            };
             try {
-                if (previousOfficial === null) localStorage.removeItem(OFFICIAL_GALLERY_STORAGE_KEY);
-                else localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficial);
+                restoreStorageValue(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficial);
+                restoreStorageValue(PROJECTS_STORAGE_KEY, previousPrivate);
+                restoreStorageValue(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, previousMarker);
             } catch (rollbackError) {
-                console.error("Could not roll back Official Gallery migration:", rollbackError);
+                console.error("Gallery migration rollback was incomplete:", rollbackError);
+                projectStorageRecoveryRequired = true;
             }
             console.error("Could not complete Private-to-Official migration:", error);
-            return { moved: 0, conflicts: finished.length };
+            return { moved: 0, conflicts: finished.length, skipped: true };
         }
     }
-
     let galleryRecentItems = readGalleryStorage(GALLERY_RECENT_STORAGE_KEY, []);
 
     function saveGalleryActivity() {
@@ -1072,6 +1098,8 @@
         activeProjectId: null,
         projects: []
     };
+    // If stored project data cannot be read safely, block project writes.
+    let projectStorageRecoveryRequired = false;
 
     // Color palettes for default shape creation
     const colorPalettes = {
@@ -1933,35 +1961,51 @@ function getSelectedFinishCategories() {
     }
 
 
+    function preserveProjectStorageForRecovery() {
+        projectStorageRecoveryRequired = true;
+        try {
+            const savedProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
+            const legacyProject = localStorage.getItem(PROJECT_STORAGE_KEY);
+            if (savedProjects !== null) localStorage.setItem(PROJECTS_RECOVERY_STORAGE_KEY, savedProjects);
+            if (legacyProject !== null) localStorage.setItem(LEGACY_PROJECT_RECOVERY_STORAGE_KEY, legacyProject);
+        } catch (recoveryError) {
+            console.error("Could not create an additional project recovery copy; original storage was left untouched:", recoveryError);
+        }
+    }
+
     function loadProjectManager() {
         try {
-            // Remove obsolete user-defined category names so they cannot leak
-            // into category filters or metadata validation.
-            localStorage.removeItem(CUSTOM_CATEGORIES_STORAGE_KEY);
-
             const savedManager = localStorage.getItem(PROJECTS_STORAGE_KEY);
-
-            if (savedManager) {
-                projectManager = JSON.parse(savedManager);
+            if (savedManager !== null) {
+                const parsedManager = JSON.parse(savedManager);
+                if (!parsedManager || typeof parsedManager !== "object" ||
+                    Array.isArray(parsedManager) || !Array.isArray(parsedManager.projects)) {
+                    throw new Error("Saved project manager has an invalid structure.");
+                }
+                projectManager = parsedManager;
             } else {
-                // Migrate legacy single-project save if it exists.
+                // Migrate the legacy single-project save without deleting its source.
                 const oldSave = localStorage.getItem(PROJECT_STORAGE_KEY);
-                const firstProject = createProject(
-                    oldSave ? JSON.parse(oldSave) : null
-                );
-
-                projectManager = {
-                    activeProjectId: firstProject.id,
-                    projects: [firstProject]
-                };
+                const firstProject = createProject(oldSave ? JSON.parse(oldSave) : null);
+                projectManager = { activeProjectId: firstProject.id, projects: [firstProject] };
             }
 
-            if (!Array.isArray(projectManager.projects)) {
-                projectManager.projects = [];
-            }
+            // Repair missing/duplicate IDs without dropping any valid project.
+            const seenProjectIds = new Set();
+            projectManager.projects.forEach(project => {
+                if (!project || typeof project !== "object" || Array.isArray(project)) {
+                    throw new Error("Saved project list contains an invalid project record.");
+                }
+                let id = String(project.id || "");
+                if (!id || seenProjectIds.has(id)) {
+                    id = crypto.randomUUID();
+                    project.id = id;
+                } else if (typeof project.id !== "string") {
+                    project.id = id;
+                }
+                seenProjectIds.add(id);
+            });
 
-            // Normalize every stored category field. Uncategorized is exclusive and
-            // must never coexist with an assigned manual, automatic or legacy category.
             projectManager.projects.forEach(project => {
                 if (Array.isArray(project.manualCategories) && project.manualCategories.length)
                     project.manualCategories = migrateCategoryList(project.manualCategories);
@@ -1972,22 +2016,17 @@ function getSelectedFinishCategories() {
                 if (project.category && project.category !== "General")
                     project.category = migrateCategoryList([project.category])[0] || "Uncategorized";
 
-                if (Array.isArray(project.manualCategories) && project.manualCategories.length) {
+                if (Array.isArray(project.manualCategories) && project.manualCategories.length)
                     project.manualCategories = normalizeCategoryList(project.manualCategories);
-                }
-                if (Array.isArray(project.autoCategories) && project.autoCategories.length) {
+                if (Array.isArray(project.autoCategories) && project.autoCategories.length)
                     project.autoCategories = normalizeCategoryList(project.autoCategories);
-                }
-                if (Array.isArray(project.categories) && project.categories.length) {
+                if (Array.isArray(project.categories) && project.categories.length)
                     project.categories = normalizeCategoryList(project.categories);
-                }
                 if (project.status !== "finished") return;
 
                 if (!Array.isArray(project.manualCategories) || !project.manualCategories.length) {
                     if (project.categorySource !== "ai" && Number(project.aiCategoriesVersion) < 6 &&
                         Array.isArray(project.categories) && project.categories.length) {
-                        // Before this migration, categories[] was populated by the
-                        // Finish dialog, so preserve the user's multi-select choices.
                         project.manualCategories = [...new Set(project.categories.filter(Boolean))];
                     } else if ((!Array.isArray(project.autoCategories) || !project.autoCategories.length) &&
                                project.category && project.category !== "General" &&
@@ -2006,29 +2045,44 @@ function getSelectedFinishCategories() {
                 }
             });
 
+            if (!projectManager.projects.length) {
+                const firstProject = createProject();
+                projectManager.projects.push(firstProject);
+                projectManager.activeProjectId = firstProject.id;
+            } else if (!projectManager.projects.some(project =>
+                String(project.id) === String(projectManager.activeProjectId || "")
+            )) {
+                const nextProject = projectManager.projects.find(project => project.status !== "finished")
+                    || projectManager.projects[0];
+                projectManager.activeProjectId = nextProject.id;
+            }
+
             localStorage.setItem(CATEGORY_MIGRATION_KEY, "true");
             saveProjectManager();
-
         } catch (error) {
-            console.error("Could not load projects:", error);
-
-            projectManager = {
-                activeProjectId: null,
-                projects: []
-            };
+            console.error("Could not safely load projects; existing saved data has been preserved:", error);
+            preserveProjectStorageForRecovery();
+            projectManager = { activeProjectId: null, projects: [] };
+            showToast("Saved project data needs recovery. Existing data was preserved and protected from overwriting.", "error");
         }
     }
 
 
     function saveProjectManager() {
+        if (projectStorageRecoveryRequired) {
+            console.warn("Project save blocked until the existing saved data is recovered.");
+            return false;
+        }
         try {
             localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projectManager));
             setSaveStatus(true);
             updateProjectCounters();
             invalidateIconLibraryIndex();
+            return true;
         } catch (error) {
             console.error("Could not save projects:", error);
-            showToast("Failed to save to local storage", "error");
+            showToast("Failed to save to local storage. Previous saved data was kept.", "error");
+            return false;
         }
     }
 
@@ -2042,7 +2096,7 @@ function getSelectedFinishCategories() {
 
 
     function saveProjectToBrowser() {
-        if (isRestoringProject) return;
+        if (isRestoringProject || projectStorageRecoveryRequired) return false;
 
         try {
             let activeProject = projectManager.projects.find(p => p.id === projectManager.activeProjectId);
@@ -2061,10 +2115,10 @@ function getSelectedFinishCategories() {
                 );
             }
 
-            saveProjectManager();
-            setSaveStatus(true);
+            return saveProjectManager();
         } catch (error) {
             console.error("Could not autosave project:", error);
+            return false;
         }
     }
 
