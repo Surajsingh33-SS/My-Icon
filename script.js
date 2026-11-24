@@ -712,9 +712,10 @@
     const gallerySpaceToggle = document.getElementById("gallery-space-toggle-wrap");
     const galleryContent = document.getElementById("gallery-content");
     const GALLERY_SPACE_STORAGE_KEY = "iconMakerGallerySpace";
-    // Official icons will be loaded from the shared published collection in the next step.
-    // Keep the collection separate from each visitor's local projects.
-    const OFFICIAL_GALLERY_PROJECTS = [];
+    // Official icons are kept in their own collection, separate from Private projects.
+    // This is browser-local storage for now; shared publishing requires the backend step.
+    const OFFICIAL_GALLERY_STORAGE_KEY = "iconMakerOfficialGalleryProjects";
+    let OFFICIAL_GALLERY_PROJECTS = [];
     const GALLERY_RECENT_STORAGE_KEY = "iconMakerGalleryRecent";
     let activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "private"
         ? "private"
@@ -731,6 +732,17 @@
         } catch (error) {
             console.warn(`Could not read ${key}:`, error);
             return fallback;
+        }
+    }
+
+    OFFICIAL_GALLERY_PROJECTS = readGalleryStorage(OFFICIAL_GALLERY_STORAGE_KEY, []);
+
+    function saveOfficialGalleryProjects() {
+        try {
+            localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, JSON.stringify(OFFICIAL_GALLERY_PROJECTS));
+        } catch (error) {
+            console.error("Could not save Official Gallery:", error);
+            showToast("Failed to save Official Gallery icons", "error");
         }
     }
 
@@ -12805,6 +12817,38 @@ if (finishCategoryManuallyChanged) {
         );
         activeProject.status = "finished";
         activeProject.savedAt = new Date().toISOString();
+
+        if (activeGallerySpace === "official") {
+            // Move the finished icon out of the user's Private collection.
+            const officialProject = {
+                ...activeProject,
+                _gallerySpace: "official"
+            };
+            OFFICIAL_GALLERY_PROJECTS.push(officialProject);
+            saveOfficialGalleryProjects();
+
+            projectManager.projects = projectManager.projects.filter(
+                project => project.id !== activeProject.id
+            );
+
+            // Keep a valid Private draft selected for the next editing session.
+            let nextDraft = projectManager.projects.find(project => project.status !== "finished");
+            if (!nextDraft) {
+                nextDraft = createProject({
+                    version: PROJECT_FORMAT_VERSION,
+                    savedAt: new Date().toISOString(),
+                    selectedShapeIndex: -1,
+                    settings: {
+                        showCoordinates: false,
+                        showGridHighlight: false,
+                        pathStyle: "straight"
+                    },
+                    shapes: []
+                });
+                projectManager.projects.push(nextDraft);
+            }
+            projectManager.activeProjectId = nextDraft.id;
+        }
 
         saveProjectManager();
         renderHomeProjects();
