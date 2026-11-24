@@ -33,6 +33,34 @@
             logo.insertAdjacentElement("afterend", button);
         }
 
+        const accountButton = document.getElementById("iconmaker-account-button");
+        if (accountButton && !document.getElementById("iconmaker-official-migrate-button")) {
+            const migrateButton = document.createElement("button");
+            migrateButton.type = "button";
+            migrateButton.id = "iconmaker-official-migrate-button";
+            migrateButton.className = "iconmaker-official-migrate-button";
+            migrateButton.hidden = true;
+            migrateButton.textContent = "Publish legacy Official icons";
+            migrateButton.addEventListener("click", async () => {
+                const originalLabel = migrateButton.textContent;
+                migrateButton.disabled = true;
+                migrateButton.textContent = "Publishing…";
+                try {
+                    const result = await migrateLegacyOfficialProjects();
+                    const projects = await fetchOfficialProjects();
+                    appHooks?.onOfficialProjectsChanged?.(projects);
+                    appHooks?.onOfficialMigrationComplete?.(result);
+                } catch (error) {
+                    console.error("Official Library migration failed:", error);
+                    appHooks?.onOfficialMigrationComplete?.({ error: error?.message || "Migration failed." });
+                } finally {
+                    migrateButton.disabled = false;
+                    migrateButton.textContent = originalLabel;
+                }
+            });
+            accountButton.insertAdjacentElement("afterend", migrateButton);
+        }
+
         authModal = document.createElement("div");
         authModal.id = "iconmaker-auth-modal";
         authModal.className = "iconmaker-auth-modal";
@@ -159,8 +187,14 @@
         }
     }
 
+    function isOfficialPublisher() {
+        return currentSession?.user?.app_metadata?.role === "official_publisher";
+    }
+
     function updateAccountButton() {
         const button = document.getElementById("iconmaker-account-button");
+        const migrateButton = document.getElementById("iconmaker-official-migrate-button");
+        if (migrateButton) migrateButton.hidden = !isOfficialPublisher();
         if (!button) return;
         const label = button.querySelector(".iconmaker-account-label");
         if (label) label.textContent = currentSession?.user?.email || "Sign in";
@@ -206,6 +240,63 @@
         localProjects.forEach(project => merged.set(String(project.id || ""), project));
         cloudProjects.forEach(project => merged.set(String(project.id || ""), project));
         return [...merged.values()].filter(project => project.id);
+    }
+
+    // One-time, non-destructive migration of the old browser-local Official Library.
+    // Only finished records with stable IDs are considered. Existing cloud records are never overwritten,
+    // and the browser's legacy storage key is deliberately retained as a recovery copy.
+    async function migrateLegacyOfficialProjects() {
+        if (!currentSession?.user?.id) throw new Error("Sign in before migrating Official icons.");
+        if (!isOfficialPublisher()) throw new Error("This account does not have Official Publisher access.");
+
+        let stored;
+        try {
+            const raw = localStorage.getItem("iconMakerOfficialGalleryProjects");
+            stored = raw ? JSON.parse(raw) : [];
+        } catch (_) {
+            throw new Error("The legacy Official Library backup could not be read. Its original data was left untouched.");
+        }
+        if (!Array.isArray(stored)) throw new Error("The legacy Official Library backup is not a valid project list.");
+
+        const unique = new Map();
+        let skipped = 0;
+        stored.forEach(project => {
+            if (!project || typeof project !== "object" || Array.isArray(project) ||
+                project.status !== "finished" || !project.id) {
+                skipped++;
+                return;
+            }
+            const id = String(project.id).trim();
+            if (!id || unique.has(id)) {
+                skipped++;
+                return;
+            }
+            const projectData = { ...project };
+            delete projectData._gallerySpace;
+            delete projectData._officialSource;
+            delete projectData._cloudUpdatedAt;
+            unique.set(id, { project_id: id, project_data: projectData });
+        });
+
+        let published = 0;
+        let alreadyPresent = 0;
+        const candidates = [...unique.values()];
+        for (let start = 0; start < candidates.length; start += 75) {
+            const batch = candidates.slice(start, start + 75);
+            const ids = batch.map(row => row.project_id);
+            const { data: existing, error: lookupError } = await client
+                .from("official_projects").select("project_id").in("project_id", ids);
+            if (lookupError) throw lookupError;
+            const existingIds = new Set((existing || []).map(row => String(row.project_id)));
+            alreadyPresent += existingIds.size;
+            const missingRows = batch.filter(row => !existingIds.has(row.project_id));
+            if (!missingRows.length) continue;
+            const { error: insertError } = await client.from("official_projects").insert(missingRows);
+            if (insertError) throw insertError;
+            published += missingRows.length;
+        }
+
+        return { published, alreadyPresent, skipped, total: candidates.length };
     }
 
     async function fetchPrivateProjects() {
@@ -270,6 +361,7 @@
         openAuthModal,
         getSession: () => currentSession,
         fetchOfficialProjects,
+        migrateLegacyOfficialProjects,
         fetchPrivateProjects,
         savePrivateProjects,
         deletePrivateProject
