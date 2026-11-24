@@ -210,6 +210,9 @@
     let publisherPortalPage = "home";
     let publisherPortalStatus = null;
     let publisherAuditEvents = [];
+    let publisherAuditOffset = 0;
+    let publisherAuditTotal = 0;
+    let publisherAuditHasMore = false;
 
     function ensurePublisherPortal() {
         if (publisherPortal?.isConnected) return publisherPortal;
@@ -318,11 +321,10 @@
                     </select>
                     <span id="markora-audit-count" class="markora-audit-count">Loading history…</span>
                 </div>
-                <div id="markora-audit-results" class="markora-audit-results"><p class="management-subtitle">Loading activity history…</p></div>`;
+                <div id="markora-audit-results" class="markora-audit-results"><p class="management-subtitle">Loading activity history…</p></div>
+                <button type="button" class="btn btn-secondary markora-audit-load-more" data-portal-action="load-audit-more" hidden>Load more activity</button>`;
             try {
-                const result = await callPublisherControl("list_audit");
-                publisherAuditEvents = result.events || [];
-                renderPublisherAuditEvents();
+                await loadPublisherAuditEvents(true);
             } catch (error) {
                 root.innerHTML = `<p class="markora-portal-empty">${escapeHTML(error?.message || "Could not load security activity.")}</p>`;
             }
@@ -381,7 +383,25 @@
         const list = root.querySelector("#markora-audit-results");
         if (list) list.innerHTML = rows || '<p class="markora-portal-empty">No activity matches these filters.</p>';
         const count = root.querySelector("#markora-audit-count");
-        if (count) count.textContent = `${filtered.length} of ${publisherAuditEvents.length} events`;
+        if (count) count.textContent = `Showing ${publisherAuditEvents.length} of ${publisherAuditTotal} events`;
+        const more = root.querySelector('[data-portal-action="load-audit-more"]');
+        if (more) more.hidden = !publisherAuditHasMore;
+    }
+
+    async function loadPublisherAuditEvents(reset = false) {
+        if (reset) {
+            publisherAuditEvents = [];
+            publisherAuditOffset = 0;
+            publisherAuditTotal = 0;
+            publisherAuditHasMore = false;
+        }
+        const result = await callPublisherControl("list_audit", { offset: publisherAuditOffset, limit: 50 });
+        const batch = result.events || [];
+        publisherAuditEvents.push(...batch);
+        publisherAuditOffset += batch.length;
+        publisherAuditTotal = Number(result.total || 0);
+        publisherAuditHasMore = !!result.hasMore;
+        renderPublisherAuditEvents();
     }
 
     function handlePublisherAuditFilter(event) {
@@ -465,7 +485,10 @@
         const action = button.dataset.portalAction;
         button.disabled = true;
         try {
-            if (action === "create-invite") {
+            if (action === "load-audit-more") {
+                button.textContent = "Loading…";
+                await loadPublisherAuditEvents(false);
+            } else if (action === "create-invite") {
                 const result = await callPublisherControl("create_invite");
                 const output = publisherPortal.querySelector("#markora-invite-output");
                 output.hidden = false;
