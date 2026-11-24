@@ -8936,3 +8936,29 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
     min-width: 0;
     cursor: pointer;
 }
+
+
+/* Supabase account and authentication UI */
+.iconmaker-account-button{width:100%;display:flex;align-items:center;gap:10px;margin:14px 0 8px;padding:9px 11px;border:1px solid var(--border-color,rgba(128,128,128,.25));border-radius:10px;background:var(--surface-color,transparent);color:var(--text-color,inherit);font:inherit;text-align:left;cursor:pointer;min-width:0}
+.iconmaker-account-button:hover{border-color:var(--accent-color,var(--accent,#ff0077))}
+.iconmaker-account-avatar{width:28px;height:28px;display:grid;place-items:center;flex:0 0 28px;border-radius:50%;background:var(--accent-color,var(--accent,#ff0077));color:#fff;font-size:18px}
+.iconmaker-account-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;flex:1}
+.iconmaker-account-menu{font-size:11px;color:var(--text-secondary, #888)}
+.iconmaker-auth-modal{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:20px}
+.iconmaker-auth-modal[hidden]{display:none}
+.iconmaker-auth-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(5px)}
+.iconmaker-auth-dialog{position:relative;width:min(100%,420px);padding:30px;border:1px solid var(--border-color,rgba(128,128,128,.25));border-radius:18px;background:var(--panel-bg, var(--bg-secondary,#171717));color:var(--text-color,inherit);box-shadow:0 24px 80px rgba(0,0,0,.35)}
+.iconmaker-auth-close{position:absolute;right:14px;top:10px;border:0;background:transparent;color:inherit;font-size:26px;cursor:pointer}
+.iconmaker-auth-eyebrow{font-size:10px;letter-spacing:.16em;color:var(--accent-color,var(--accent,#ff0077));font-weight:700}
+.iconmaker-auth-dialog h2{margin:9px 0 6px;font-size:23px}
+.iconmaker-auth-description,.iconmaker-auth-footnote{font-size:12px;line-height:1.55;color:var(--text-secondary,#999)}
+.iconmaker-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:22px 0 18px;padding:4px;border-radius:10px;background:rgba(128,128,128,.12)}
+.iconmaker-auth-tabs button{padding:9px;border:0;border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}
+.iconmaker-auth-tabs button.active{background:var(--accent-color,var(--accent,#ff0077));color:#fff}
+#iconmaker-auth-form{display:grid;gap:8px}
+#iconmaker-auth-form label{font-size:12px;font-weight:600;margin-top:5px}
+#iconmaker-auth-form input{width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-color,rgba(128,128,128,.3));border-radius:9px;background:var(--input-bg,rgba(128,128,128,.08));color:inherit;font:inherit}
+.iconmaker-auth-error{min-height:18px;margin:2px 0;color:#f87171;font-size:12px}
+.iconmaker-auth-submit{padding:12px;border:0;border-radius:9px;background:var(--accent-color,var(--accent,#ff0077));color:white;font:inherit;font-weight:700;cursor:pointer}
+.iconmaker-auth-submit:disabled{opacity:.6;cursor:wait}
+.iconmaker-auth-footnote{margin:17px 0 0}
