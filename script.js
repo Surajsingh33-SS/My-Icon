@@ -7,6 +7,62 @@
 
 (function () {
     "use strict";
+    // Treat stored/imported SVG markup as untrusted. Keep a conservative SVG-only
+    // subset for previews; scripts, event handlers, foreign content, external
+    // references, CSS and animation elements are deliberately discarded.
+    function sanitizeSVGPreview(markup) {
+        if (typeof markup !== "string" || markup.length > 200000) return "";
+        const parser = new DOMParser();
+        const parsed = parser.parseFromString(markup, "image/svg+xml");
+        const root = parsed.documentElement;
+        if (!root || root.localName.toLowerCase() !== "svg" ||
+            parsed.querySelector("parsererror")) return "";
+
+        const allowedTags = new Set([
+            "svg", "g", "path", "circle", "ellipse", "rect", "line",
+            "polyline", "polygon", "defs", "clipPath", "mask",
+            "linearGradient", "radialGradient", "stop", "title", "desc"
+        ]);
+        const allowedAttrs = new Set([
+            "xmlns", "viewBox", "width", "height", "preserveAspectRatio",
+            "d", "points", "x", "y", "x1", "y1", "x2", "y2",
+            "cx", "cy", "r", "rx", "ry", "fill", "fill-rule",
+            "fill-opacity", "stroke", "stroke-width", "stroke-linecap",
+            "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray",
+            "stroke-dashoffset", "stroke-opacity", "opacity", "transform",
+            "id", "clip-path", "mask", "gradientUnits", "gradientTransform",
+            "spreadMethod", "offset", "stop-color", "stop-opacity",
+            "fx", "fy"
+        ]);
+
+        const elements = [...root.querySelectorAll("*")].reverse();
+        for (const element of elements) {
+            if (!allowedTags.has(element.localName)) {
+                element.remove();
+                continue;
+            }
+            for (const attribute of [...element.attributes]) {
+                const name = attribute.name;
+                const value = attribute.value.trim();
+                if (!allowedAttrs.has(name) || /^on/i.test(name) ||
+                    /javascript:|data:|https?:|\/\//i.test(value) ||
+                    (value.includes("url(") && !/^url\(#[A-Za-z0-9_.:-]+\)$/.test(value))) {
+                    element.removeAttribute(name);
+                }
+            }
+        }
+        for (const attribute of [...root.attributes]) {
+            const name = attribute.name;
+            const value = attribute.value.trim();
+            if (!allowedAttrs.has(name) || /^on/i.test(name) ||
+                /javascript:|data:|https?:|\/\//i.test(value) ||
+                (value.includes("url(") && !/^url\(#[A-Za-z0-9_.:-]+\)$/.test(value))) {
+                root.removeAttribute(name);
+            }
+        }
+        return new XMLSerializer().serializeToString(root);
+    }
+
 
     // App-styled replacement for browser alert/confirm/prompt dialogs.
     function showAppDialog({ title = "Icon Maker Pro", message = "", input = false, confirmText = "Continue", cancelText = "Cancel", danger = false } = {}) {
@@ -10875,7 +10931,7 @@ function getSelectedFinishCategories() {
         const preview = document.createElement("div");
         preview.className = "icon-library-detail-preview";
         if (project?.thumbnail) {
-            preview.innerHTML = project.thumbnail;
+            preview.innerHTML = sanitizeSVGPreview(project.thumbnail) || "";
             const svg = preview.querySelector("svg");
             if (svg) {
                 svg.removeAttribute("width");
@@ -12044,7 +12100,7 @@ function getSelectedFinishCategories() {
             preview.className = "home-project-preview";
 
             if (project.thumbnail) {
-                preview.innerHTML = project.thumbnail;
+                preview.innerHTML = sanitizeSVGPreview(project.thumbnail) || "";
             } else {
                 preview.textContent = "✦";
             }
@@ -13173,7 +13229,7 @@ function getSelectedFinishCategories() {
             const preview = document.createElement("div");
             preview.className = "management-card-preview";
             if (project.thumbnail) {
-                preview.innerHTML = project.thumbnail;
+                preview.innerHTML = sanitizeSVGPreview(project.thumbnail) || "";
             } else {
                 preview.textContent = "✦";
             }
