@@ -1472,6 +1472,21 @@ html:not(.touch-hover-disabled) .home-project-card:hover .home-card-tooltip{
     visibility: visible;
     transform: translateX(-50%) translateY(0);
 }
+
+/* On wider gallery layouts, keep the icon name just above its tile. */
+@media (min-width: 761px) {
+    .home-card-tooltip {
+        top: auto;
+        bottom: calc(100% + 6px);
+        transform: translateX(-50%) translateY(4px);
+    }
+
+    html:not(.touch-hover-disabled) .home-project-card:hover .home-card-tooltip,
+    .home-project-card.touch-tooltip-active .home-card-tooltip {
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
 /* On mobile, show the icon name above its tile so it stays visible in the gallery. */
 @media (max-width: 760px) {
     .home-card-tooltip {
