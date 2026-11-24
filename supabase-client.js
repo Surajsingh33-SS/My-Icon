@@ -139,7 +139,6 @@
         const password = authModal.querySelector("#iconmaker-auth-password").value;
         const submit = authModal.querySelector("#iconmaker-auth-submit");
         submit.disabled = true;
-        submit.disabled = true;
         submit.querySelector("span").textContent = authMode === "signup" ? "Creating account…" : "Signing in…";
         setAuthError("");
         try {
