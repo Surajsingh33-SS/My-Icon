@@ -12817,8 +12817,8 @@ function getSelectedFinishCategories() {
         bar.id = "official-editor-bar";
         bar.className = "official-editor-bar";
         bar.innerHTML = `
-            <span class="official-editor-bar-label">Editing Official icon</span>
-            <span class="official-editor-bar-hint">Changes are a draft until you save them</span>
+            <span class="official-editor-bar-label">${officialEditSession?.mode === "create" ? "Creating Official icon" : "Editing Official icon"}</span>
+            <span class="official-editor-bar-hint">${officialEditSession?.mode === "create" ? "Finish & Publish to add this icon to the shared Official Gallery" : "Changes are a draft until you save them"}</span>
             <div class="official-editor-bar-actions">
                 <button type="button" data-official-cancel>Cancel</button>
                 <button type="button" data-official-save>${officialEditSession?.mode === "create" ? "Finish & Publish" : "Save to Official"}</button>
@@ -13778,8 +13778,13 @@ if (finishCategoryManuallyChanged) {
     // 22. MENU, TOPBAR, FILE IMPORT & BACKUP
     // ========================================================================
     saveProjectButton?.addEventListener("click", () => {
-        saveProjectToBrowser();
-        showToast("Project saved", "success");
+        if (officialEditSession) {
+            document.querySelector("#official-editor-bar [data-official-save]")?.click();
+            return;
+        }
+        if (saveProjectToBrowser() !== false) {
+            showToast("Project saved", "success");
+        }
     });
 
     // Reuse the existing editor actions from the home-page topbar.
