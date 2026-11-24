@@ -13999,7 +13999,26 @@ if (finishCategoryManuallyChanged) {
         }
     }
     if (window.IconMakerSupabase?.available) {
-        window.IconMakerSupabase.initialize({ onAuthChanged: handleSupabaseAuthChanged })
+        window.IconMakerSupabase.initialize({
+            onAuthChanged: handleSupabaseAuthChanged,
+            onOfficialProjectsChanged: projects => {
+                OFFICIAL_GALLERY_PROJECTS = Array.isArray(projects) ? projects : [];
+                renderHomeProjects();
+                renderManagementTable();
+                updateProjectCounters();
+            },
+            onOfficialMigrationComplete: result => {
+                if (result?.error) {
+                    showToast(result.error, "error");
+                    return;
+                }
+                const message = result.published
+                    ? `Published ${result.published} Official icon(s) to the shared library.`
+                    : "All eligible Official icons are already in the shared library.";
+                const details = result.alreadyPresent ? ` ${result.alreadyPresent} already existed.` : "";
+                showToast(message + details, "success");
+            }
+        })
             .then(async () => {
                 try {
                     OFFICIAL_GALLERY_PROJECTS = await window.IconMakerSupabase.fetchOfficialProjects();
