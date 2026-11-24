@@ -746,6 +746,104 @@
         }
     }
 
+    // One-time migration for projects created before Official and Private were
+    // separated. Only finished projects move; drafts always remain Private.
+    // Same-name / same-ID conflicts stay Private so no project is overwritten.
+    const PRIVATE_TO_OFFICIAL_MIGRATION_KEY = "iconMakerPrivateToOfficialMigrationV1";
+
+    function migrateFinishedPrivateProjectsToOfficial() {
+        if (localStorage.getItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY) === "true") {
+            return { moved: 0, conflicts: 0 };
+        }
+
+        const privateProjects = Array.isArray(projectManager?.projects) ? projectManager.projects : [];
+        const finished = privateProjects.filter(project => project?.status === "finished");
+        const official = [...OFFICIAL_GALLERY_PROJECTS];
+        const officialIds = new Set(official.map(project => String(project?.id || "")).filter(Boolean));
+        const officialNames = new Set(official.map(project =>
+            String(project?.name || "").trim().toLowerCase().replace(/[\\s_]+/g, "-")
+        ).filter(Boolean));
+
+        const movedIds = new Set();
+        const movedProjects = [];
+        let conflicts = 0;
+
+        finished.forEach(project => {
+            const id = String(project?.id || "");
+            const name = String(project?.name || "").trim().toLowerCase().replace(/[\\s_]+/g, "-");
+            if ((id && officialIds.has(id)) || (name && officialNames.has(name))) {
+                conflicts++;
+                return;
+            }
+            const copy = { ...project };
+            delete copy._gallerySpace;
+            movedProjects.push(copy);
+            if (id) { officialIds.add(id); movedIds.add(id); }
+            if (name) officialNames.add(name);
+        });
+
+        if (!movedProjects.length && !conflicts) {
+            localStorage.setItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, "true");
+            return { moved: 0, conflicts: 0 };
+        }
+
+        if (!movedProjects.length) {
+            console.warn("Private-to-Official migration paused: all finished projects have name or ID conflicts.", conflicts);
+            return { moved: 0, conflicts };
+        }
+
+        const previousOfficial = localStorage.getItem(OFFICIAL_GALLERY_STORAGE_KEY);
+        const nextOfficial = [...official, ...movedProjects];
+        const nextPrivate = privateProjects.filter(project => !movedIds.has(String(project?.id || "")));
+
+        // If the active project was moved, select a remaining Private draft.
+        if (movedIds.has(String(projectManager.activeProjectId || ""))) {
+            let nextDraft = nextPrivate.find(project => project?.status !== "finished");
+            if (!nextDraft) {
+                nextDraft = createProject();
+                nextPrivate.push(nextDraft);
+            }
+            projectManager.activeProjectId = nextDraft.id;
+        }
+
+        try {
+            localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, JSON.stringify(nextOfficial));
+            localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify({
+                ...projectManager,
+                projects: nextPrivate
+            }));
+            OFFICIAL_GALLERY_PROJECTS = nextOfficial;
+            projectManager.projects = nextPrivate;
+
+            // Keep recent activity attached to the same icons after their move.
+            let recentChanged = false;
+            galleryRecentItems = galleryRecentItems.map(item => {
+                if (item?.space !== "private" || !movedIds.has(String(item.id || ""))) return item;
+                recentChanged = true;
+                return { ...item, key: `official:${String(item.id)}`, space: "official" };
+            });
+            if (recentChanged) saveGalleryActivity();
+
+            if (!conflicts) {
+                localStorage.setItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, "true");
+            } else {
+                console.warn("Some finished Private projects were kept in Private because Official already contains a project with the same name or ID.", conflicts);
+            }
+            console.info(`Gallery migration: moved ${movedProjects.length} finished project(s); ${conflicts} conflict(s) left in Private.`);
+            return { moved: movedProjects.length, conflicts };
+        } catch (error) {
+            // Roll back the Official write if saving Private failed.
+            try {
+                if (previousOfficial === null) localStorage.removeItem(OFFICIAL_GALLERY_STORAGE_KEY);
+                else localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficial);
+            } catch (rollbackError) {
+                console.error("Could not roll back Official Gallery migration:", rollbackError);
+            }
+            console.error("Could not complete Private-to-Official migration:", error);
+            return { moved: 0, conflicts: finished.length };
+        }
+    }
+
     let galleryRecentItems = readGalleryStorage(GALLERY_RECENT_STORAGE_KEY, []);
 
     function saveGalleryActivity() {
@@ -763,8 +861,12 @@
     function setGalleryProjectFavorite(project, isFavorite) {
         if (!project) return;
         project.favorite = isFavorite;
-        if (project._gallerySpace === "private") saveProjectManager();
+        const space = project._gallerySpace || activeGallerySpace;
+        if (space === "private") saveProjectManager();
+        else saveOfficialGalleryProjects();
+        invalidateIconLibraryIndex?.();
         updateProjectCounters();
+        renderHomeProjects();
     }
 
     function recordGalleryProjectOpen(project) {
@@ -13553,6 +13655,7 @@ if (finishCategoryManuallyChanged) {
     // 25. APP INITIALIZATION LIFECYCLE
     // ========================================================================
     loadProjectManager();
+    migrateFinishedPrivateProjectsToOfficial();
     restoreProjectFromBrowser();
     renderHomeProjects();
     renderUnfinishedProjects();
