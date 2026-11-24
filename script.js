@@ -11526,7 +11526,11 @@ function getSelectedFinishCategories() {
 
         // Recent stays shared across spaces; Favorites are local to the active space.
         if (activeHomeTab === "recent") {
-            const recentOrder = new Map(galleryRecentItems.map((item, index) => [item.key, index]));
+            const recentOrder = new Map(
+                galleryRecentItems
+                    .filter(item => item.space === activeGallerySpace)
+                    .map((item, index) => [item.key, index])
+            );
             finished = finished
                 .filter(project => recentOrder.has(getGalleryProjectKey(project, project._gallerySpace)))
                 .sort((a, b) => recentOrder.get(getGalleryProjectKey(a, a._gallerySpace)) - recentOrder.get(getGalleryProjectKey(b, b._gallerySpace)));
