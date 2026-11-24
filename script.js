@@ -721,9 +721,14 @@
     let OFFICIAL_GALLERY_PROJECTS = [];
     let officialGalleryRecoveryRequired = false;
     const GALLERY_RECENT_STORAGE_KEY = "iconMakerGalleryRecent";
-    let activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "private"
-        ? "private"
-        : "official";
+    let activeGallerySpace = "official";
+    try {
+        activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "private"
+            ? "private"
+            : "official";
+    } catch (storageError) {
+        console.warn("Could not read the selected Gallery space; using Official temporarily:", storageError);
+    }
 
     function getGalleryProjectKey(project, space = project?._gallerySpace || activeGallerySpace) {
         return `${space}:${String(project?.id ?? "")}`;
