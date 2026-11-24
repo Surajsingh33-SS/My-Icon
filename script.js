@@ -715,9 +715,87 @@
     // Official icons will be loaded from the shared published collection in the next step.
     // Keep the collection separate from each visitor's local projects.
     const OFFICIAL_GALLERY_PROJECTS = [];
+    const GALLERY_FAVORITES_STORAGE_KEY = "iconMakerGalleryFavorites";
+    const GALLERY_RECENT_STORAGE_KEY = "iconMakerGalleryRecent";
     let activeGallerySpace = localStorage.getItem(GALLERY_SPACE_STORAGE_KEY) === "private"
         ? "private"
         : "official";
+
+    function getGalleryProjectKey(project, space = activeGallerySpace) {
+        return `${space}:${String(project?.id ?? "")}`;
+    }
+
+    function readGalleryStorage(key, fallback) {
+        try {
+            const value = JSON.parse(localStorage.getItem(key) || "null");
+            return Array.isArray(value) ? value : fallback;
+        } catch (error) {
+            console.warn(`Could not read ${key}:`, error);
+            return fallback;
+        }
+    }
+
+    let galleryFavoriteKeys = readGalleryStorage(GALLERY_FAVORITES_STORAGE_KEY, []);
+    let galleryRecentItems = readGalleryStorage(GALLERY_RECENT_STORAGE_KEY, []);
+
+    function saveGalleryActivity() {
+        try {
+            localStorage.setItem(GALLERY_FAVORITES_STORAGE_KEY, JSON.stringify([...new Set(galleryFavoriteKeys)]));
+            localStorage.setItem(GALLERY_RECENT_STORAGE_KEY, JSON.stringify(galleryRecentItems.slice(0, 200)));
+        } catch (error) {
+            console.warn("Could not save gallery activity:", error);
+        }
+    }
+
+    function isGalleryProjectFavorite(project) {
+        return galleryFavoriteKeys.includes(getGalleryProjectKey(project));
+    }
+
+    function setGalleryProjectFavorite(project, isFavorite) {
+        const key = getGalleryProjectKey(project);
+        galleryFavoriteKeys = galleryFavoriteKeys.filter(item => item !== key);
+        if (isFavorite) galleryFavoriteKeys.unshift(key);
+        if (project && project._gallerySpace === "private") {
+            project.favorite = isFavorite;
+            saveProjectManager();
+        }
+        saveGalleryActivity();
+        updateProjectCounters();
+    }
+
+    function recordGalleryProjectOpen(project) {
+        const key = getGalleryProjectKey(project);
+        galleryRecentItems = galleryRecentItems.filter(item => item.key !== key);
+        galleryRecentItems.unshift({ key, space: project._gallerySpace || activeGallerySpace, id: String(project.id), openedAt: new Date().toISOString() });
+        saveGalleryActivity();
+    }
+
+    function getAllGalleryProjects() {
+        return [
+            ...projectManager.projects.filter(project => project.status === "finished").map(project => {
+                project._gallerySpace = "private";
+                return project;
+            }),
+            ...OFFICIAL_GALLERY_PROJECTS.filter(project => project.status === "finished").map(project => {
+                project._gallerySpace = "official";
+                return project;
+            })
+        ];
+    }
+
+    function migrateLegacyGalleryFavorites() {
+        let changed = false;
+        projectManager.projects.filter(project => project.status === "finished" && project.favorite).forEach(project => {
+            const key = getGalleryProjectKey(project, "private");
+            if (!galleryFavoriteKeys.includes(key)) {
+                galleryFavoriteKeys.push(key);
+                changed = true;
+            }
+        });
+        if (changed) saveGalleryActivity();
+    }
+
+    migrateLegacyGalleryFavorites();
 
     const sidebarOptions = document.querySelectorAll(".sidebar-option");
     const iconLibrarySearchInput = document.getElementById("icon-library-search-input");
@@ -1853,13 +1931,12 @@ function getSelectedFinishCategories() {
     }
 
     function updateProjectCounters() {
-        const sourceProjects = activeGallerySpace === "official"
-            ? OFFICIAL_GALLERY_PROJECTS
-            : projectManager.projects;
-        const finishedCount = sourceProjects.filter(p => p.status === "finished").length;
-        const favCount = sourceProjects.filter(p => p.status === "finished" && p.favorite).length;
+        const activeFinishedCount = (activeGallerySpace === "official" ? OFFICIAL_GALLERY_PROJECTS : projectManager.projects)
+            .filter(project => project.status === "finished").length;
+        const favCount = getAllGalleryProjects()
+            .filter(project => galleryFavoriteKeys.includes(getGalleryProjectKey(project, project._gallerySpace))).length;
 
-        if (tabCountAll) tabCountAll.textContent = finishedCount;
+        if (tabCountAll) tabCountAll.textContent = activeFinishedCount;
         if (tabCountFav) tabCountFav.textContent = favCount;
         if (sidebarProjectsCount) sidebarProjectsCount.textContent = projectManager.projects.length;
     }
@@ -11450,18 +11527,19 @@ function getSelectedFinishCategories() {
 
         homeProjectGrid.classList.toggle("categories-layout", isCategoryRows);
 
-        const sourceProjects = activeGallerySpace === "official"
-            ? OFFICIAL_GALLERY_PROJECTS
-            : projectManager.projects;
-        const allFinished = sourceProjects.filter(p => p.status === "finished");
-        let finished = [...allFinished];
+        const allGalleryProjects = getAllGalleryProjects();
+        const activeSpaceProjects = allGalleryProjects.filter(project => project._gallerySpace === activeGallerySpace);
+        const allFinished = activeSpaceProjects;
+        let finished = activeHomeTab === "all" ? [...activeSpaceProjects] : [...allGalleryProjects];
 
-        // Filter by Tab
+        // Recent and Favorites are intentionally shared between Official and Private spaces.
         if (activeHomeTab === "recent") {
-            const sevenDaysAgo = Date.now() - 7 * 86400000;
-            finished = finished.filter(p => (Date.parse(p.savedAt) || 0) >= sevenDaysAgo);
+            const recentOrder = new Map(galleryRecentItems.map((item, index) => [item.key, index]));
+            finished = finished
+                .filter(project => recentOrder.has(getGalleryProjectKey(project, project._gallerySpace)))
+                .sort((a, b) => recentOrder.get(getGalleryProjectKey(a, a._gallerySpace)) - recentOrder.get(getGalleryProjectKey(b, b._gallerySpace)));
         } else if (activeHomeTab === "favorites") {
-            finished = finished.filter(p => p.favorite === true);
+            finished = finished.filter(project => galleryFavoriteKeys.includes(getGalleryProjectKey(project, project._gallerySpace)));
         }
 
         // Populate alphabetical category list in sidebar
@@ -11642,8 +11720,8 @@ function getSelectedFinishCategories() {
 
             const starBtn = document.createElement("button");
             starBtn.type = "button";
-            starBtn.className = `home-card-fav-star ${project.favorite ? "active" : ""}`;
-            starBtn.innerHTML = project.favorite ? "★" : "☆";
+            starBtn.className = `home-card-fav-star ${isGalleryProjectFavorite(project) ? "active" : ""}`;
+            starBtn.innerHTML = isGalleryProjectFavorite(project) ? "★" : "☆";
             starBtn.title = "Toggle Favorite";
 
             starBtn.addEventListener("click", e => {
@@ -11653,14 +11731,11 @@ function getSelectedFinishCategories() {
                 // selected project's preview panel, never directly on a tile.
                 if (window.matchMedia("(max-width: 760px)").matches) return;
 
-                project.favorite = !project.favorite;
-                starBtn.classList.toggle("active", project.favorite);
-                starBtn.innerHTML = project.favorite ? "★" : "☆";
-                saveProjectManager();
-                updateProjectCounters();
-                if (activeHomeTab === "favorites" && !project.favorite) {
-                    renderHomeProjects();
-                }
+                const isFavorite = !isGalleryProjectFavorite(project);
+                setGalleryProjectFavorite(project, isFavorite);
+                starBtn.classList.toggle("active", isFavorite);
+                starBtn.innerHTML = isFavorite ? "★" : "☆";
+                if (activeHomeTab === "favorites" && !isFavorite) renderHomeProjects();
             });
 
             card.appendChild(preview);
@@ -12170,9 +12245,11 @@ function getSelectedFinishCategories() {
             projectPreviewImage.src = getPreviewSVG(project, globalStroke);
         }
 
+        recordGalleryProjectOpen(project);
         if (projectFavoriteBtn) {
-            projectFavoriteBtn.classList.toggle("active", project.favorite === true);
-            projectFavoriteBtn.innerHTML = project.favorite ? "★" : "☆";
+            const isFavorite = isGalleryProjectFavorite(project);
+            projectFavoriteBtn.classList.toggle("active", isFavorite);
+            projectFavoriteBtn.innerHTML = isFavorite ? "★" : "☆";
         }
 
         // Render search terms as a single row with an expandable overflow control.
@@ -12251,10 +12328,10 @@ function getSelectedFinishCategories() {
 
     projectFavoriteBtn?.addEventListener("click", () => {
         if (!selectedHomeProject) return;
-        selectedHomeProject.favorite = !selectedHomeProject.favorite;
-        projectFavoriteBtn.classList.toggle("active", selectedHomeProject.favorite);
-        projectFavoriteBtn.innerHTML = selectedHomeProject.favorite ? "★" : "☆";
-        saveProjectManager();
+        const isFavorite = !isGalleryProjectFavorite(selectedHomeProject);
+        setGalleryProjectFavorite(selectedHomeProject, isFavorite);
+        projectFavoriteBtn.classList.toggle("active", isFavorite);
+        projectFavoriteBtn.innerHTML = isFavorite ? "★" : "☆";
         renderHomeProjects();
     });
 
