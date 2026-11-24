@@ -12885,6 +12885,11 @@ function getSelectedFinishCategories() {
         });
         if (!confirmed.confirmed) return;
 
+        if (!Array.isArray(project.data.shapes)) {
+            showToast("This icon has no valid editable drawing data and cannot be published.", "error");
+            return;
+        }
+
         const safePublishShapes = sanitizeProjectShapesForUse(project.data.shapes);
         if (safePublishShapes.length !== project.data.shapes.length) {
             showToast("This icon contains unsupported or unsafe drawing data and cannot be published.", "error");
