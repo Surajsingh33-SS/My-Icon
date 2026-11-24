@@ -815,9 +815,10 @@
 
         const nextOfficial = [...official, ...movedProjects];
         const nextPrivate = privateProjects.filter(project => !movedProjectRefs.has(project));
-        const activeProjectBeforeMigration = privateProjects.find(
-            project => String(project?.id || "") === String(projectManager.activeProjectId || "")
-        );
+        const activeProjectId = String(projectManager.activeProjectId || "");
+        const activeProjectBeforeMigration = activeProjectId
+            ? privateProjects.find(project => String(project?.id || "") === activeProjectId)
+            : null;
         const nextManager = { ...projectManager, projects: nextPrivate };
 
         if (activeProjectBeforeMigration && movedProjectRefs.has(activeProjectBeforeMigration)) {
