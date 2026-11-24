@@ -2103,8 +2103,8 @@ function getSelectedFinishCategories() {
     }
 
 
-    function saveProjectManager() {
-        if (projectStorageRecoveryRequired) {
+    function saveProjectManager(allowRecoveryWrite = false) {
+        if (projectStorageRecoveryRequired && !allowRecoveryWrite) {
             setSaveStatus(false);
             console.warn("Project save blocked until the existing saved data is recovered.");
             return false;
@@ -13224,14 +13224,11 @@ if (finishCategoryManuallyChanged) {
                     throw new Error("Unrecognized project file format.");
                 }
 
-                if (projectStorageRecoveryRequired) {
-                    showToast("Import blocked until the existing saved projects are recovered.", "error");
-                    return;
-                }
+                const isRecoveryImport = projectStorageRecoveryRequired;
 
-                // Save the current editor state first. The imported collections are
-                // then staged and committed together, with both storage values snapshotted.
-                if (saveProjectToBrowser() === false) {
+                // Normal imports first save the current editor. During recovery, do
+                // not write the read-only fallback over the damaged project manager.
+                if (!isRecoveryImport && saveProjectToBrowser() === false) {
                     showToast("Import cancelled because the current project could not be saved.", "error");
                     return;
                 }
@@ -13261,10 +13258,15 @@ if (finishCategoryManuallyChanged) {
                         return;
                     }
 
-                    const privateSaved = privateResult.added.length ? saveProjectManager() : true;
+                    const privateSaved = privateResult.added.length
+                        ? saveProjectManager(isRecoveryImport)
+                        : true;
                     privateWriteSucceeded = privateResult.added.length > 0 && privateSaved;
                     if (!privateSaved || !officialResult.saved) {
                         throw new Error("One or more Gallery collections could not be saved.");
+                    }
+                    if (isRecoveryImport && privateWriteSucceeded) {
+                        projectStorageRecoveryRequired = false;
                     }
 
                     restoreProjectFromBrowser();
@@ -13282,6 +13284,7 @@ if (finishCategoryManuallyChanged) {
                 } catch (importError) {
                     projectManager = previousManager;
                     OFFICIAL_GALLERY_PROJECTS = previousOfficialProjects;
+                    if (isRecoveryImport) projectStorageRecoveryRequired = true;
                     try {
                         if (privateWriteSucceeded) {
                             if (previousPrivateStorage === null) localStorage.removeItem(PROJECTS_STORAGE_KEY);
