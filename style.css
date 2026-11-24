@@ -9324,3 +9324,26 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
 @media(max-width:650px) {
  .markora-publisher-entry { grid-template-columns:minmax(0,1fr); }
 }
+
+
+/* Ensure Preferences cards are replaced by their dedicated full-page view */
+.settings-grid[hidden],
+.management-header[hidden] {
+    display: none !important;
+}
+.markora-publisher-entry,
+.markora-security-entry {
+    grid-column: span 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+.markora-publisher-entry h3,
+.markora-security-entry h3 { margin: 0; font-size: 15px; }
+.markora-publisher-entry p,
+.markora-security-entry p { margin: 0; flex: 1 1 auto; }
+.markora-entry-heading { display:flex; align-items:center; justify-content:space-between; width:100%; }
+.markora-entry-icon { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--accent-light); color:var(--accent-color,var(--accent,#ff0077)); font-size:20px; }
+.markora-security-entry[hidden] { display:none !important; }
