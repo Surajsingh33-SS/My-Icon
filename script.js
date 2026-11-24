@@ -795,7 +795,7 @@
         if (changed) saveGalleryActivity();
     }
 
-    migrateLegacyGalleryFavorites();
+
 
     const sidebarOptions = document.querySelectorAll(".sidebar-option");
     const iconLibrarySearchInput = document.getElementById("icon-library-search-input");
@@ -13481,6 +13481,7 @@ if (finishCategoryManuallyChanged) {
     // 25. APP INITIALIZATION LIFECYCLE
     // ========================================================================
     loadProjectManager();
+    migrateLegacyGalleryFavorites();
     restoreProjectFromBrowser();
     renderHomeProjects();
     renderUnfinishedProjects();
