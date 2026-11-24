@@ -1881,7 +1881,7 @@ function detectIconCategories(iconName) {
     // Provided metadata is authoritative, followed by manual assignments and keyword fallback.
     function getProjectCategories(project) {
         if (!project) return ["Uncategorized"];
-        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(project.name || "")];
+        const provided = getIconLibraryUserMetadata("private")[normalizeLibraryIconName(project.name || "")];
         if (Array.isArray(provided?.categories) && provided.categories.length)
             return migrateCategoryList(provided.categories);
         if (Array.isArray(project.manualCategories) && project.manualCategories.length)
@@ -10579,7 +10579,7 @@ function getSelectedFinishCategories() {
         const metadataKey = name.replace(/\.[a-z0-9]+$/i, "").replace(/[\s_]+/g, "-");
         const categories = getProjectCategories(project);
         const savedTerms = Array.isArray(project.searchTerms) ? project.searchTerms : [];
-        const provided = getIconLibraryUserMetadata()[normalizeLibraryIconName(name)] || {};
+        const provided = getIconLibraryUserMetadata("private")[normalizeLibraryIconName(name)] || {};
         const metadataTerms = iconSearchMetadata?.[metadataKey]?.ai?.searchTerms;
         const baseTerms = [name, ...categories];
         const providedTerms = [
@@ -10951,6 +10951,12 @@ function getSelectedFinishCategories() {
                 }
             });
             iconLibraryMetadataModal = overlay;
+        }
+        const scope = iconLibraryMetadataModal.querySelector(".icon-library-metadata-scope");
+        if (scope) {
+            scope.textContent = iconLibrarySavedOnly
+                ? "Private Icons selected: Merge updates only matching icons in your Private Library. Official metadata is never changed."
+                : "Official Icons selected: Merge updates matching Official icons and also matching Private icons when the same icon exists in both. Official-only icons receive Official metadata only. Replace is disabled.";
         }
         iconLibraryMetadataModal.classList.add("open");
         iconLibraryMetadataModal.querySelector(".icon-library-metadata-input").focus();
