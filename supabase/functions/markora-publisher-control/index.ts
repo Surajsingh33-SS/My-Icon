@@ -56,8 +56,28 @@ Deno.serve(async (req: Request) => {
     const user = authData.user;
 
     const admin = createClient(url, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const body = await req.json().catch(() => ({}));
-    const action = String(body.action || "");
+    const contentType = req.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("application/json")) {
+      return reply({ error: "A JSON request body is required." }, 415);
+    }
+    const maxRequestBytes = 1024 * 1024;
+    const declaredLength = Number(req.headers.get("content-length") || 0);
+    if (declaredLength > maxRequestBytes) return reply({ error: "Request is too large." }, 413);
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > maxRequestBytes) {
+      return reply({ error: "Request is too large." }, 413);
+    }
+    let body: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(rawBody || "{}");
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return reply({ error: "Invalid request body." }, 400);
+      }
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return reply({ error: "Invalid JSON request body." }, 400);
+    }
+    const action = typeof body.action === "string" ? body.action : "";
 
     const { data: ownerRow, error: ownerError } = await admin
       .from("markora_owner_registry").select("owner_id").eq("singleton", true).maybeSingle();
@@ -167,12 +187,33 @@ Deno.serve(async (req: Request) => {
       if (contributorError) throw contributorError;
       if (isOwner || contributor?.status !== "active") throw new Error("An active Semi-Publisher account is required to submit icons.");
       if (!body.project || typeof body.project !== "object" || Array.isArray(body.project)) throw new Error("Select a valid finished icon.");
-      const project = cleanProject(body.project);
-      if (!project.id || body.project.status !== "finished") throw new Error("Only finished Private icons can be submitted.");
-      const { data, error } = await admin.from("publisher_submissions").insert({
-        user_id: user.id, project_id: project.id, project_data: project
-      }).select("id,project_id,status,created_at").single();
-      if (error) throw error;
+      const incomingProject = body.project as Record<string, unknown>;
+      const serializedProject = JSON.stringify(incomingProject);
+      if (new TextEncoder().encode(serializedProject).byteLength > 512 * 1024) {
+        return reply({ error: "This icon project is too large to submit (512 KB maximum)." }, 413);
+      }
+      if (typeof incomingProject.id !== "string" || incomingProject.id.length < 1 || incomingProject.id.length > 160) {
+        throw new Error("The icon project has an invalid identifier.");
+      }
+      if (typeof incomingProject.name === "string" && incomingProject.name.length > 160) {
+        throw new Error("The icon name is too long.");
+      }
+      if (incomingProject.status !== "finished") throw new Error("Only finished Private icons can be submitted.");
+      const project = cleanProject(incomingProject);
+      // Enforce per-account limits atomically in Postgres to prevent concurrent bypasses.
+      const { data: submissionResult, error: submissionError } = await admin.rpc("markora_submit_project", {
+        p_user_id: user.id,
+        p_project_id: project.id,
+        p_project_data: project
+      });
+      if (submissionError) throw submissionError;
+      if (!submissionResult?.ok) {
+        return reply(
+          { error: submissionResult?.error || "Submission limit reached. Try again later." },
+          Number(submissionResult?.status) === 429 ? 429 : 400
+        );
+      }
+      const data = submissionResult.submission;
       await addAudit("icon_submitted_for_review", user.id, { submission_id: data.id, project_id: project.id });
       return reply({ submission: data });
     }
