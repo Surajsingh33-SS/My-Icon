@@ -8939,26 +8939,53 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
 
 
 /* Supabase account and authentication UI */
-.iconmaker-account-button{width:100%;display:flex;align-items:center;gap:10px;margin:14px 0 8px;padding:9px 11px;border:1px solid var(--border-color,rgba(128,128,128,.25));border-radius:10px;background:var(--surface-color,transparent);color:var(--text-color,inherit);font:inherit;text-align:left;cursor:pointer;min-width:0}
-.iconmaker-account-button:hover{border-color:var(--accent-color,var(--accent,#ff0077))}
+.iconmaker-account-button{width:100%;display:flex;align-items:center;gap:10px;margin:14px 0 8px;padding:9px 11px;border:1px solid var(--border-color,rgba(128,128,128,.25));border-radius:10px;background:var(--surface-color,transparent);color:var(--text-color,inherit);font:inherit;text-align:left;cursor:pointer;min-width:0;transition:border-color .18s,background .18s}
+.iconmaker-account-button:hover{border-color:var(--accent-color,var(--accent,#ff0077));background:var(--hover-bg,rgba(128,128,128,.06))}
 .iconmaker-account-avatar{width:28px;height:28px;display:grid;place-items:center;flex:0 0 28px;border-radius:50%;background:var(--accent-color,var(--accent,#ff0077));color:#fff;font-size:18px}
 .iconmaker-account-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;flex:1}
-.iconmaker-account-menu{font-size:11px;color:var(--text-secondary, #888)}
-.iconmaker-auth-modal{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:20px}
+.iconmaker-account-menu{font-size:11px;color:var(--text-secondary,#888)}
+.iconmaker-auth-modal{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:22px;isolation:isolate}
 .iconmaker-auth-modal[hidden]{display:none}
-.iconmaker-auth-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(5px)}
-.iconmaker-auth-dialog{position:relative;width:min(100%,420px);padding:30px;border:1px solid var(--border-color,rgba(128,128,128,.25));border-radius:18px;background:var(--panel-bg, var(--bg-secondary,#171717));color:var(--text-color,inherit);box-shadow:0 24px 80px rgba(0,0,0,.35)}
-.iconmaker-auth-close{position:absolute;right:14px;top:10px;border:0;background:transparent;color:inherit;font-size:26px;cursor:pointer}
-.iconmaker-auth-eyebrow{font-size:10px;letter-spacing:.16em;color:var(--accent-color,var(--accent,#ff0077));font-weight:700}
-.iconmaker-auth-dialog h2{margin:9px 0 6px;font-size:23px}
-.iconmaker-auth-description,.iconmaker-auth-footnote{font-size:12px;line-height:1.55;color:var(--text-secondary,#999)}
-.iconmaker-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:22px 0 18px;padding:4px;border-radius:10px;background:rgba(128,128,128,.12)}
-.iconmaker-auth-tabs button{padding:9px;border:0;border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}
-.iconmaker-auth-tabs button.active{background:var(--accent-color,var(--accent,#ff0077));color:#fff}
-#iconmaker-auth-form{display:grid;gap:8px}
-#iconmaker-auth-form label{font-size:12px;font-weight:600;margin-top:5px}
-#iconmaker-auth-form input{width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border-color,rgba(128,128,128,.3));border-radius:9px;background:var(--input-bg,rgba(128,128,128,.08));color:inherit;font:inherit}
-.iconmaker-auth-error{min-height:18px;margin:2px 0;color:#f87171;font-size:12px}
-.iconmaker-auth-submit{padding:12px;border:0;border-radius:9px;background:var(--accent-color,var(--accent,#ff0077));color:white;font:inherit;font-weight:700;cursor:pointer}
-.iconmaker-auth-submit:disabled{opacity:.6;cursor:wait}
-.iconmaker-auth-footnote{margin:17px 0 0}
+.iconmaker-auth-backdrop{position:absolute;inset:0;background:rgba(8,10,18,.76);backdrop-filter:blur(10px)}
+.iconmaker-auth-dialog{position:relative;display:grid;grid-template-columns:minmax(220px,.86fr) minmax(340px,1.14fr);width:min(100%,790px);min-height:500px;overflow:hidden;border:1px solid var(--border-color,rgba(128,128,128,.24));border-radius:22px;background:var(--panel-bg,var(--bg-secondary,#171717));color:var(--text-color,inherit);box-shadow:0 32px 110px rgba(0,0,0,.48);animation:iconmaker-auth-enter .24s ease-out}
+@keyframes iconmaker-auth-enter{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+.iconmaker-auth-close{position:absolute;right:15px;top:14px;z-index:3;width:34px;height:34px;border:1px solid var(--border-color,rgba(128,128,128,.2));border-radius:10px;background:rgba(128,128,128,.08);color:inherit;font-size:21px;line-height:1;cursor:pointer}
+.iconmaker-auth-close:hover{background:rgba(128,128,128,.16);border-color:var(--accent-color,var(--accent,#ff0077))}
+.iconmaker-auth-brand-panel{position:relative;display:flex;flex-direction:column;justify-content:space-between;min-height:500px;padding:34px 30px;color:#fff;background:radial-gradient(ellipse at 15% 15%,color-mix(in srgb,var(--accent-color,var(--accent,#ff0077)) 45%,transparent),transparent 52%),linear-gradient(145deg,#171322 0%,#21152b 55%,#111827 100%);overflow:hidden}
+.iconmaker-auth-brand-panel:after{content:"";position:absolute;width:290px;height:290px;right:-120px;bottom:65px;border:1px solid rgba(255,255,255,.13);border-radius:50%;box-shadow:0 0 0 28px rgba(255,255,255,.025),0 0 0 58px rgba(255,255,255,.02)}
+.iconmaker-auth-brand-mark{width:52px;height:52px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.25);border-radius:16px;background:rgba(255,255,255,.1);font-size:28px;box-shadow:0 12px 35px rgba(0,0,0,.2)}
+.iconmaker-auth-brand-copy{position:relative;z-index:1;margin:42px 0}
+.iconmaker-auth-brand-kicker{display:block;margin-bottom:15px;color:rgba(255,255,255,.65);font-size:9px;font-weight:800;letter-spacing:.2em}
+.iconmaker-auth-brand-copy strong{display:block;max-width:245px;font-size:clamp(27px,3vw,36px);line-height:1.12;letter-spacing:-.045em}
+.iconmaker-auth-brand-copy p{max-width:245px;margin:16px 0 0;color:rgba(255,255,255,.68);font-size:12px;line-height:1.75}
+.iconmaker-auth-brand-meta{display:flex;align-items:center;gap:9px;color:rgba(255,255,255,.8);font-size:9px;font-weight:800;letter-spacing:.13em}
+.iconmaker-auth-brand-meta span{width:7px;height:7px;border-radius:50%;background:var(--accent-color,var(--accent,#ff0077));box-shadow:0 0 14px var(--accent-color,var(--accent,#ff0077))}
+.iconmaker-auth-brand-meta i{margin-left:auto;color:rgba(255,255,255,.4);font-size:8px;font-style:normal;font-weight:600}
+.iconmaker-auth-content{align-self:center;width:100%;max-width:410px;box-sizing:border-box;margin:auto;padding:54px 48px 38px}
+.iconmaker-auth-eyebrow{font-size:9px;letter-spacing:.17em;color:var(--accent-color,var(--accent,#ff0077));font-weight:800}
+.iconmaker-auth-dialog h2{margin:12px 0 9px;font-size:clamp(23px,2.7vw,29px);line-height:1.15;letter-spacing:-.04em}
+.iconmaker-auth-description,.iconmaker-auth-footnote{font-size:12px;line-height:1.65;color:var(--text-secondary,#999)}
+.iconmaker-auth-description{margin:0;max-width:340px}
+.iconmaker-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:27px 0 22px;padding:4px;border:1px solid var(--border-color,rgba(128,128,128,.13));border-radius:11px;background:rgba(128,128,128,.08)}
+.iconmaker-auth-tabs button{padding:10px 8px;border:0;border-radius:8px;background:transparent;color:var(--text-secondary,#999);font:inherit;font-size:11px;font-weight:650;cursor:pointer}
+.iconmaker-auth-tabs button.active{background:var(--surface-color,var(--bg-secondary,#222));color:var(--text-color,#fff);box-shadow:0 2px 8px rgba(0,0,0,.12)}
+#iconmaker-auth-form{display:grid;gap:9px}
+#iconmaker-auth-form label{margin-top:4px;font-size:11px;font-weight:700;color:var(--text-color,inherit)}
+.iconmaker-auth-field{display:flex;align-items:center;gap:10px;min-width:0;padding:0 12px;border:1px solid var(--border-color,rgba(128,128,128,.24));border-radius:10px;background:var(--input-bg,rgba(128,128,128,.07));transition:border-color .18s,box-shadow .18s}
+.iconmaker-auth-field:focus-within{border-color:var(--accent-color,var(--accent,#ff0077));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-color,var(--accent,#ff0077)) 15%,transparent)}
+.iconmaker-auth-field>span{flex:0 0 auto;color:var(--text-secondary,#888);font-size:15px}
+.iconmaker-auth-field input{width:100%;min-width:0;padding:13px 0;border:0;outline:0;background:transparent;color:inherit;font:inherit;font-size:12px}
+.iconmaker-auth-field input::placeholder{color:var(--text-secondary,#888);opacity:.72}
+.iconmaker-auth-password-toggle{flex:0 0 auto;padding:5px 0 5px 7px;border:0;background:transparent;color:var(--text-secondary,#999);font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.iconmaker-auth-password-toggle:hover{color:var(--accent-color,var(--accent,#ff0077))}
+.iconmaker-auth-error{min-height:16px;margin:2px 0 0;color:#f87171;font-size:11px;line-height:1.5}
+.iconmaker-auth-error:empty{min-height:0}
+.iconmaker-auth-error.is-success{color:#22c58b}
+.iconmaker-auth-submit{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;padding:13px 15px;border:0;border-radius:10px;background:var(--accent-color,var(--accent,#ff0077));color:white;font:inherit;font-size:12px;font-weight:750;cursor:pointer;box-shadow:0 8px 22px color-mix(in srgb,var(--accent-color,var(--accent,#ff0077)) 25%,transparent);transition:transform .18s,filter .18s}
+.iconmaker-auth-submit:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.iconmaker-auth-submit b{font-size:17px;font-weight:500}
+.iconmaker-auth-submit:disabled{opacity:.65;cursor:wait;transform:none}
+.iconmaker-auth-footnote{display:flex;gap:8px;align-items:flex-start;margin:22px 0 0;font-size:10px}
+.iconmaker-auth-footnote span{color:var(--accent-color,var(--accent,#ff0077));font-size:13px}
+@media(max-width:640px){.iconmaker-auth-modal{padding:12px}.iconmaker-auth-dialog{display:block;width:min(100%,440px);min-height:0;max-height:calc(100dvh - 24px);overflow:auto;border-radius:18px}.iconmaker-auth-brand-panel{display:none}.iconmaker-auth-content{padding:55px 26px 28px}.iconmaker-auth-close{right:12px;top:12px}}
+@media(max-width:380px){.iconmaker-auth-content{padding-right:20px;padding-left:20px}.iconmaker-auth-dialog h2{font-size:22px}}
