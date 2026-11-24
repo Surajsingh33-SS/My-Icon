@@ -833,16 +833,22 @@
         let previousOfficial = null;
         let previousPrivate = null;
         let previousMarker = null;
-        let storageWritesStarted = false;
+        let officialWriteSucceeded = false;
+        let privateWriteSucceeded = false;
+        let markerWriteSucceeded = false;
         try {
             previousOfficial = localStorage.getItem(OFFICIAL_GALLERY_STORAGE_KEY);
             previousPrivate = localStorage.getItem(PROJECTS_STORAGE_KEY);
             previousMarker = localStorage.getItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY);
 
-            storageWritesStarted = true;
             localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, JSON.stringify(nextOfficial));
+            officialWriteSucceeded = true;
             localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(nextManager));
-            if (!conflicts) localStorage.setItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, "true");
+            privateWriteSucceeded = true;
+            if (!conflicts) {
+                localStorage.setItem(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, "true");
+                markerWriteSucceeded = true;
+            }
 
             OFFICIAL_GALLERY_PROJECTS = nextOfficial;
             projectManager = nextManager;
@@ -859,19 +865,17 @@
             console.info(`Gallery migration: moved ${movedProjects.length} finished project(s); ${conflicts} conflict(s) left in Private.`);
             return { moved: movedProjects.length, conflicts };
         } catch (error) {
-            if (storageWritesStarted) {
-                const restoreStorageValue = (key, value) => {
-                    if (value === null) localStorage.removeItem(key);
-                    else localStorage.setItem(key, value);
-                };
-                try {
-                    restoreStorageValue(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficial);
-                    restoreStorageValue(PROJECTS_STORAGE_KEY, previousPrivate);
-                    restoreStorageValue(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, previousMarker);
-                } catch (rollbackError) {
-                    console.error("Gallery migration rollback was incomplete:", rollbackError);
-                    projectStorageRecoveryRequired = true;
-                }
+            const restoreStorageValue = (key, value) => {
+                if (value === null) localStorage.removeItem(key);
+                else localStorage.setItem(key, value);
+            };
+            try {
+                if (officialWriteSucceeded) restoreStorageValue(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficial);
+                if (privateWriteSucceeded) restoreStorageValue(PROJECTS_STORAGE_KEY, previousPrivate);
+                if (markerWriteSucceeded) restoreStorageValue(PRIVATE_TO_OFFICIAL_MIGRATION_KEY, previousMarker);
+            } catch (rollbackError) {
+                console.error("Gallery migration rollback was incomplete:", rollbackError);
+                projectStorageRecoveryRequired = true;
             }
             console.error("Could not complete Private-to-Official migration:", error);
             return { moved: 0, conflicts: finished.length, skipped: true };
@@ -2107,16 +2111,21 @@ function getSelectedFinishCategories() {
         }
         try {
             localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projectManager));
-            setSaveStatus(true);
-            updateProjectCounters();
-            invalidateIconLibraryIndex();
-            return true;
         } catch (error) {
             setSaveStatus(false);
             console.error("Could not save projects:", error);
             showToast("Failed to save to local storage. Previous saved data was kept.", "error");
             return false;
         }
+
+        setSaveStatus(true);
+        try {
+            updateProjectCounters();
+            invalidateIconLibraryIndex();
+        } catch (uiError) {
+            console.warn("Projects were saved, but the UI refresh failed:", uiError);
+        }
+        return true;
     }
 
 
@@ -13232,9 +13241,12 @@ if (finishCategoryManuallyChanged) {
                 const previousPrivateStorage = localStorage.getItem(PROJECTS_STORAGE_KEY);
                 const previousOfficialStorage = localStorage.getItem(OFFICIAL_GALLERY_STORAGE_KEY);
 
+                let privateWriteSucceeded = false;
+                let officialWriteSucceeded = false;
                 try {
                     const privateResult = mergeImportedProjects(importedProjects, requestedActiveId);
                     const officialResult = mergeImportedOfficialProjects(importedOfficialProjects);
+                    officialWriteSucceeded = officialResult.added.length > 0 && officialResult.saved;
                     const totalAdded = privateResult.added.length + officialResult.added.length;
 
                     if (!totalAdded) {
@@ -13250,6 +13262,7 @@ if (finishCategoryManuallyChanged) {
                     }
 
                     const privateSaved = privateResult.added.length ? saveProjectManager() : true;
+                    privateWriteSucceeded = privateResult.added.length > 0 && privateSaved;
                     if (!privateSaved || !officialResult.saved) {
                         throw new Error("One or more Gallery collections could not be saved.");
                     }
@@ -13270,10 +13283,14 @@ if (finishCategoryManuallyChanged) {
                     projectManager = previousManager;
                     OFFICIAL_GALLERY_PROJECTS = previousOfficialProjects;
                     try {
-                        if (previousPrivateStorage === null) localStorage.removeItem(PROJECTS_STORAGE_KEY);
-                        else localStorage.setItem(PROJECTS_STORAGE_KEY, previousPrivateStorage);
-                        if (previousOfficialStorage === null) localStorage.removeItem(OFFICIAL_GALLERY_STORAGE_KEY);
-                        else localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficialStorage);
+                        if (privateWriteSucceeded) {
+                            if (previousPrivateStorage === null) localStorage.removeItem(PROJECTS_STORAGE_KEY);
+                            else localStorage.setItem(PROJECTS_STORAGE_KEY, previousPrivateStorage);
+                        }
+                        if (officialWriteSucceeded) {
+                            if (previousOfficialStorage === null) localStorage.removeItem(OFFICIAL_GALLERY_STORAGE_KEY);
+                            else localStorage.setItem(OFFICIAL_GALLERY_STORAGE_KEY, previousOfficialStorage);
+                        }
                     } catch (rollbackError) {
                         projectStorageRecoveryRequired = true;
                         console.error("Backup import rollback failed; further project writes are blocked:", rollbackError);
