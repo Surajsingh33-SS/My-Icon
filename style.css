@@ -9312,3 +9312,15 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
  .markora-audit-event time { grid-column:2; text-align:left; }
  .markora-audit-count { margin-left:0; width:100%; }
 }
+
+
+/* Keep Authority and Security Activity as independent Preferences options */
+.markora-publisher-entry { grid-column: 1 / -1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:stretch; }
+.markora-admin-entry-card { display:flex; flex-direction:column; align-items:flex-start; gap:10px; min-width:0; }
+.markora-admin-entry-card .markora-entry-heading { width:100%; }
+.markora-admin-entry-card h3 { margin:0; font-size:15px; }
+.markora-admin-entry-card p { margin:0; flex:1 1 auto; }
+.markora-admin-entry-card .btn { margin-top:6px; }
+@media(max-width:650px) {
+ .markora-publisher-entry { grid-template-columns:minmax(0,1fr); }
+}
