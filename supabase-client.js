@@ -227,19 +227,10 @@
             const project = row.project_data && typeof row.project_data === "object" ? row.project_data : {};
             return { ...project, id: String(project.id || row.project_id), _gallerySpace: "official", _officialSource: "cloud" };
         });
-        let localProjects = [];
-        try {
-            const stored = JSON.parse(localStorage.getItem("iconMakerOfficialGalleryProjects") || "[]");
-            if (Array.isArray(stored)) localProjects = stored.filter(project =>
-                project && typeof project === "object" && !Array.isArray(project)
-            ).map(project => ({ ...project, _gallerySpace: "official", _officialSource: "legacy-local" }));
-        } catch (storageError) {
-            console.warn("Could not read legacy Official Library cache; leaving it untouched.", storageError);
-        }
-        const merged = new Map();
-        localProjects.forEach(project => merged.set(String(project.id || ""), project));
-        cloudProjects.forEach(project => merged.set(String(project.id || ""), project));
-        return [...merged.values()].filter(project => project.id);
+        // The shared cloud table is authoritative. Legacy local data remains in
+        // localStorage for the publisher migration/recovery flow, but must never
+        // resurrect an Official icon that a publisher deleted from the cloud.
+        return cloudProjects.filter(project => project.id);
     }
 
     // One-time, non-destructive migration of the old browser-local Official Library.
@@ -267,6 +258,38 @@
         return projects.find(item => String(item.id) === String(projectData.id)) || {
             ...projectData, _gallerySpace: "official", _officialSource: "cloud"
         };
+    }
+
+    async function deleteOfficialProject(projectId) {
+        if (!currentSession?.user?.id) throw new Error("Sign in before deleting Official icons.");
+        if (!isOfficialPublisher()) throw new Error("This account does not have Official Publisher access.");
+        const id = String(projectId || "").trim();
+        if (!id) throw new Error("A valid Official icon ID is required.");
+
+        const { data, error } = await client.from("official_projects")
+            .delete()
+            .eq("project_id", id)
+            .select("project_id");
+        if (error) throw error;
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error("The Official icon was not found or could not be deleted.");
+        }
+
+        // Remove this ID from the local legacy recovery cache on this device too.
+        try {
+            const stored = JSON.parse(localStorage.getItem("iconMakerOfficialGalleryProjects") || "[]");
+            if (Array.isArray(stored)) {
+                localStorage.setItem("iconMakerOfficialGalleryProjects", JSON.stringify(
+                    stored.filter(project => String(project?.id || "") !== id)
+                ));
+            }
+        } catch (storageError) {
+            console.warn("Could not update the legacy Official Library cache.", storageError);
+        }
+
+        const projects = await fetchOfficialProjects();
+        appHooks?.onOfficialProjectsChanged?.(projects);
+        return projects;
     }
 
     async function migrateLegacyOfficialProjects() {
@@ -387,6 +410,7 @@
         isOfficialPublisher,
         fetchOfficialProjects,
         saveOfficialProject,
+        deleteOfficialProject,
         migrateLegacyOfficialProjects,
         fetchPrivateProjects,
         savePrivateProjects,
