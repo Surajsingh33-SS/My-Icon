@@ -13166,38 +13166,8 @@ if (finishCategoryManuallyChanged) {
         activeProject.status = "finished";
         activeProject.savedAt = new Date().toISOString();
 
-        if (activeGallerySpace === "official") {
-            // Move the finished icon out of the user's Private collection.
-            const officialProject = {
-                ...activeProject,
-                _gallerySpace: "official"
-            };
-            OFFICIAL_GALLERY_PROJECTS.push(officialProject);
-            saveOfficialGalleryProjects();
-
-            projectManager.projects = projectManager.projects.filter(
-                project => project.id !== activeProject.id
-            );
-
-            // Keep a valid Private draft selected for the next editing session.
-            let nextDraft = projectManager.projects.find(project => project.status !== "finished");
-            if (!nextDraft) {
-                nextDraft = createProject({
-                    version: PROJECT_FORMAT_VERSION,
-                    savedAt: new Date().toISOString(),
-                    selectedShapeIndex: -1,
-                    settings: {
-                        showCoordinates: false,
-                        showGridHighlight: false,
-                        pathStyle: "straight"
-                    },
-                    shapes: []
-                });
-                projectManager.projects.push(nextDraft);
-            }
-            projectManager.activeProjectId = nextDraft.id;
-        }
-
+        // Finished work remains in the user's Private Library. Publishing to Official
+        // is a separate privileged action and never happens from the editor.
         saveProjectManager();
         renderHomeProjects();
         renderUnfinishedProjects();
@@ -13207,7 +13177,7 @@ if (finishCategoryManuallyChanged) {
         finishModal.classList.remove("show");
         homeScreen.classList.add("show");
         updateHomeButtonLabel();
-        showToast(`Finished icon "${name}" added to Gallery!`, "success");
+        showToast(`Finished icon "${name}" saved to your Private Library!`, "success");
     });
 
     finishIconName?.addEventListener("keydown", e => {
