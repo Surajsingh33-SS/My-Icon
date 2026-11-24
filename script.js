@@ -10970,7 +10970,7 @@ function getSelectedFinishCategories() {
                     } else {
                         feedback.className = "icon-library-metadata-feedback success";
                         feedback.textContent = "Applied metadata to " + parsed.entries.length +
-                            " icon(s) using Merge.");
+                            " icon(s) using Merge.";
                         window.setTimeout(close, 900);
                     }
                 } catch (error) {
