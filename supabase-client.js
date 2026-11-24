@@ -245,6 +245,30 @@
     // One-time, non-destructive migration of the old browser-local Official Library.
     // Only finished records with stable IDs are considered. Existing cloud records are never overwritten,
     // and the browser's legacy storage key is deliberately retained as a recovery copy.
+    async function saveOfficialProject(project) {
+        if (!currentSession?.user?.id) throw new Error("Sign in before publishing Official icons.");
+        if (!isOfficialPublisher()) throw new Error("This account does not have Official Publisher access.");
+        if (!project || typeof project !== "object" || !project.id) throw new Error("A valid icon project is required.");
+
+        const projectData = { ...project, id: String(project.id), status: "finished" };
+        delete projectData._gallerySpace;
+        delete projectData._officialSource;
+        delete projectData._cloudUpdatedAt;
+
+        const { error } = await client.from("official_projects").upsert({
+            project_id: String(projectData.id),
+            project_data: projectData,
+            published_at: new Date().toISOString()
+        }, { onConflict: "project_id" });
+        if (error) throw error;
+
+        const projects = await fetchOfficialProjects();
+        appHooks?.onOfficialProjectsChanged?.(projects);
+        return projects.find(item => String(item.id) === String(projectData.id)) || {
+            ...projectData, _gallerySpace: "official", _officialSource: "cloud"
+        };
+    }
+
     async function migrateLegacyOfficialProjects() {
         if (!currentSession?.user?.id) throw new Error("Sign in before migrating Official icons.");
         if (!isOfficialPublisher()) throw new Error("This account does not have Official Publisher access.");
@@ -360,7 +384,9 @@
         initialize,
         openAuthModal,
         getSession: () => currentSession,
+        isOfficialPublisher,
         fetchOfficialProjects,
+        saveOfficialProject,
         migrateLegacyOfficialProjects,
         fetchPrivateProjects,
         savePrivateProjects,
