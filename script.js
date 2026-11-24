@@ -2400,6 +2400,60 @@ function getSelectedFinishCategories() {
         }
     }
 
+    function sanitizeProjectShapeForUse(data) {
+        if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+
+        const supportedTypes = new Set([
+            "line", "curve", "ellipse-arc", "circle", "ellipse", "rectangle", "path"
+        ]);
+        if (!supportedTypes.has(data.type)) return null;
+
+        const safeShape = structuredClone(data);
+        // Serialized project data must never replace live SVG/DOM references.
+        shapeDOMKeys.forEach(key => delete safeShape[key]);
+
+        // Paint values are inserted into SVG attributes and exported markup.
+        safeShape.color = safeImportedSVGPaint(safeShape.color, "#FFFFFF");
+        safeShape.fill = safeImportedSVGPaint(safeShape.fill, "none");
+
+        if (safeShape.type === "line") {
+            safeShape.cap = ["butt", "round", "square"].includes(safeShape.cap)
+                ? safeShape.cap
+                : "round";
+        }
+
+        if (safeShape.type === "curve" || safeShape.type === "ellipse-arc") {
+            safeShape.sweepFlag = Number(safeShape.sweepFlag) === 0 ? 0 : 1;
+        }
+
+        if (safeShape.type === "path") {
+            if (typeof safeShape.svgPathData === "string") {
+                if (safeShape.svgPathData.length > 200000) return null;
+                try {
+                    // The parser accepts only SVG path commands and finite numbers.
+                    // Rebuild editable handles from parsed data instead of trusting
+                    // imported segment/anchor objects.
+                    const segments = parseSVGPathSegments(safeShape.svgPathData);
+                    if (!segments.length) return null;
+                    safeShape.svgEditableSegments = segments;
+                    safeShape.svgAnchors = buildSVGAnchorMap(segments);
+                } catch (_) {
+                    return null;
+                }
+            } else {
+                delete safeShape.svgEditableSegments;
+                delete safeShape.svgAnchors;
+            }
+        }
+
+        return safeShape;
+    }
+
+    function sanitizeProjectShapesForUse(sourceShapes) {
+        if (!Array.isArray(sourceShapes)) return [];
+        return sourceShapes.map(sanitizeProjectShapeForUse).filter(Boolean);
+    }
+
     function restoreProjectFromBrowser() {
         const activeProject = projectManager.projects.find(p => p.id === projectManager.activeProjectId);
         if (!activeProject || !activeProject.data) return false;
@@ -2426,6 +2480,11 @@ function getSelectedFinishCategories() {
                 throw new Error("Invalid project data schema.");
             }
 
+            const safeProjectShapes = sanitizeProjectShapesForUse(projectData.shapes);
+            if (safeProjectShapes.length !== projectData.shapes.length) {
+                throw new Error("Project contains unsupported or unsafe drawing data.");
+            }
+
             isRestoringProject = true;
 
             // Clean up existing workspace
@@ -2446,7 +2505,7 @@ function getSelectedFinishCategories() {
             selectedShapes = [];
 
             // Reconstruct shape objects and SVG elements
-            projectData.shapes.forEach(data => {
+            safeProjectShapes.forEach(data => {
                 const shape = createShapeFromCopy(data, true);
                 if (shape) {
                     getShapeElements(shape).forEach(el => {
@@ -10424,8 +10483,14 @@ function getSelectedFinishCategories() {
         const galleryColor = globalIconColor?.value ||
             (document.body.classList.contains("light-theme") ? "#000000" : "#ffffff");
 
+        const safeExportShapes = sanitizeProjectShapesForUse(activeProject.data.shapes);
+        if (safeExportShapes.length !== activeProject.data.shapes.length) {
+            showToast("This icon contains unsupported or unsafe drawing data and cannot be exported.", "error");
+            return;
+        }
+
         const svgString = generateSVGFromShapes(
-            activeProject.data.shapes,
+            safeExportShapes,
             activeExportColor,
             exportFromHome && activeExportColor === "original"
                 ? galleryColor
@@ -11732,7 +11797,10 @@ function getSelectedFinishCategories() {
 
             if (Array.isArray(item.project?.data?.shapes) && item.project.data.shapes.length) {
                 const svgReference = compactSVGForMetadata(
-                    generateSVGFromShapes(item.project.data.shapes, "original")
+                    generateSVGFromShapes(
+                    sanitizeProjectShapesForUse(item.project.data.shapes),
+                    "original"
+                )
                 );
                 if (svgReference) metadata.svg = svgReference;
             }
@@ -12817,8 +12885,19 @@ function getSelectedFinishCategories() {
         });
         if (!confirmed.confirmed) return;
 
+        const safePublishShapes = sanitizeProjectShapesForUse(project.data.shapes);
+        if (safePublishShapes.length !== project.data.shapes.length) {
+            showToast("This icon contains unsupported or unsafe drawing data and cannot be published.", "error");
+            return;
+        }
+
+        const safeProject = {
+            ...project,
+            data: { ...project.data, shapes: safePublishShapes }
+        };
+
         try {
-            const published = await window.IconMakerSupabase.saveOfficialProject(project);
+            const published = await window.IconMakerSupabase.saveOfficialProject(safeProject);
             showToast(`"${published.name || project.name || "Icon"}" is now in the Official Library.`, "success");
             setGallerySpace("official");
             showProjectPreview(published);
