@@ -2272,7 +2272,7 @@ function getSelectedFinishCategories() {
 
 
     function saveProjectToBrowser() {
-        if (isRestoringProject || projectStorageRecoveryRequired) return false;
+        if (isRestoringProject || (projectStorageRecoveryRequired && !officialEditSession)) return false;
 
         try {
             let activeProject = projectManager.projects.find(p => p.id === projectManager.activeProjectId);
@@ -12005,6 +12005,13 @@ function getSelectedFinishCategories() {
             gallerySpaceToggle.setAttribute("title", label);
             gallerySpaceToggle.setAttribute("aria-label", label);
         }
+        if (homeEditButton) {
+            const buttonLabel = homeEditButton.querySelector("span");
+            if (buttonLabel) buttonLabel.textContent = isOfficial ? "＋ New Official Icon" : "＋ New Private Icon";
+            homeEditButton.title = isOfficial
+                ? "Create a new icon in the Official Gallery"
+                : "Create a new icon in your Private Gallery";
+        }
         const toggleIcon = document.getElementById("gallery-space-toggle");
         if (toggleIcon) toggleIcon.style.transform = isOfficial ? "rotate(180deg)" : "";
     }
@@ -12814,7 +12821,7 @@ function getSelectedFinishCategories() {
             <span class="official-editor-bar-hint">Changes are a draft until you save them</span>
             <div class="official-editor-bar-actions">
                 <button type="button" data-official-cancel>Cancel</button>
-                <button type="button" data-official-save>Save to Official</button>
+                <button type="button" data-official-save>${officialEditSession?.mode === "create" ? "Finish & Publish" : "Save to Official"}</button>
             </div>`;
         document.body.appendChild(bar);
 
@@ -12826,6 +12833,10 @@ function getSelectedFinishCategories() {
         });
         bar.querySelector("[data-official-save]")?.addEventListener("click", async event => {
             if (!officialEditSession) return;
+            if (officialEditSession.mode === "create") {
+                finishProjectButton?.click();
+                return;
+            }
             const button = event.currentTarget;
             button.disabled = true;
             const oldLabel = button.textContent;
