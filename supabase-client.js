@@ -385,7 +385,10 @@
         const count = root.querySelector("#markora-audit-count");
         if (count) count.textContent = `Showing ${publisherAuditEvents.length} of ${publisherAuditTotal} events`;
         const more = root.querySelector('[data-portal-action="load-audit-more"]');
-        if (more) more.hidden = !publisherAuditHasMore;
+        if (more) {
+            more.hidden = !publisherAuditHasMore;
+            more.textContent = "Load more activity";
+        }
     }
 
     async function loadPublisherAuditEvents(reset = false) {
