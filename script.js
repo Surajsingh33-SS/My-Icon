@@ -11431,9 +11431,9 @@ function getSelectedFinishCategories() {
             ? projectManager.projects.find(item => String(item.id) === value)
             : getIconLibraryProjectMap().get(normalizeLibraryIconName(value));
         const name = project?.name || value;
-        const svg = String(project?.thumbnail || "").trim();
         if (!project) throw new Error("This icon is no longer available in the selected collection: " + name + ".");
-        if (!svg) throw new Error("No saved SVG is available for " + name + ".");
+        const svg = sanitizeSVGPreview(String(project.thumbnail || "").trim());
+        if (!svg) throw new Error("No safe saved SVG is available for " + name + ".");
         const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
         const root = parsed.documentElement;
         if (!root || root.localName !== "svg" || parsed.querySelector("parsererror")) throw new Error("Invalid SVG for " + name);
@@ -12398,7 +12398,8 @@ function getSelectedFinishCategories() {
 
         const stroke = strokeW ?? (Number(globalStrokeWidth?.value) || 2);
 
-        let svg = project.thumbnail;
+        let svg = sanitizeSVGPreview(project.thumbnail);
+        if (!svg) return "";
 
         svg = svg.replace(
             /(stroke|fill)="(?!none)[^"]*"/g,
@@ -13144,10 +13145,11 @@ function getSelectedFinishCategories() {
             card.className = "related-project-card";
             card.type = "button";
 
-            if (item.thumbnail) {
+            const safeThumbnail = sanitizeSVGPreview(item.thumbnail);
+            if (safeThumbnail) {
                 const img = document.createElement("img");
-                img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(item.thumbnail)}`;
-                img.alt = item.name;
+                img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(safeThumbnail)}`;
+                img.alt = item.name || "Related icon";
                 card.appendChild(img);
             }
             const span = document.createElement("span");

@@ -9347,3 +9347,32 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
 .markora-entry-heading { display:flex; align-items:center; justify-content:space-between; width:100%; }
 .markora-entry-icon { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--accent-light); color:var(--accent-color,var(--accent,#ff0077)); font-size:20px; }
 .markora-security-entry[hidden] { display:none !important; }
+
+
+/* Crawlable product introduction; kept compact so the gallery remains the focus. */
+.gallery-intro {
+    padding: 12px 28px 0;
+    flex: 0 0 auto;
+}
+
+.gallery-intro h1 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: clamp(1.1rem, 1.5vw, 1.35rem);
+    line-height: 1.3;
+    font-weight: 700;
+}
+
+.gallery-intro p {
+    margin: 4px 0 0;
+    max-width: 760px;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+    .gallery-intro {
+        padding: 10px 14px 0;
+    }
+}
