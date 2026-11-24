@@ -263,11 +263,19 @@
         const isOwner = !!status?.isOwner;
         const isSignedIn = !!currentSession?.user?.id;
         publisherPortalEntry.innerHTML = `
-            <div class="markora-entry-heading"><span class="markora-portal-kicker">MARKORA ACCESS</span><span class="markora-entry-icon">⌘</span></div>
-            <h3>Authority</h3>
-            <p class="management-subtitle">${isOwner ? "Manage Semi-Publishers, invitations, submissions and ownership." : isSignedIn ? "Manage your contributor access and submissions." : "Sign in to redeem a Semi-Publisher invitation or manage access."}</p>
-            <button type="button" class="btn btn-secondary" data-portal-page="authority">Open Authority <span aria-hidden="true">→</span></button>
-            ${isOwner ? `<div class="markora-entry-divider"></div><h3>Security Activity</h3><p class="management-subtitle">Review the complete administrative and account activity history.</p><button type="button" class="btn btn-secondary" data-portal-page="security">View activity history <span aria-hidden="true">→</span></button>` : ""}
+            <section class="settings-card markora-admin-entry-card">
+                <div class="markora-entry-heading"><span class="markora-portal-kicker">MARKORA ACCESS</span><span class="markora-entry-icon">⌘</span></div>
+                <h3>Authority</h3>
+                <p class="management-subtitle">${isOwner ? "Manage Semi-Publishers, invitations, submissions and ownership." : isSignedIn ? "Manage your contributor access and submissions." : "Sign in to redeem a Semi-Publisher invitation or manage access."}</p>
+                <button type="button" class="btn btn-secondary" data-portal-page="authority">Open Authority <span aria-hidden="true">→</span></button>
+            </section>
+            ${isOwner ? `
+                <section class="settings-card markora-admin-entry-card markora-security-entry-card">
+                    <div class="markora-entry-heading"><span class="markora-portal-kicker">MARKORA HISTORY</span><span class="markora-entry-icon">◷</span></div>
+                    <h3>Security Activity</h3>
+                    <p class="management-subtitle">Review the administrative and account activity history.</p>
+                    <button type="button" class="btn btn-secondary" data-portal-page="security">View activity history <span aria-hidden="true">→</span></button>
+                </section>` : ""}
         `;
     }
 
