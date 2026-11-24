@@ -588,8 +588,10 @@
     function setSession(session, initial = false) {
         currentSession = session || null;
         updateAccountButton();
-        if (appHooks?.onAuthChanged) appHooks.onAuthChanged(currentSession, { initial });
-        Promise.resolve().then(refreshPublisherPortal);
+        const appChange = appHooks?.onAuthChanged?.(currentSession, { initial });
+        Promise.resolve(appChange)
+            .catch(error => console.warn("Markora auth sync callback failed:", error))
+            .finally(refreshPublisherPortal);
     }
 
     async function initialize(hooks) {
@@ -606,9 +608,11 @@
         client.auth.onAuthStateChange((event, sessionNow) => {
             currentSession = sessionNow || null;
             updateAccountButton();
-            // Defer app callbacks and portal requests out of Supabase's auth event callback.
-            Promise.resolve().then(() => appHooks?.onAuthChanged?.(currentSession, { event }));
-            Promise.resolve().then(refreshPublisherPortal);
+            // Wait for Private Library account sync before rendering contributor project choices.
+            Promise.resolve()
+                .then(() => appHooks?.onAuthChanged?.(currentSession, { event }))
+                .catch(error => console.warn("Markora auth sync callback failed:", error))
+                .finally(refreshPublisherPortal);
         });
     }
 
