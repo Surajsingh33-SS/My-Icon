@@ -15,6 +15,9 @@
     let appHooks = null;
     let initialized = false;
     let authModal = null;
+    // Keep cloud writes ordered so an older autosave cannot finish after and
+    // overwrite a newer Private Library snapshot.
+    let privateSaveQueue = Promise.resolve();
 
     const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -759,15 +762,27 @@
 
     async function savePrivateProjects(projects) {
         if (!client || !currentSession?.user?.id) return;
-        const rows = (Array.isArray(projects) ? projects : []).map(project => ({
-            user_id: currentSession.user.id,
+        const userId = currentSession.user.id;
+        const snapshot = structuredClone(Array.isArray(projects) ? projects : []);
+        const rows = snapshot.map(project => ({
+            user_id: userId,
             project_id: String(project.id),
             project_data: project
         }));
         if (!rows.length) return;
-        const { error } = await client.from("private_projects")
-            .upsert(rows, { onConflict: "user_id,project_id" });
-        if (error) throw error;
+
+        // Serialize snapshots in call order. Supabase upsert is an overwrite,
+        // so concurrent requests could otherwise complete out of order and
+        // restore an older drawing over a newer one.
+        const saveOperation = privateSaveQueue.catch(() => {}).then(async () => {
+            // Never send a queued snapshot under a different signed-in account.
+            if (currentSession?.user?.id !== userId) return;
+            const { error } = await client.from("private_projects")
+                .upsert(rows, { onConflict: "user_id,project_id" });
+            if (error) throw error;
+        });
+        privateSaveQueue = saveOperation;
+        return saveOperation;
     }
 
     async function deletePrivateProject(projectId) {
