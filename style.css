@@ -9376,3 +9376,31 @@ body:not(:has(#home-screen.show)) .workspace-side-controls.left-controls {
         padding: 10px 14px 0;
     }
 }
+
+
+/* Keep the gallery chrome stationary; only the icon tile area should scroll. */
+.home-main:has(#home-view-gallery.active) {
+    overflow: hidden;
+}
+
+#home-view-gallery.active {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+}
+
+#home-view-gallery.active #gallery-content {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+#home-view-gallery.active .home-projects {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
