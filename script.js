@@ -8021,7 +8021,13 @@ function getSelectedFinishCategories() {
             propertiesSelection.textContent = shape.name || shape.type;
         }
 
-        const strokeWidth = shape.type === "line" ? shape.width : shape.strokeWidth;
+        const rawStrokeWidth = shape.type === "line" ? shape.width : shape.strokeWidth;
+        const strokeWidth = Number.isFinite(Number(rawStrokeWidth))
+            ? Math.max(0.1, Math.min(5, Number(rawStrokeWidth)))
+            : 2;
+        const safeStrokeColor = /^#[0-9a-f]{6}$/i.test(String(shape.color || ""))
+            ? String(shape.color)
+            : "#ffffff";
         const isFillable =
             shape.type === "circle" ||
             shape.type === "ellipse" ||
@@ -8033,7 +8039,7 @@ function getSelectedFinishCategories() {
                 <h4>Stroke</h4>
                 <div class="property-field">
                     <span>Color</span>
-                    <input type="color" data-style="stroke-color" value="${shape.color || "#ffffff"}">
+                    <input type="color" data-style="stroke-color" value="${safeStrokeColor}">
                 </div>
                 <div class="property-field">
                     <span>Width</span>
@@ -8044,7 +8050,10 @@ function getSelectedFinishCategories() {
 
         if (isFillable) {
             const fillEnabled = shape.fill !== "none";
-            const fillColor = fillEnabled ? shape.fill : (shape.fillColor || "#ffffff");
+            const rawFillColor = fillEnabled ? shape.fill : shape.fillColor;
+            const fillColor = /^#[0-9a-f]{6}$/i.test(String(rawFillColor || ""))
+                ? String(rawFillColor)
+                : "#ffffff";
 
             html += `
                 <div class="property-group">
