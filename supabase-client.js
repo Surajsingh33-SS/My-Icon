@@ -41,22 +41,33 @@
             <div class="iconmaker-auth-backdrop" data-auth-close></div>
             <section class="iconmaker-auth-dialog" role="dialog" aria-modal="true" aria-labelledby="iconmaker-auth-title">
                 <button class="iconmaker-auth-close" type="button" aria-label="Close" data-auth-close>×</button>
-                <div class="iconmaker-auth-eyebrow">ICON MAKER PRO</div>
-                <h2 id="iconmaker-auth-title">Your Private Library</h2>
-                <p class="iconmaker-auth-description">Sign in to sync your icons securely across your devices.</p>
-                <div class="iconmaker-auth-tabs">
-                    <button type="button" class="active" data-auth-mode="signin">Sign in</button>
-                    <button type="button" data-auth-mode="signup">Create account</button>
+                <aside class="iconmaker-auth-brand-panel" aria-hidden="true">
+                    <div class="iconmaker-auth-brand-mark">✳</div>
+                    <div class="iconmaker-auth-brand-copy">
+                        <span class="iconmaker-auth-brand-kicker">DESIGN YOUR WAY</span>
+                        <strong>Every great idea starts with a shape.</strong>
+                        <p>Create, organize and sync your icon library from one focused workspace.</p>
+                    </div>
+                    <div class="iconmaker-auth-brand-meta"><span></span> ICON MAKER PRO <i>VECTOR WORKSPACE</i></div>
+                </aside>
+                <div class="iconmaker-auth-content">
+                    <div class="iconmaker-auth-eyebrow">WELCOME TO ICON MAKER PRO</div>
+                    <h2 id="iconmaker-auth-title">Your creative workspace awaits.</h2>
+                    <p class="iconmaker-auth-description">Sign in to access your Private Library and keep your projects in sync.</p>
+                    <div class="iconmaker-auth-tabs" role="tablist" aria-label="Account access">
+                        <button type="button" class="active" role="tab" aria-selected="true" data-auth-mode="signin">Sign in</button>
+                        <button type="button" role="tab" aria-selected="false" data-auth-mode="signup">Create account</button>
+                    </div>
+                    <form id="iconmaker-auth-form">
+                        <label for="iconmaker-auth-email">Email address</label>
+                        <div class="iconmaker-auth-field"><span aria-hidden="true">✉</span><input id="iconmaker-auth-email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254"></div>
+                        <label for="iconmaker-auth-password">Password</label>
+                        <div class="iconmaker-auth-field"><span aria-hidden="true">⌑</span><input id="iconmaker-auth-password" type="password" autocomplete="current-password" placeholder="At least 8 characters" required minlength="8"><button class="iconmaker-auth-password-toggle" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
+                        <p class="iconmaker-auth-error" id="iconmaker-auth-error" role="status" aria-live="polite"></p>
+                        <button class="iconmaker-auth-submit" id="iconmaker-auth-submit" type="submit"><span>Sign in</span><b aria-hidden="true">→</b></button>
+                    </form>
+                    <p class="iconmaker-auth-footnote"><span aria-hidden="true">◈</span> Your Private Library is only visible to you. Official icons stay public and read-only.</p>
                 </div>
-                <form id="iconmaker-auth-form">
-                    <label for="iconmaker-auth-email">Email</label>
-                    <input id="iconmaker-auth-email" type="email" autocomplete="email" required maxlength="254">
-                    <label for="iconmaker-auth-password">Password</label>
-                    <input id="iconmaker-auth-password" type="password" autocomplete="current-password" required minlength="8">
-                    <p class="iconmaker-auth-error" id="iconmaker-auth-error" role="alert"></p>
-                    <button class="iconmaker-auth-submit" id="iconmaker-auth-submit" type="submit">Sign in</button>
-                </form>
-                <p class="iconmaker-auth-footnote">Your Private Library is visible only to your account. Official icons remain public and read-only.</p>
             </section>`;
         document.body.appendChild(authModal);
 
@@ -65,6 +76,15 @@
         authModal.querySelectorAll("[data-auth-mode]").forEach(button =>
             button.addEventListener("click", () => setAuthMode(button.dataset.authMode)));
         authModal.querySelector("#iconmaker-auth-form").addEventListener("submit", submitAuthForm);
+        authModal.querySelector(".iconmaker-auth-password-toggle").addEventListener("click", () => {
+            const field = authModal.querySelector("#iconmaker-auth-password");
+            const toggle = authModal.querySelector(".iconmaker-auth-password-toggle");
+            const reveal = field.type === "password";
+            field.type = reveal ? "text" : "password";
+            toggle.textContent = reveal ? "Hide" : "Show";
+            toggle.setAttribute("aria-label", reveal ? "Hide password" : "Show password");
+            toggle.setAttribute("aria-pressed", String(reveal));
+        });
         document.addEventListener("keydown", event => {
             if (event.key === "Escape" && authModal && !authModal.hidden) closeAuthModal();
         });
@@ -77,16 +97,27 @@
         authModal?.querySelectorAll("[data-auth-mode]").forEach(button =>
             button.classList.toggle("active", button.dataset.authMode === authMode));
         const title = authModal?.querySelector("#iconmaker-auth-title");
-        const submit = authModal?.querySelector("#iconmaker-auth-submit");
+        const description = authModal?.querySelector(".iconmaker-auth-description");
+        const submit = authModal?.querySelector("#iconmaker-auth-submit span");
         const password = authModal?.querySelector("#iconmaker-auth-password");
-        if (title) title.textContent = authMode === "signup" ? "Create your account" : "Your Private Library";
+        authModal?.querySelectorAll("[data-auth-mode]").forEach(button =>
+            button.setAttribute("aria-selected", String(button.dataset.authMode === authMode)));
+        if (title) title.textContent = authMode === "signup" ? "Make room for your next big idea." : "Your creative workspace awaits.";
+        if (description) description.textContent = authMode === "signup"
+            ? "Create an account to save your icons and access your Private Library anywhere."
+            : "Sign in to access your Private Library and keep your projects in sync.";
         if (submit) submit.textContent = authMode === "signup" ? "Create account" : "Sign in";
-        if (password) password.autocomplete = authMode === "signup" ? "new-password" : "current-password";
+        if (password) { password.autocomplete = authMode === "signup" ? "new-password" : "current-password"; password.value = ""; password.type = "password"; }
+        const toggle = authModal?.querySelector(".iconmaker-auth-password-toggle");
+        if (toggle) { toggle.textContent = "Show"; toggle.setAttribute("aria-label", "Show password"); toggle.setAttribute("aria-pressed", "false"); }
         setAuthError("");
     }
     function setAuthError(message) {
         const error = authModal?.querySelector("#iconmaker-auth-error");
-        if (error) error.textContent = message || "";
+        if (error) {
+            error.textContent = message || "";
+            error.classList.toggle("is-success", /check your inbox|account created/i.test(message || ""));
+        }
     }
     function openAuthModal() {
         if (!client) {
@@ -108,7 +139,8 @@
         const password = authModal.querySelector("#iconmaker-auth-password").value;
         const submit = authModal.querySelector("#iconmaker-auth-submit");
         submit.disabled = true;
-        submit.textContent = authMode === "signup" ? "Creating…" : "Signing in…";
+        submit.disabled = true;
+        submit.querySelector("span").textContent = authMode === "signup" ? "Creating account…" : "Signing in…";
         setAuthError("");
         try {
             const result = authMode === "signup"
@@ -116,7 +148,7 @@
                 : await client.auth.signInWithPassword({ email, password });
             if (result.error) throw result.error;
             if (authMode === "signup" && !result.data.session) {
-                setAuthError("Account created. Check your email to confirm your address, then sign in.");
+                setAuthError("Account created. Check your inbox to confirm your email, then sign in.");
                 return;
             }
             closeAuthModal();
@@ -124,7 +156,7 @@
             setAuthError(error?.message || "Could not complete authentication.");
         } finally {
             submit.disabled = false;
-            submit.textContent = authMode === "signup" ? "Create account" : "Sign in";
+            submit.querySelector("span").textContent = authMode === "signup" ? "Create account" : "Sign in";
         }
     }
 
@@ -158,10 +190,23 @@
         const { data, error } = await client.from("official_projects")
             .select("project_id, project_data").order("published_at", { ascending: false });
         if (error) throw error;
-        return (data || []).map(row => {
+        const cloudProjects = (data || []).map(row => {
             const project = row.project_data && typeof row.project_data === "object" ? row.project_data : {};
-            return { ...project, id: String(project.id || row.project_id), _gallerySpace: "official" };
+            return { ...project, id: String(project.id || row.project_id), _gallerySpace: "official", _officialSource: "cloud" };
         });
+        let localProjects = [];
+        try {
+            const stored = JSON.parse(localStorage.getItem("iconMakerOfficialGalleryProjects") || "[]");
+            if (Array.isArray(stored)) localProjects = stored.filter(project =>
+                project && typeof project === "object" && !Array.isArray(project)
+            ).map(project => ({ ...project, _gallerySpace: "official", _officialSource: "legacy-local" }));
+        } catch (storageError) {
+            console.warn("Could not read legacy Official Library cache; leaving it untouched.", storageError);
+        }
+        const merged = new Map();
+        localProjects.forEach(project => merged.set(String(project.id || ""), project));
+        cloudProjects.forEach(project => merged.set(String(project.id || ""), project));
+        return [...merged.values()].filter(project => project.id);
     }
 
     async function fetchPrivateProjects() {
