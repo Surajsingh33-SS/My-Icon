@@ -280,7 +280,7 @@
             <div class="markora-portal-heading"><div><span class="markora-portal-kicker">SOLE AUTHORITY</span><h3>Markora Super Admin</h3><p class="management-subtitle">Your account is the only account that can publish, edit or remove Official icons and appoint contributors.</p></div><span class="markora-portal-role">OWNER</span></div>
             <div class="markora-portal-section"><div class="markora-portal-section-heading"><div><h4>Semi-Publishers</h4><p>Invitation codes work once and expire after 7 days.</p></div><button type="button" class="btn btn-primary" data-portal-action="create-invite">Generate invitation code</button></div><div id="markora-invite-output" class="markora-portal-code-output" hidden></div><div class="markora-portal-list">${contributorRows}</div></div>
             <div class="markora-portal-section"><div class="markora-portal-section-heading"><div><h4>Pending Official submissions</h4><p>Only your approval can add an icon to the Official Library.</p></div></div><div class="markora-portal-list">${submissionRows}</div></div>
-            <div class="markora-portal-section"><h4>Transfer Super Admin ownership</h4><p>Enter the recipient's verified Markora account email. You authorize the transfer by generating the code; the recipient must also accept it while signed in. The code expires after 24 hours.</p><form class="markora-portal-form" data-portal-form="create-transfer"><input type="email" name="email" placeholder="Recipient account email" required><button type="submit" class="btn btn-secondary">Create transfer code</button></form><div id="markora-transfer-output" class="markora-portal-code-output" hidden></div><button type="button" class="btn btn-danger btn-small" data-portal-action="cancel-transfer">Cancel pending transfer codes</button></div>
+            <div class="markora-portal-section"><h4>Transfer Super Admin ownership</h4><p>Enter the recipient's verified Markora account email. You authorize the transfer by generating the code; the recipient must also accept it while signed in. The code expires after 24 hours.</p><form class="markora-portal-form" data-portal-form="create-transfer"><input type="email" name="email" placeholder="Recipient account email" required><input type="password" name="password" autocomplete="current-password" placeholder="Confirm your current password" required><button type="submit" class="btn btn-secondary">Authorize transfer</button></form><div id="markora-transfer-output" class="markora-portal-code-output" hidden></div><button type="button" class="btn btn-danger btn-small" data-portal-action="cancel-transfer">Cancel pending transfer codes</button></div>
             <div class="markora-portal-section"><h4>Recent security activity</h4><div class="markora-portal-audit-list">${auditRows || '<p class="markora-portal-empty">No activity recorded yet.</p>'}</div></div>
         `;
     }
@@ -362,6 +362,12 @@
         try {
             if (formAction === "create-transfer") {
                 if (!window.confirm("You are authorizing a transfer of Super Admin ownership to this account. The recipient must still accept the code. Continue?")) return;
+                const { data: reauthData, error: reauthError } = await client.auth.signInWithPassword({
+                    email: currentSession?.user?.email || "",
+                    password: values.password
+                });
+                if (reauthError || !reauthData?.session) throw new Error("Password confirmation failed. Ownership was not transferred.");
+                setSession(reauthData.session);
                 const result = await callPublisherControl("create_transfer", { email: values.email });
                 const output = publisherPortal.querySelector("#markora-transfer-output");
                 output.hidden = false;
