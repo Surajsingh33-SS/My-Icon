@@ -222,6 +222,10 @@ Deno.serve(async (req: Request) => {
 
     if (action === "create_transfer") {
       requireOwner();
+      const lastSignIn = Date.parse(user.last_sign_in_at || "");
+      if (!Number.isFinite(lastSignIn) || Date.now() - lastSignIn > 5 * 60 * 1000) {
+        throw new Error("Re-enter your account password before authorizing an ownership transfer.");
+      }
       const recipient = await findUserByEmail(String(body.email || ""));
       if (recipient.id === user.id) throw new Error("You are already the Super Admin.");
       const code = makeCode();
